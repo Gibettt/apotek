@@ -5,12 +5,12 @@ import { obatService, type ObatListItem } from "@/services/obatService";
 const obatDetailConfig: ModuleConfig = {
   key: "obat",
   title: "Obat",
-  description: "Daftar obat dengan harga, stok, kategori, supplier, dan status resep.",
+  description: "Daftar obat dengan harga, stok, kategori, golongan, dan status resep.",
   basePath: "/obat",
-  rows: [],
+  load: async () => [],
   columns: [],
   fields: [],
-  detailTitleKey: "namaObat",
+  detailTitleKey: "nama",
   allowDetail: true,
   allowEdit: true
 };
@@ -18,19 +18,20 @@ const obatDetailConfig: ModuleConfig = {
 function toDetailRecord(item: ObatListItem): ModuleRecord {
   return {
     id: item.id,
-    kodeObat: item.kodeObat,
-    namaObat: item.namaObat,
+    kode: item.kode,
+    nama: item.nama,
     kategori: item.kategoriNama ?? "-",
-    supplier: item.supplierNama ?? "-",
-    satuan: item.satuan,
+    golongan: item.golonganNama ?? "-",
+    satuan: item.satuanNama ?? "-",
     stokTersedia: item.stokTersedia,
     stokMinimum: item.stokMinimum,
-    hargaBeli: item.hargaBeli,
-    hargaJual: item.hargaJual,
-    golongan: item.golongan,
+    hargaBeli: item.hargaAktif?.hargaBeli ?? 0,
+    hargaJual: item.hargaAktif?.hargaJual ?? 0,
     membutuhkanResep: item.membutuhkanResep,
     status: item.status,
-    deskripsi: item.deskripsi,
+    komposisi: item.komposisi,
+    indikasi: item.indikasi,
+    aturanPakai: item.aturanPakai,
     createdAt: item.createdAt,
     updatedAt: item.updatedAt
   };
@@ -41,7 +42,7 @@ export default async function DetailObatPage({
 }: {
   params: { id: string };
 }) {
-  const obat = await obatService.getById(Number(params.id)).catch(() => null);
+  const obat = await obatService.getById(params.id).catch(() => null);
   const record = obat ? toDetailRecord(obat) : undefined;
 
   return <ModuleDetailPage config={obatDetailConfig} record={record} />;

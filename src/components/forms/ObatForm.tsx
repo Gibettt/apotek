@@ -16,45 +16,44 @@ import {
   type ObatInput,
   type ObatListItem
 } from "@/services/obatService";
-import type { ObatGolongan } from "@/types";
 
 interface ObatFormValues {
-  kodeObat: string;
-  namaObat: string;
+  kode: string;
+  nama: string;
   kategoriId: string;
+  golonganId: string;
+  satuanDefaultId: string;
   supplierId: string;
-  satuan: string;
   hargaBeli: number;
   hargaJual: number;
   stokMinimum: number;
   stokAwal: number;
   batchNumber: string;
   tanggalExpired: string;
-  lokasi: string;
-  golongan: ObatGolongan;
-  membutuhkanResep: boolean;
   status: boolean;
-  deskripsi: string;
+  komposisi: string;
+  indikasi: string;
+  aturanPakai: string;
 }
 
 function toDefaultValues(record?: ObatListItem | null): ObatFormValues {
   return {
-    kodeObat: record?.kodeObat ?? "",
-    namaObat: record?.namaObat ?? "",
+    kode: record?.kode ?? "",
+    nama: record?.nama ?? "",
     kategoriId: record?.kategoriId ? String(record.kategoriId) : "",
-    supplierId: record?.supplierId ? String(record.supplierId) : "",
-    satuan: record?.satuan ?? "tablet",
-    hargaBeli: record?.hargaBeli ?? 0,
-    hargaJual: record?.hargaJual ?? 0,
+    golonganId: record?.golonganId ? String(record.golonganId) : "",
+    satuanDefaultId: record?.satuanDefaultId ? String(record.satuanDefaultId) : "",
+    supplierId: "",
+    hargaBeli: record?.hargaAktif?.hargaBeli ?? 0,
+    hargaJual: record?.hargaAktif?.hargaJual ?? 0,
     stokMinimum: record?.stokMinimum ?? 0,
     stokAwal: 0,
     batchNumber: "",
     tanggalExpired: "",
-    lokasi: "Rak utama",
-    golongan: record?.golongan ?? "bebas",
-    membutuhkanResep: record?.membutuhkanResep ?? false,
     status: record?.status ?? true,
-    deskripsi: record?.deskripsi ?? ""
+    komposisi: record?.komposisi ?? "",
+    indikasi: record?.indikasi ?? "",
+    aturanPakai: record?.aturanPakai ?? ""
   };
 }
 
@@ -71,6 +70,8 @@ function optionList(label: string, items: MasterOption[]) {
 export function ObatForm({ record }: { record?: ObatListItem | null }) {
   const router = useRouter();
   const [kategoriOptions, setKategoriOptions] = useState<MasterOption[]>([]);
+  const [golonganOptions, setGolonganOptions] = useState<MasterOption[]>([]);
+  const [satuanOptions, setSatuanOptions] = useState<MasterOption[]>([]);
   const [supplierOptions, setSupplierOptions] = useState<MasterOption[]>([]);
   const [isLoadingOptions, setIsLoadingOptions] = useState(true);
   const isEdit = Boolean(record?.id);
@@ -88,8 +89,10 @@ export function ObatForm({ record }: { record?: ObatListItem | null }) {
       setIsLoadingOptions(true);
 
       try {
-        const [kategori, supplier] = await Promise.all([
+        const [kategori, golongan, satuan, supplier] = await Promise.all([
           obatService.listKategoriOptions(),
+          obatService.listGolonganOptions(),
+          obatService.listSatuanOptions(),
           obatService.listSupplierOptions()
         ]);
 
@@ -98,6 +101,8 @@ export function ObatForm({ record }: { record?: ObatListItem | null }) {
         }
 
         setKategoriOptions(kategori);
+        setGolonganOptions(golongan);
+        setSatuanOptions(satuan);
         setSupplierOptions(supplier);
       } catch (error) {
         if (active) {
@@ -123,26 +128,22 @@ export function ObatForm({ record }: { record?: ObatListItem | null }) {
 
   async function onSubmit(formValues: ObatFormValues) {
     const payload: ObatInput = {
-      kodeObat: formValues.kodeObat,
-      namaObat: formValues.namaObat,
-      kategoriId: formValues.kategoriId
-        ? Number(formValues.kategoriId)
-        : undefined,
-      supplierId: formValues.supplierId
-        ? Number(formValues.supplierId)
-        : undefined,
-      satuan: formValues.satuan,
+      kode: formValues.kode,
+      nama: formValues.nama,
+      kategoriId: formValues.kategoriId || undefined,
+      golonganId: formValues.golonganId || undefined,
+      satuanDefaultId: formValues.satuanDefaultId || undefined,
+      supplierId: formValues.supplierId || undefined,
       hargaBeli: Number(formValues.hargaBeli || 0),
       hargaJual: Number(formValues.hargaJual || 0),
       stokMinimum: Number(formValues.stokMinimum || 0),
-      golongan: formValues.golongan,
-      membutuhkanResep: formValues.membutuhkanResep,
+      komposisi: formValues.komposisi,
+      indikasi: formValues.indikasi,
+      aturanPakai: formValues.aturanPakai,
       status: formValues.status,
-      deskripsi: formValues.deskripsi,
       stokAwal: Number(formValues.stokAwal || 0),
       batchNumber: formValues.batchNumber,
-      tanggalExpired: formValues.tanggalExpired,
-      lokasi: formValues.lokasi
+      tanggalExpired: formValues.tanggalExpired
     };
 
     try {
@@ -200,14 +201,14 @@ export function ObatForm({ record }: { record?: ObatListItem | null }) {
             <Input
               label="Kode Obat"
               placeholder="OBT-0001"
-              error={errors.kodeObat?.message}
-              {...register("kodeObat", { required: "Kode obat wajib diisi" })}
+              error={errors.kode?.message}
+              {...register("kode", { required: "Kode obat wajib diisi" })}
             />
             <Input
               label="Nama Obat"
               placeholder="Paracetamol 500mg"
-              error={errors.namaObat?.message}
-              {...register("namaObat", { required: "Nama obat wajib diisi" })}
+              error={errors.nama?.message}
+              {...register("nama", { required: "Nama obat wajib diisi" })}
             />
             <Select
               label="Kategori"
@@ -216,20 +217,16 @@ export function ObatForm({ record }: { record?: ObatListItem | null }) {
               {...register("kategoriId")}
             />
             <Select
-              label="Supplier"
-              options={optionList("Tanpa supplier", supplierOptions)}
-              disabled={isLoadingOptions}
-              {...register("supplierId")}
-            />
-            <Input label="Satuan" placeholder="tablet" {...register("satuan")} />
-            <Select
               label="Golongan"
-              options={[
-                { label: "Bebas", value: "bebas" },
-                { label: "Bebas Terbatas", value: "bebas terbatas" },
-                { label: "Keras", value: "keras" }
-              ]}
-              {...register("golongan")}
+              options={optionList("Tanpa golongan", golonganOptions)}
+              disabled={isLoadingOptions}
+              {...register("golonganId")}
+            />
+            <Select
+              label="Satuan"
+              options={optionList("Pilih satuan", satuanOptions)}
+              disabled={isLoadingOptions}
+              {...register("satuanDefaultId")}
             />
             <Input
               label="Harga Beli"
@@ -250,15 +247,19 @@ export function ObatForm({ record }: { record?: ObatListItem | null }) {
               {...register("stokMinimum", { valueAsNumber: true })}
             />
             {!isEdit ? (
-              <Input
-                label="Stok Awal"
-                type="number"
-                min={0}
-                {...register("stokAwal", { valueAsNumber: true })}
-              />
-            ) : null}
-            {!isEdit ? (
               <>
+                <Input
+                  label="Stok Awal"
+                  type="number"
+                  min={0}
+                  {...register("stokAwal", { valueAsNumber: true })}
+                />
+                <Select
+                  label="Supplier (stok awal)"
+                  options={optionList("Tanpa supplier", supplierOptions)}
+                  disabled={isLoadingOptions}
+                  {...register("supplierId")}
+                />
                 <Input
                   label="Batch Number"
                   placeholder="AWAL-001"
@@ -269,21 +270,8 @@ export function ObatForm({ record }: { record?: ObatListItem | null }) {
                   type="date"
                   {...register("tanggalExpired")}
                 />
-                <Input
-                  label="Lokasi Rak"
-                  placeholder="Rak utama"
-                  {...register("lokasi")}
-                />
               </>
             ) : null}
-            <label className="flex h-10 items-center gap-3 self-end rounded-md border border-slate-200 bg-white px-3 text-sm font-medium text-slate-700">
-              <input
-                type="checkbox"
-                className="h-4 w-4 rounded border-slate-300 text-brand-700 focus:ring-brand-600"
-                {...register("membutuhkanResep")}
-              />
-              Membutuhkan resep
-            </label>
             <label className="flex h-10 items-center gap-3 self-end rounded-md border border-slate-200 bg-white px-3 text-sm font-medium text-slate-700">
               <input
                 type="checkbox"
@@ -293,12 +281,30 @@ export function ObatForm({ record }: { record?: ObatListItem | null }) {
               Aktif
             </label>
             <label className="grid gap-1.5 text-sm font-medium text-slate-700 md:col-span-2">
-              <span>Deskripsi</span>
+              <span>Komposisi</span>
               <textarea
-                rows={4}
+                rows={3}
                 className="rounded-md border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 outline-none transition focus:border-brand-600 focus:ring-2 focus:ring-brand-100"
-                placeholder="Keterangan singkat obat"
-                {...register("deskripsi")}
+                placeholder="Kandungan bahan aktif"
+                {...register("komposisi")}
+              />
+            </label>
+            <label className="grid gap-1.5 text-sm font-medium text-slate-700 md:col-span-2">
+              <span>Indikasi</span>
+              <textarea
+                rows={3}
+                className="rounded-md border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 outline-none transition focus:border-brand-600 focus:ring-2 focus:ring-brand-100"
+                placeholder="Kegunaan obat"
+                {...register("indikasi")}
+              />
+            </label>
+            <label className="grid gap-1.5 text-sm font-medium text-slate-700 md:col-span-2">
+              <span>Aturan Pakai</span>
+              <textarea
+                rows={3}
+                className="rounded-md border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 outline-none transition focus:border-brand-600 focus:ring-2 focus:ring-brand-100"
+                placeholder="Contoh: 3x sehari setelah makan"
+                {...register("aturanPakai")}
               />
             </label>
           </div>

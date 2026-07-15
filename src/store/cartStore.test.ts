@@ -4,39 +4,31 @@ import { useCartStore } from "./cartStore";
 
 const medicines: Obat[] = [
   {
-    id: 1,
-    kodeObat: "OBT-TEST-1",
-    namaObat: "Obat Test 1",
-    kategoriId: 0,
-    supplierId: 0,
-    satuan: "tablet",
-    hargaBeli: 500,
-    hargaJual: 1000,
+    id: "1",
+    kode: "OBT-TEST-1",
+    nama: "Obat Test 1",
     stokMinimum: 10,
+    stokMaksimum: 100,
     stokTersedia: 12,
-    gambarUrl: "",
-    deskripsi: "",
-    golongan: "bebas",
+    perluBatch: true,
+    perluExpired: true,
     membutuhkanResep: false,
+    hargaAktif: { hargaBeli: 500, hargaJual: 1000 },
     status: true,
     createdAt: "",
     updatedAt: ""
   },
   {
-    id: 2,
-    kodeObat: "OBT-TEST-2",
-    namaObat: "Obat Test 2",
-    kategoriId: 0,
-    supplierId: 0,
-    satuan: "kapsul",
-    hargaBeli: 700,
-    hargaJual: 1600,
+    id: "2",
+    kode: "OBT-TEST-2",
+    nama: "Obat Test 2",
     stokMinimum: 10,
+    stokMaksimum: 100,
     stokTersedia: 3,
-    gambarUrl: "",
-    deskripsi: "",
-    golongan: "bebas",
+    perluBatch: true,
+    perluExpired: true,
     membutuhkanResep: false,
+    hargaAktif: { hargaBeli: 700, hargaJual: 1600 },
     status: true,
     createdAt: "",
     updatedAt: ""
@@ -55,7 +47,7 @@ describe("cart store", () => {
 
     expect(useCartStore.getState().items[0].quantity).toBe(3);
     expect(useCartStore.getState().subtotal()).toBe(
-      medicines[0].hargaJual * 3
+      (medicines[0].hargaAktif?.hargaJual ?? 0) * 3
     );
   });
 

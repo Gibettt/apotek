@@ -6,7 +6,7 @@ export default async function EditObatPage({
 }: {
   params: { id: string };
 }) {
-  const record = await obatService.getById(Number(params.id)).catch(() => null);
+  const record = await obatService.getById(params.id).catch(() => null);
 
   return <ObatForm record={record} />;
 }

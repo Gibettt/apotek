@@ -7,7 +7,7 @@ import { Header } from "@/components/layout/Header";
 import { Button } from "@/components/ui/Button";
 import { Card, CardContent } from "@/components/ui/Card";
 import { Input } from "@/components/ui/Input";
-import type { Setting } from "@/types";
+import type { Pengaturan } from "@/types";
 
 const titles = {
   apotek: "Profil Apotek",
@@ -21,7 +21,7 @@ export function SettingsPage({
   settings
 }: {
   group: keyof typeof titles;
-  settings: Setting[];
+  settings: Pengaturan[];
 }) {
   const defaultValues = settings.reduce<Record<string, string>>((values, item) => {
     values[item.key] = item.value;

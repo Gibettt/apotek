@@ -8,7 +8,7 @@ export default async function ProsesResepPage({
 }: {
   params: { id: string };
 }) {
-  const resep = await resepService.getById(Number(params.id)).catch(() => null);
+  const resep = await resepService.getById(params.id).catch(() => null);
 
   if (!resep) {
     return (

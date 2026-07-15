@@ -6,8 +6,8 @@ import type { CartItem, Obat } from "@/types";
 interface CartState {
   items: CartItem[];
   addItem: (obat: Obat) => void;
-  removeItem: (obatId: number) => void;
-  updateQuantity: (obatId: number, quantity: number) => void;
+  removeItem: (barangId: string) => void;
+  updateQuantity: (barangId: string, quantity: number) => void;
   clear: () => void;
   subtotal: () => number;
 }
@@ -16,11 +16,11 @@ export const useCartStore = create<CartState>((set, get) => ({
   items: [],
   addItem(obat) {
     set((state) => {
-      const existing = state.items.find((item) => item.obatId === obat.id);
+      const existing = state.items.find((item) => item.barangId === obat.id);
       if (existing) {
         return {
           items: state.items.map((item) =>
-            item.obatId === obat.id
+            item.barangId === obat.id
               ? {
                   ...item,
                   quantity: Math.min(item.quantity + 1, item.stokTersedia)
@@ -34,10 +34,10 @@ export const useCartStore = create<CartState>((set, get) => ({
         items: [
           ...state.items,
           {
-            obatId: obat.id,
-            kodeObat: obat.kodeObat,
-            namaObat: obat.namaObat,
-            hargaJual: obat.hargaJual,
+            barangId: obat.id,
+            kode: obat.kode,
+            nama: obat.nama,
+            hargaJual: obat.hargaAktif?.hargaJual ?? 0,
             stokTersedia: obat.stokTersedia,
             membutuhkanResep: obat.membutuhkanResep,
             quantity: 1
@@ -46,15 +46,15 @@ export const useCartStore = create<CartState>((set, get) => ({
       };
     });
   },
-  removeItem(obatId) {
+  removeItem(barangId) {
     set((state) => ({
-      items: state.items.filter((item) => item.obatId !== obatId)
+      items: state.items.filter((item) => item.barangId !== barangId)
     }));
   },
-  updateQuantity(obatId, quantity) {
+  updateQuantity(barangId, quantity) {
     set((state) => ({
       items: state.items.map((item) =>
-        item.obatId === obatId
+        item.barangId === barangId
           ? {
               ...item,
               quantity: Math.max(1, Math.min(quantity, item.stokTersedia))

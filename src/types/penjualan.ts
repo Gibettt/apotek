@@ -4,43 +4,52 @@ export type StatusPenjualan =
   | "selesai"
   | "gagal"
   | "dibatalkan";
+export type StatusBayar = "belum_bayar" | "lunas" | "sebagian";
 
 export interface PenjualanDetail {
-  id: number;
-  penjualanId: number;
-  obatId: number;
-  namaObat: string;
+  id: string;
+  penjualanId: string;
+  barangId: string;
+  namaBarang: string;
+  batchId?: string;
+  satuanId?: string;
   jumlah: number;
   hargaJual: number;
-  diskon: number;
+  diskonPersen: number;
+  diskonNominal: number;
   subtotal: number;
+  hargaPokok: number;
 }
 
 export interface Penjualan {
-  id: number;
-  nomorPenjualan: string;
-  pelangganId?: number;
+  id: string;
+  cabangId: string;
+  shiftKasirId?: string;
+  nomorInvoice: string;
+  pelangganId?: string;
   namaPelanggan: string;
-  resepId?: number;
-  tanggalPenjualan: string;
+  resepId?: string;
+  tanggal: string;
+  tipePenjualan: string;
   subtotal: number;
-  diskon: number;
-  pajak: number;
-  total: number;
-  metodePembayaran: MetodePembayaran;
-  bayar: number;
+  diskonTotal: number;
+  pajakTotal: number;
+  grandTotal: number;
+  bayarTotal: number;
   kembalian: number;
+  statusBayar: StatusBayar;
   status: StatusPenjualan;
+  metodePembayaran?: MetodePembayaran;
   catatan?: string;
-  createdBy: string;
+  createdBy?: string;
   createdAt: string;
   details: PenjualanDetail[];
 }
 
 export interface CartItem {
-  obatId: number;
-  kodeObat: string;
-  namaObat: string;
+  barangId: string;
+  kode: string;
+  nama: string;
   hargaJual: number;
   stokTersedia: number;
   membutuhkanResep: boolean;

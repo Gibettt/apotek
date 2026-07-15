@@ -16,7 +16,7 @@ export function LowStockAlert({ items }: { items: Obat[] }) {
             <AlertTriangle className="h-5 w-5 text-amber-600" />
             <div>
               <p className="text-sm font-semibold text-amber-950">
-                {item.namaObat}
+                {item.nama}
               </p>
               <p className="text-xs text-amber-800">
                 Sisa {item.stokTersedia}, minimum {item.stokMinimum}

@@ -5,7 +5,7 @@ export interface AccuratePaymentSession {
   status: AccuratePaymentStatus;
   paymentUrl?: string;
   expiresAt?: string;
-  saleId?: number;
+  saleId?: string;
   accurateSyncStatus?: string;
 }
 
@@ -23,7 +23,7 @@ async function readResponse(response: Response) {
 export const accuratePaymentService = {
   async create(payload: {
     idempotencyKey: string;
-    items: Array<{ obatId: number; quantity: number }>;
+    items: Array<{ barangId: string; quantity: number }>;
   }) {
     const response = await fetch("/api/payments/accurate", {
       method: "POST",

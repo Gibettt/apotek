@@ -14,14 +14,14 @@ import { resepService, type MasterOption, type ResepInput } from "@/services/res
 import type { StatusResep } from "@/types";
 
 interface ResepFormItem {
-  obatId: string;
+  barangId: string;
   aturanPakai: string;
   jumlah: string;
   catatan: string;
 }
 
 const emptyItem: ResepFormItem = {
-  obatId: "",
+  barangId: "",
   aturanPakai: "",
   jumlah: "1",
   catatan: ""
@@ -108,7 +108,7 @@ export function ResepForm() {
   const filledItems = useMemo(
     () =>
       items.filter(
-        (item) => item.obatId && parseNumberInput(item.jumlah) > 0
+        (item) => item.barangId && parseNumberInput(item.jumlah) > 0
       ),
     [items]
   );
@@ -167,9 +167,9 @@ export function ResepForm() {
     }
 
     const validItems = items
-      .filter((item) => item.obatId && parseNumberInput(item.jumlah) > 0)
+      .filter((item) => item.barangId && parseNumberInput(item.jumlah) > 0)
       .map((item) => ({
-        obatId: Number(item.obatId),
+        barangId: item.barangId,
         aturanPakai: item.aturanPakai.trim(),
         jumlah: parseNumberInput(item.jumlah),
         catatan: item.catatan.trim()
@@ -188,7 +188,7 @@ export function ResepForm() {
     }
 
     const payload: ResepInput = {
-      pelangganId: pelangganId ? Number(pelangganId) : undefined,
+      pelangganId: pelangganId || undefined,
       pelangganNama: pelangganNama.trim(),
       pelangganTelepon: pelangganTelepon.trim(),
       namaDokter: namaDokter.trim(),
@@ -367,7 +367,7 @@ export function ResepForm() {
                       Item #{index + 1}
                     </p>
                     <p className="mt-1 truncate text-sm font-black text-[#20201d]">
-                      {obatById[item.obatId]?.namaObat ?? "Pilih obat"}
+                      {obatById[item.barangId]?.nama ?? "Pilih obat"}
                     </p>
                   </div>
                   <button
@@ -384,18 +384,18 @@ export function ResepForm() {
                   <div className="min-w-0 xl:col-span-5">
                     <Select
                       label="Obat"
-                      value={item.obatId}
+                      value={item.barangId}
                       disabled={isLoadingOptions}
                       onChange={(event) =>
                         updateItem(index, (current) => ({
                           ...current,
-                          obatId: event.target.value
+                          barangId: event.target.value
                         }))
                       }
                       options={[
                         { label: "Pilih obat", value: "" },
                         ...obatOptions.map((obat) => ({
-                          label: `${obat.namaObat} - stok ${obat.stokTersedia}`,
+                          label: `${obat.nama} - stok ${obat.stokTersedia}`,
                           value: obat.id
                         }))
                       ]}

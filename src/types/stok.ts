@@ -1,28 +1,39 @@
-export type TipeMutasi = "masuk" | "keluar" | "opname" | "penyesuaian";
+export type TipeMutasi =
+  | "masuk"
+  | "keluar"
+  | "opname"
+  | "penyesuaian"
+  | "transfer_masuk"
+  | "transfer_keluar";
 
 export interface StokBatch {
-  id: number;
-  obatId: number;
-  namaObat: string;
-  batchNumber: string;
-  tanggalExpired: string;
-  jumlah: number;
-  lokasi: string;
+  id: string;
+  barangId: string;
+  namaBarang: string;
+  nomorBatch: string;
+  tanggalExpired?: string;
+  qty: number;
+  cabangId: string;
+  lokasiSimpanId?: string;
+  lokasiNama?: string;
   createdAt: string;
   updatedAt: string;
 }
 
 export interface StokMutasi {
-  id: number;
-  obatId: number;
-  namaObat: string;
+  id: string;
+  cabangId: string;
+  barangId: string;
+  namaBarang: string;
+  batchId?: string;
   tipeMutasi: TipeMutasi;
-  jumlah: number;
-  sumber: "pembelian" | "penjualan" | "manual";
-  referensiId?: number;
-  stokSebelum: number;
-  stokSesudah: number;
-  keterangan: string;
-  createdBy: string;
+  qtyMasuk: number;
+  qtyKeluar: number;
+  saldoAkhir: number;
+  hargaPokok: number;
+  sumberTabel?: string;
+  sumberId?: string;
+  keterangan?: string;
+  createdBy?: string;
   createdAt: string;
 }

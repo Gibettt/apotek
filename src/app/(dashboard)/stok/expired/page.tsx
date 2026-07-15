@@ -1,3 +1,5 @@
+"use client";
+
 import { ModuleListPage } from "@/components/pages/ModuleListPage";
 import { moduleConfigs, type ModuleConfig } from "@/constants/modules";
 
@@ -7,9 +9,10 @@ const config: ModuleConfig = {
   key: "stok-expired",
   title: "Obat Mendekati Expired",
   description: "Batch obat yang mendekati atau melewati batas expired.",
-  rows: moduleConfigs.stok.rows.filter(
-    (item) => new Date(String(item.tanggalExpired)) <= limit
-  )
+  load: async () => {
+    const rows = await moduleConfigs.stok.load();
+    return rows.filter((item) => new Date(String(item.tanggalExpired)) <= limit);
+  }
 };
 
 export default function StokExpiredPage() {

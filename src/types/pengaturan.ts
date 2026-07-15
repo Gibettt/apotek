@@ -1,9 +1,10 @@
-export type SettingGroup = "apotek" | "struk" | "stok" | "notifikasi";
+export type PengaturanGroup = "apotek" | "struk" | "stok" | "notifikasi";
 
-export interface Setting {
-  id: number;
+export interface Pengaturan {
+  id: string;
+  cabangId?: string;
   key: string;
   value: string;
-  group: SettingGroup;
+  group: PengaturanGroup;
   label: string;
 }

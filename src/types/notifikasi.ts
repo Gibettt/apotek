@@ -3,12 +3,15 @@ import type { RoleName } from "./auth";
 export type TipeNotifikasi = "stok_menipis" | "obat_expired" | "sistem";
 
 export interface Notifikasi {
-  id: number;
+  id: string;
+  cabangId?: string;
+  penggunaId?: string;
   tipe: TipeNotifikasi;
   judul: string;
-  pesan: string;
-  referensiId?: number;
+  pesan?: string;
+  referensiTabel?: string;
+  referensiId?: string;
   isRead: boolean;
-  targetRole: RoleName;
+  targetRole?: RoleName;
   createdAt: string;
 }

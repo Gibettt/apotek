@@ -63,8 +63,8 @@ export function KasirSearch() {
 
   const cartQuantityById = useMemo(
     () =>
-      cartItems.reduce<Record<number, number>>((acc, item) => {
-        acc[item.obatId] = item.quantity;
+      cartItems.reduce<Record<string, number>>((acc, item) => {
+        acc[item.barangId] = item.quantity;
         return acc;
       }, {}),
     [cartItems]
@@ -169,7 +169,7 @@ export function KasirSearch() {
                   <div className="min-w-0">
                     <div className="flex flex-wrap items-center gap-2">
                       <p className="truncate font-black text-[#20201d]">
-                        {item.namaObat}
+                        {item.nama}
                       </p>
                       <Badge variant={stockBadge.variant}>
                         {stockBadge.label}
@@ -179,7 +179,7 @@ export function KasirSearch() {
                       ) : null}
                     </div>
                     <p className="mt-1 truncate text-sm font-semibold text-stone-500">
-                      {item.kodeObat} - {item.satuan || "item"} -{" "}
+                      {item.kode} - {item.satuanNama || "item"} -{" "}
                       {item.kategoriNama || "Tanpa kategori"}
                     </p>
                     <div className="mt-3 flex flex-wrap gap-2 text-xs font-bold text-stone-500">
@@ -190,7 +190,7 @@ export function KasirSearch() {
                         Di keranjang {cartQuantity}
                       </span>
                       <span className="rounded-full bg-[#f8f7f3] px-3 py-1">
-                        {item.supplierNama || "Tanpa supplier"}
+                        {item.golonganNama || "Tanpa golongan"}
                       </span>
                     </div>
                   </div>
@@ -200,12 +200,12 @@ export function KasirSearch() {
                   <div className="text-left sm:text-right">
                     <p className="text-xs font-bold text-stone-400">Harga</p>
                     <p className="text-lg font-black text-[#20201d]">
-                      {formatCurrency(item.hargaJual)}
+                      {formatCurrency(item.hargaAktif?.hargaJual ?? 0)}
                     </p>
                   </div>
                   <button
                     type="button"
-                    aria-label={`Tambah ${item.namaObat}`}
+                    aria-label={`Tambah ${item.nama}`}
                     disabled={Boolean(disabledReason)}
                     onClick={() => addItem(item)}
                     className="inline-flex h-11 items-center justify-center gap-2 rounded-lg bg-[#20201d] px-4 text-sm font-black text-white shadow-[0_14px_28px_rgba(25,24,21,.16)] transition hover:-translate-y-0.5 hover:bg-black disabled:pointer-events-none disabled:bg-stone-100 disabled:text-stone-400 disabled:shadow-none"

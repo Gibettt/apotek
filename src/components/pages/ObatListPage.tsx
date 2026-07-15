@@ -20,20 +20,11 @@ import { toast } from "sonner";
 import { Header } from "@/components/layout/Header";
 import { Badge } from "@/components/ui/Badge";
 import { Pagination } from "@/components/ui/Pagination";
-import { kategoriObat, suppliers } from "@/lib/mock-data";
 import { obatService } from "@/services/obatService";
 import type { Obat } from "@/types";
 import { formatCurrency } from "@/utils/formatCurrency";
 
 const perPage = 8;
-
-function getKategoriName(id: number) {
-  return kategoriObat.find((item) => item.id === id)?.nama ?? "-";
-}
-
-function getSupplierName(id: number) {
-  return suppliers.find((item) => item.id === id)?.namaSupplier ?? "-";
-}
 
 function getStockState(item: Obat) {
   if (item.stokTersedia <= Math.max(1, Math.round(item.stokMinimum * 0.25))) {
@@ -110,20 +101,20 @@ function ObatRow({
           </span>
           <div className="min-w-0">
             <p className="truncate font-black text-[#20201d]">
-              {item.namaObat}
+              {item.nama}
             </p>
             <p className="mt-1 truncate text-xs font-semibold text-stone-400">
-              {item.kodeObat} - {item.satuan}
+              {item.kode} - {item.satuanNama ?? "-"}
             </p>
           </div>
         </div>
       </td>
       <td className="px-5 py-4">
         <p className="text-sm font-bold text-stone-700">
-          {getKategoriName(item.kategoriId)}
+          {item.kategoriNama ?? "-"}
         </p>
         <p className="mt-1 max-w-[180px] truncate text-xs font-semibold text-stone-400">
-          {getSupplierName(item.supplierId)}
+          {item.golonganNama ?? "-"}
         </p>
       </td>
       <td className="px-5 py-4">
@@ -146,10 +137,10 @@ function ObatRow({
       </td>
       <td className="px-5 py-4">
         <p className="font-black text-[#20201d]">
-          {formatCurrency(item.hargaJual)}
+          {formatCurrency(item.hargaAktif?.hargaJual ?? 0)}
         </p>
         <p className="mt-1 text-xs font-semibold text-stone-400">
-          Beli {formatCurrency(item.hargaBeli)}
+          Beli {formatCurrency(item.hargaAktif?.hargaBeli ?? 0)}
         </p>
       </td>
       <td className="px-5 py-4">
@@ -181,7 +172,7 @@ function ObatRow({
           </Link>
           <button
             type="button"
-            aria-label={`Hapus ${item.namaObat}`}
+            aria-label={`Hapus ${item.nama}`}
             onClick={() => onDelete(item)}
             className="inline-flex h-9 items-center justify-center gap-2 rounded-full bg-red-50 px-3 text-xs font-black text-red-600 transition hover:bg-red-100 hover:text-red-700"
           >
@@ -203,7 +194,7 @@ export function ObatListPage() {
 
   async function handleDelete(item: Obat) {
     const confirmed = window.confirm(
-      `Hapus ${item.namaObat} dari daftar stok obat?`
+      `Hapus ${item.nama} dari daftar stok obat?`
     );
 
     if (!confirmed) {
@@ -216,7 +207,7 @@ export function ObatListPage() {
         currentRows.filter((row) => row.id !== item.id)
       );
       setTotal((currentTotal) => Math.max(0, currentTotal - 1));
-      toast.success(`${item.namaObat} berhasil dihapus`);
+      toast.success(`${item.nama} berhasil dihapus`);
     } catch (error) {
       toast.error(
         error instanceof Error ? error.message : "Gagal menghapus obat"

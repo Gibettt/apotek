@@ -3,13 +3,14 @@ package requests
 import "errors"
 
 type PenjualanItemRequest struct {
-	ObatID int `json:"obat_id"`
-	Jumlah int `json:"jumlah"`
+	BarangID string `json:"barang_id"`
+	Jumlah   int    `json:"jumlah"`
 }
 
 type PenjualanRequest struct {
-	PelangganID      *int                   `json:"pelanggan_id"`
-	ResepID          *int                   `json:"resep_id"`
+	CabangID         string                 `json:"cabang_id"`
+	PelangganID      *string                `json:"pelanggan_id"`
+	ResepID          *string                `json:"resep_id"`
 	MetodePembayaran string                 `json:"metode_pembayaran"`
 	Bayar            float64                `json:"bayar"`
 	Items            []PenjualanItemRequest `json:"items"`

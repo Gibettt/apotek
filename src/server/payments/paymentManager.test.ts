@@ -9,9 +9,11 @@ import {
 import { PaymentConfigurationError } from "./paymentErrors";
 
 const reference = "APOTEK-5dc04f7a-91ab-4fe7-a519-8459f26c04df";
+const barangId = "b6a1a9d0-1234-4a11-8a11-000000000012";
+const saleId = "9a2f8e46-6c48-4b6e-9f30-1b87dbb71b88";
 const pricedItems = [
   {
-    obatId: 12,
+    barangId,
     code: "OBT-PAY",
     name: "Obat Bayar",
     quantity: 1,
@@ -19,7 +21,7 @@ const pricedItems = [
   }
 ];
 const pendingRecord = {
-  id: 88,
+  id: saleId,
   reference,
   number: "PJL-20260713-00088",
   total: 30000,
@@ -43,7 +45,7 @@ function repositoryMock(): PaymentRepository {
     })),
     markPaymentFailed: vi.fn().mockResolvedValue(undefined),
     markPaymentExpired: vi.fn().mockResolvedValue(undefined),
-    finalizePayment: vi.fn().mockResolvedValue(88),
+    finalizePayment: vi.fn().mockResolvedValue(saleId),
     loadAccurateInvoice: vi.fn().mockResolvedValue({
       number: pendingRecord.number,
       date: new Date("2026-07-13T03:00:00.000Z"),
@@ -82,13 +84,13 @@ describe("payment manager", () => {
     const result = await createAccuratePayment(
       {
         idempotencyKey: "5dc04f7a-91ab-4fe7-a519-8459f26c04df",
-        items: [{ obatId: 12, quantity: 1 }]
+        items: [{ barangId, quantity: 1 }]
       },
       dependencies
     );
 
     expect(repository.prepareItems).toHaveBeenCalledWith([
-      { obatId: 12, quantity: 1 }
+      { barangId, quantity: 1 }
     ]);
     expect(dependencies.createProviderLink).toHaveBeenCalledWith({
       reference,
@@ -110,7 +112,7 @@ describe("payment manager", () => {
     await createAccuratePayment(
       {
         idempotencyKey: "5dc04f7a-91ab-4fe7-a519-8459f26c04df",
-        items: [{ obatId: 12, quantity: 1 }]
+        items: [{ barangId, quantity: 1 }]
       },
       dependencies
     );
@@ -128,12 +130,12 @@ describe("payment manager", () => {
       createAccuratePayment(
         {
           idempotencyKey: "5dc04f7a-91ab-4fe7-a519-8459f26c04df",
-          items: [{ obatId: 12, quantity: 1 }]
+          items: [{ barangId, quantity: 1 }]
         },
         dependencies
       )
     ).rejects.toThrow("provider unavailable");
-    expect(repository.markPaymentFailed).toHaveBeenCalledWith(88);
+    expect(repository.markPaymentFailed).toHaveBeenCalledWith(saleId);
   });
 
   it("does not create another provider link after an idempotency race", async () => {
@@ -146,7 +148,7 @@ describe("payment manager", () => {
     const result = await createAccuratePayment(
       {
         idempotencyKey: "5dc04f7a-91ab-4fe7-a519-8459f26c04df",
-        items: [{ obatId: 12, quantity: 1 }]
+        items: [{ barangId, quantity: 1 }]
       },
       dependencies
     );
@@ -179,7 +181,7 @@ describe("payment manager", () => {
       "pay-123"
     );
     expect(dependencies.syncAccurateInvoice).toHaveBeenCalled();
-    expect(repository.markAccurateSync).toHaveBeenCalledWith(88, "SYNCED", 991);
+    expect(repository.markAccurateSync).toHaveBeenCalledWith(saleId, "SYNCED", 991);
   });
 
   it("rejects a paid callback whose amount differs from the sale", async () => {
@@ -258,7 +260,7 @@ describe("payment manager", () => {
 
     expect(result.status).toBe("PAID");
     expect(repository.markAccurateSync).toHaveBeenCalledWith(
-      88,
+      saleId,
       "PENDING_CONFIGURATION",
       undefined,
       "Accurate missing"

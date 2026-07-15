@@ -1,62 +1,70 @@
+import { defaultCabangId } from "@/lib/mock-data";
 import { isSupabaseConfigured, supabase } from "@/lib/supabase";
-import type {
-  Pembelian,
-  PembelianDetail,
-  StatusPembelian
-} from "@/types";
+import type { Pembelian, PembelianDetail, StatusPembelian } from "@/types";
 import { matchSearch, paginate, type ListParams } from "./serviceUtils";
 
 export interface PembelianItemInput {
-  obatId: number;
+  barangId: string;
   batchNumber?: string;
   tanggalExpired?: string;
+  satuanId?: string;
   jumlah: number;
   hargaBeli: number;
-  diskon?: number;
+  diskonPersen?: number;
+  diskonNominal?: number;
 }
 
 export interface PembelianInput {
-  nomorPembelian?: string;
-  supplierId: number;
-  tanggalPembelian: string;
-  diskon?: number;
-  pajak?: number;
+  nomorFaktur?: string;
+  nomorInternal?: string;
+  cabangId?: string;
+  supplierId: string;
+  tanggalFaktur: string;
+  tanggalJatuhTempo?: string;
+  diskonTotal?: number;
+  pajakTotal?: number;
   status?: StatusPembelian;
   catatan?: string;
   items: PembelianItemInput[];
 }
 
-interface PembelianRow {
-  id: number;
-  nomor_pembelian: string;
-  supplier_id: number | null;
-  tanggal_pembelian: string | null;
+interface FakturPembelianRow {
+  id: string;
+  cabang_id: string | null;
+  supplier_id: string | null;
+  surat_pesanan_id: string | null;
+  nomor_faktur: string;
+  nomor_internal: string;
+  tanggal_faktur: string | null;
+  tanggal_jatuh_tempo: string | null;
   subtotal: number | string | null;
-  diskon: number | string | null;
-  pajak: number | string | null;
-  total: number | string | null;
+  diskon_total: number | string | null;
+  pajak_total: number | string | null;
+  grand_total: number | string | null;
   status: StatusPembelian | null;
   catatan: string | null;
-  created_by: string | null;
+  dibuat_oleh: string | null;
   created_at: string | null;
   updated_at: string | null;
 }
 
-interface PembelianDetailRow {
-  id: number;
-  pembelian_id: number | null;
-  obat_id: number | null;
-  batch_number: string | null;
-  tanggal_expired: string | null;
-  jumlah: number | null;
+interface FakturPembelianDetailRow {
+  id: string;
+  faktur_pembelian_id: string | null;
+  barang_id: string | null;
+  batch_id: string | null;
+  satuan_id: string | null;
+  qty: number | null;
   harga_beli: number | string | null;
-  diskon: number | string | null;
+  diskon_persen: number | string | null;
+  diskon_nominal: number | string | null;
   subtotal: number | string | null;
+  harga_pokok: number | string | null;
 }
 
-interface StokRow {
-  obat_id: number | null;
-  jumlah: number | null;
+interface BatchInfo {
+  nomorBatch: string;
+  tanggalExpired?: string;
 }
 
 const localPembelian: Pembelian[] = [];
@@ -65,14 +73,17 @@ function toNumber(value: number | string | null | undefined) {
   return Number(value ?? 0);
 }
 
-function generateNomorPembelian(date = new Date()) {
+function generateNomorInternal(date = new Date()) {
   const stamp = date.toISOString().slice(0, 10).replace(/-/g, "");
   const suffix = String(Date.now()).slice(-5);
   return `PBL-${stamp}-${suffix}`;
 }
 
 function calculateLineSubtotal(item: PembelianItemInput) {
-  return Math.max(0, item.jumlah * item.hargaBeli - (item.diskon ?? 0));
+  const gross = item.jumlah * item.hargaBeli;
+  const diskonPersenAmount = gross * ((item.diskonPersen ?? 0) / 100);
+  const diskonNominal = item.diskonNominal ?? 0;
+  return Math.max(0, gross - diskonPersenAmount - diskonNominal);
 }
 
 function calculateTotals(payload: PembelianInput) {
@@ -80,64 +91,64 @@ function calculateTotals(payload: PembelianInput) {
     (sum, item) => sum + calculateLineSubtotal(item),
     0
   );
-  const diskon = payload.diskon ?? 0;
-  const pajak = payload.pajak ?? 0;
-  const total = Math.max(0, subtotal - diskon + pajak);
+  const diskonTotal = payload.diskonTotal ?? 0;
+  const pajakTotal = payload.pajakTotal ?? 0;
+  const grandTotal = Math.max(0, subtotal - diskonTotal + pajakTotal);
 
-  return { subtotal, diskon, pajak, total };
-}
-
-function stockMapFrom(rows: StokRow[]) {
-  return rows.reduce<Record<number, number>>((acc, row) => {
-    if (!row.obat_id) {
-      return acc;
-    }
-
-    acc[row.obat_id] = (acc[row.obat_id] ?? 0) + Number(row.jumlah ?? 0);
-    return acc;
-  }, {});
+  return { subtotal, diskonTotal, pajakTotal, grandTotal };
 }
 
 function toDetail(
-  row: PembelianDetailRow,
-  obatById: Record<number, string> = {}
+  row: FakturPembelianDetailRow,
+  obatById: Record<string, string> = {},
+  batchById: Record<string, BatchInfo> = {}
 ): PembelianDetail {
-  const obatId = row.obat_id ?? 0;
+  const barangId = row.barang_id ?? "";
+  const batchId = row.batch_id ?? undefined;
+  const batch = batchId ? batchById[batchId] : undefined;
 
   return {
     id: row.id,
-    pembelianId: row.pembelian_id ?? 0,
-    obatId,
-    namaObat: obatById[obatId] ?? "-",
-    batchNumber: row.batch_number ?? "",
-    tanggalExpired: row.tanggal_expired ?? "",
-    jumlah: row.jumlah ?? 0,
+    pembelianId: row.faktur_pembelian_id ?? "",
+    barangId,
+    namaBarang: obatById[barangId] ?? "-",
+    batchId,
+    batchNumber: batch?.nomorBatch ?? "",
+    tanggalExpired: batch?.tanggalExpired ?? "",
+    satuanId: row.satuan_id ?? undefined,
+    jumlah: Number(row.qty ?? 0),
     hargaBeli: toNumber(row.harga_beli),
-    diskon: toNumber(row.diskon),
-    subtotal: toNumber(row.subtotal)
+    diskonPersen: toNumber(row.diskon_persen),
+    diskonNominal: toNumber(row.diskon_nominal),
+    subtotal: toNumber(row.subtotal),
+    hargaPokok: toNumber(row.harga_pokok)
   };
 }
 
 function toPembelian(
-  row: PembelianRow,
+  row: FakturPembelianRow,
   details: PembelianDetail[] = [],
-  supplierById: Record<number, string> = {}
+  supplierById: Record<string, string> = {}
 ): Pembelian {
-  const supplierId = row.supplier_id ?? 0;
+  const supplierId = row.supplier_id ?? "";
 
   return {
     id: row.id,
-    nomorPembelian: row.nomor_pembelian,
+    cabangId: row.cabang_id ?? "",
+    nomorFaktur: row.nomor_faktur,
+    nomorInternal: row.nomor_internal,
     supplierId,
     namaSupplier: supplierById[supplierId] ?? "-",
-    tanggalPembelian: row.tanggal_pembelian ?? "",
+    suratPesananId: row.surat_pesanan_id ?? undefined,
+    tanggalFaktur: row.tanggal_faktur ?? "",
+    tanggalJatuhTempo: row.tanggal_jatuh_tempo ?? undefined,
     subtotal: toNumber(row.subtotal),
-    diskon: toNumber(row.diskon),
-    pajak: toNumber(row.pajak),
-    total: toNumber(row.total),
+    diskonTotal: toNumber(row.diskon_total),
+    pajakTotal: toNumber(row.pajak_total),
+    grandTotal: toNumber(row.grand_total),
     status: row.status ?? "draft",
     catatan: row.catatan ?? "",
-    createdBy: row.created_by ?? "",
+    createdBy: row.dibuat_oleh ?? "",
     createdAt: row.created_at ?? "",
     updatedAt: row.updated_at ?? "",
     details
@@ -145,24 +156,20 @@ function toPembelian(
 }
 
 function filterPembelian(rows: Pembelian[], search?: string) {
-  return matchSearch(rows, search, [
-    "nomorPembelian",
-    "namaSupplier",
-    "status"
-  ]);
+  return matchSearch(rows, search, ["nomorFaktur", "nomorInternal", "namaSupplier", "status"]);
 }
 
 async function loadLookupMaps() {
   if (!supabase) {
     return {
-      supplierById: {} as Record<number, string>,
-      obatById: {} as Record<number, string>
+      supplierById: {} as Record<string, string>,
+      obatById: {} as Record<string, string>
     };
   }
 
   const [supplierResult, obatResult] = await Promise.all([
-    supabase.from("supplier").select("id,nama_supplier"),
-    supabase.from("obat").select("id,nama_obat")
+    supabase.from("supplier").select("id,nama"),
+    supabase.from("barang").select("id,nama")
   ]);
 
   if (supplierResult.error) {
@@ -175,21 +182,44 @@ async function loadLookupMaps() {
 
   return {
     supplierById: Object.fromEntries(
-      (supplierResult.data ?? []).map((item) => [item.id, item.nama_supplier])
+      (supplierResult.data ?? []).map((item) => [item.id, item.nama])
     ),
     obatById: Object.fromEntries(
-      (obatResult.data ?? []).map((item) => [item.id, item.nama_obat])
+      (obatResult.data ?? []).map((item) => [item.id, item.nama])
     )
   };
 }
 
-async function loadDetailsForPembelian(ids: number[]) {
+async function loadBatchInfo(batchIds: string[]) {
+  if (!supabase || !batchIds.length) {
+    return {} as Record<string, BatchInfo>;
+  }
+
+  const { data, error } = await supabase
+    .from("batch_barang")
+    .select("id,nomor_batch,tanggal_expired")
+    .in("id", [...new Set(batchIds)]);
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  return (data ?? []).reduce<Record<string, BatchInfo>>((acc, row) => {
+    acc[row.id] = {
+      nomorBatch: row.nomor_batch,
+      tanggalExpired: row.tanggal_expired ?? undefined
+    };
+    return acc;
+  }, {});
+}
+
+async function loadDetailsForPembelian(ids: string[]) {
   if (!supabase || !ids.length) {
-    return {} as Record<number, PembelianDetail[]>;
+    return {} as Record<string, PembelianDetail[]>;
   }
 
   const [{ data, error }, lookupMaps] = await Promise.all([
-    supabase.from("pembelian_detail").select("*").in("pembelian_id", ids),
+    supabase.from("faktur_pembelian_detail").select("*").in("faktur_pembelian_id", ids),
     loadLookupMaps()
   ]);
 
@@ -197,11 +227,59 @@ async function loadDetailsForPembelian(ids: number[]) {
     throw new Error(error.message);
   }
 
-  return (data ?? []).reduce<Record<number, PembelianDetail[]>>((acc, row) => {
-    const detail = toDetail(row, lookupMaps.obatById);
+  const rows = (data ?? []) as FakturPembelianDetailRow[];
+  const batchById = await loadBatchInfo(
+    rows.map((row) => row.batch_id).filter((id): id is string => Boolean(id))
+  );
+
+  return rows.reduce<Record<string, PembelianDetail[]>>((acc, row) => {
+    const detail = toDetail(row, lookupMaps.obatById, batchById);
     acc[detail.pembelianId] = [...(acc[detail.pembelianId] ?? []), detail];
     return acc;
   }, {});
+}
+
+async function findOrCreateBatch(
+  barangId: string,
+  supplierId: string,
+  nomorBatch: string,
+  tanggalExpired?: string
+) {
+  if (!supabase) {
+    return null;
+  }
+
+  const { data: existing, error: findError } = await supabase
+    .from("batch_barang")
+    .select("id")
+    .eq("barang_id", barangId)
+    .eq("nomor_batch", nomorBatch)
+    .maybeSingle();
+
+  if (findError) {
+    throw new Error(findError.message);
+  }
+
+  if (existing) {
+    return existing.id as string;
+  }
+
+  const { data: created, error: createError } = await supabase
+    .from("batch_barang")
+    .insert({
+      barang_id: barangId,
+      supplier_id: supplierId || null,
+      nomor_batch: nomorBatch,
+      tanggal_expired: tanggalExpired || null
+    })
+    .select("id")
+    .single();
+
+  if (createError) {
+    throw new Error(createError.message);
+  }
+
+  return created.id as string;
 }
 
 async function receiveStock(pembelian: Pembelian) {
@@ -210,64 +288,74 @@ async function receiveStock(pembelian: Pembelian) {
   }
 
   const validDetails = pembelian.details.filter(
-    (detail) => detail.obatId > 0 && detail.jumlah > 0
+    (detail) => detail.barangId && detail.jumlah > 0
   );
 
   if (!validDetails.length) {
     return;
   }
 
-  const obatIds = [...new Set(validDetails.map((detail) => detail.obatId))];
-  const { data: stokRows, error: stokError } = await supabase
-    .from("stok")
-    .select("obat_id,jumlah")
-    .in("obat_id", obatIds);
+  const cabangId = pembelian.cabangId || defaultCabangId;
 
-  if (stokError) {
-    throw new Error(stokError.message);
-  }
+  for (const detail of validDetails) {
+    const batchId = detail.batchId ?? null;
 
-  const stockByObat = stockMapFrom(stokRows ?? []);
+    let saldoQuery = supabase
+      .from("saldo_stok")
+      .select("id,qty")
+      .eq("cabang_id", cabangId)
+      .eq("barang_id", detail.barangId);
+    saldoQuery = batchId ? saldoQuery.eq("batch_id", batchId) : saldoQuery.is("batch_id", null);
 
-  const stokInserts = validDetails.map((detail, index) => ({
-    obat_id: detail.obatId,
-    batch_number:
-      detail.batchNumber ||
-      `${pembelian.nomorPembelian}-${String(index + 1).padStart(2, "0")}`,
-    tanggal_expired: detail.tanggalExpired || null,
-    jumlah: detail.jumlah,
-    lokasi: "Gudang pembelian"
-  }));
+    const { data: existingSaldo, error: findSaldoError } = await saldoQuery.maybeSingle();
 
-  const mutasiInserts = validDetails.map((detail) => {
-    const stokSebelum = stockByObat[detail.obatId] ?? 0;
-    const stokSesudah = stokSebelum + detail.jumlah;
-    stockByObat[detail.obatId] = stokSesudah;
+    if (findSaldoError) {
+      throw new Error(findSaldoError.message);
+    }
 
-    return {
-      obat_id: detail.obatId,
+    let saldoAkhir: number;
+
+    if (existingSaldo) {
+      saldoAkhir = Number(existingSaldo.qty ?? 0) + detail.jumlah;
+      const { error: updateError } = await supabase
+        .from("saldo_stok")
+        .update({ qty: saldoAkhir, updated_at: new Date().toISOString() })
+        .eq("id", existingSaldo.id);
+
+      if (updateError) {
+        throw new Error(updateError.message);
+      }
+    } else {
+      saldoAkhir = detail.jumlah;
+      const { error: insertError } = await supabase.from("saldo_stok").insert({
+        cabang_id: cabangId,
+        barang_id: detail.barangId,
+        batch_id: batchId,
+        qty: saldoAkhir
+      });
+
+      if (insertError) {
+        throw new Error(insertError.message);
+      }
+    }
+
+    const { error: kartuError } = await supabase.from("kartu_stok").insert({
+      cabang_id: cabangId,
+      barang_id: detail.barangId,
+      batch_id: batchId,
       tipe_mutasi: "masuk",
-      jumlah: detail.jumlah,
-      sumber: "pembelian",
-      referensi_id: pembelian.id,
-      stok_sebelum: stokSebelum,
-      stok_sesudah: stokSesudah,
-      keterangan: `Pembelian ${pembelian.nomorPembelian}`
-    };
-  });
+      sumber_tabel: "faktur_pembelian",
+      sumber_id: pembelian.id,
+      qty_masuk: detail.jumlah,
+      qty_keluar: 0,
+      saldo_akhir: saldoAkhir,
+      harga_pokok: detail.hargaBeli,
+      keterangan: `Penerimaan faktur ${pembelian.nomorInternal}`
+    });
 
-  const { error: insertStokError } = await supabase.from("stok").insert(stokInserts);
-
-  if (insertStokError) {
-    throw new Error(insertStokError.message);
-  }
-
-  const { error: mutasiError } = await supabase
-    .from("stok_mutasi")
-    .insert(mutasiInserts);
-
-  if (mutasiError) {
-    throw new Error(mutasiError.message);
+    if (kartuError) {
+      throw new Error(kartuError.message);
+    }
   }
 }
 
@@ -279,7 +367,7 @@ export const pembelianService = {
 
     const [{ data, error }, lookupMaps] = await Promise.all([
       supabase
-        .from("pembelian")
+        .from("faktur_pembelian")
         .select("*")
         .order("created_at", { ascending: false }),
       loadLookupMaps()
@@ -295,11 +383,7 @@ export const pembelianService = {
 
     const rows = filterPembelian(
       (data ?? []).map((item) =>
-        toPembelian(
-          item,
-          detailByPembelian[item.id] ?? [],
-          lookupMaps.supplierById
-        )
+        toPembelian(item, detailByPembelian[item.id] ?? [], lookupMaps.supplierById)
       ),
       params.search
     );
@@ -307,13 +391,13 @@ export const pembelianService = {
     return paginate(rows, params);
   },
 
-  async getById(id: number) {
+  async getById(id: string) {
     if (!isSupabaseConfigured || !supabase) {
       return localPembelian.find((item) => item.id === id) ?? null;
     }
 
     const [{ data, error }, lookupMaps, detailByPembelian] = await Promise.all([
-      supabase.from("pembelian").select("*").eq("id", id).single(),
+      supabase.from("faktur_pembelian").select("*").eq("id", id).single(),
       loadLookupMaps(),
       loadDetailsForPembelian([id])
     ]);
@@ -327,50 +411,54 @@ export const pembelianService = {
     }
 
     return data
-      ? toPembelian(
-          data,
-          detailByPembelian[id] ?? [],
-          lookupMaps.supplierById
-        )
+      ? toPembelian(data, detailByPembelian[id] ?? [], lookupMaps.supplierById)
       : null;
   },
 
   async create(payload: PembelianInput): Promise<Pembelian> {
     const totals = calculateTotals(payload);
     const status = payload.status ?? "draft";
-    const nomorPembelian =
-      payload.nomorPembelian?.trim() ||
-      generateNomorPembelian(new Date(payload.tanggalPembelian || Date.now()));
+    const cabangId = payload.cabangId || defaultCabangId;
+    const nomorInternal =
+      payload.nomorInternal?.trim() ||
+      generateNomorInternal(new Date(payload.tanggalFaktur || Date.now()));
+    const nomorFaktur = payload.nomorFaktur?.trim() || nomorInternal;
 
     if (!isSupabaseConfigured || !supabase) {
       const now = new Date().toISOString();
-      const id = Date.now();
+      const id = crypto.randomUUID();
       const created: Pembelian = {
         id,
-        nomorPembelian,
+        cabangId,
+        nomorFaktur,
+        nomorInternal,
         supplierId: payload.supplierId,
         namaSupplier: "-",
-        tanggalPembelian: payload.tanggalPembelian,
+        tanggalFaktur: payload.tanggalFaktur,
+        tanggalJatuhTempo: payload.tanggalJatuhTempo,
         subtotal: totals.subtotal,
-        diskon: totals.diskon,
-        pajak: totals.pajak,
-        total: totals.total,
+        diskonTotal: totals.diskonTotal,
+        pajakTotal: totals.pajakTotal,
+        grandTotal: totals.grandTotal,
         status,
         catatan: payload.catatan ?? "",
         createdBy: "",
         createdAt: now,
         updatedAt: now,
-        details: payload.items.map((item, index) => ({
-          id: index + 1,
+        details: payload.items.map((item) => ({
+          id: crypto.randomUUID(),
           pembelianId: id,
-          obatId: item.obatId,
-          namaObat: "-",
+          barangId: item.barangId,
+          namaBarang: "-",
           batchNumber: item.batchNumber ?? "",
           tanggalExpired: item.tanggalExpired ?? "",
+          satuanId: item.satuanId,
           jumlah: item.jumlah,
           hargaBeli: item.hargaBeli,
-          diskon: item.diskon ?? 0,
-          subtotal: calculateLineSubtotal(item)
+          diskonPersen: item.diskonPersen ?? 0,
+          diskonNominal: item.diskonNominal ?? 0,
+          subtotal: calculateLineSubtotal(item),
+          hargaPokok: item.hargaBeli
         }))
       };
 
@@ -379,15 +467,18 @@ export const pembelianService = {
     }
 
     const { data, error } = await supabase
-      .from("pembelian")
+      .from("faktur_pembelian")
       .insert({
-        nomor_pembelian: nomorPembelian,
+        cabang_id: cabangId,
         supplier_id: payload.supplierId,
-        tanggal_pembelian: payload.tanggalPembelian || null,
+        nomor_faktur: nomorFaktur,
+        nomor_internal: nomorInternal,
+        tanggal_faktur: payload.tanggalFaktur || null,
+        tanggal_jatuh_tempo: payload.tanggalJatuhTempo || null,
         subtotal: totals.subtotal,
-        diskon: totals.diskon,
-        pajak: totals.pajak,
-        total: totals.total,
+        diskon_total: totals.diskonTotal,
+        pajak_total: totals.pajakTotal,
+        grand_total: totals.grandTotal,
         status,
         catatan: payload.catatan ?? "",
         updated_at: new Date().toISOString()
@@ -400,20 +491,38 @@ export const pembelianService = {
     }
 
     if (payload.items.length) {
-      const { error: detailError } = await supabase
-        .from("pembelian_detail")
-        .insert(
-          payload.items.map((item) => ({
-            pembelian_id: data.id,
-            obat_id: item.obatId,
-            batch_number: item.batchNumber ?? "",
-            tanggal_expired: item.tanggalExpired || null,
-            jumlah: item.jumlah,
-            harga_beli: item.hargaBeli,
-            diskon: item.diskon ?? 0,
-            subtotal: calculateLineSubtotal(item)
-          }))
+      const detailRows = [];
+
+      for (const [index, item] of payload.items.entries()) {
+        const nomorBatch =
+          item.batchNumber?.trim() ||
+          `${nomorInternal}-${String(index + 1).padStart(2, "0")}`;
+        const batchId = await findOrCreateBatch(
+          item.barangId,
+          payload.supplierId,
+          nomorBatch,
+          item.tanggalExpired
         );
+
+        detailRows.push({
+          faktur_pembelian_id: data.id,
+          barang_id: item.barangId,
+          batch_id: batchId,
+          satuan_id: item.satuanId ?? null,
+          qty: item.jumlah,
+          harga_beli: item.hargaBeli,
+          diskon_persen: item.diskonPersen ?? 0,
+          diskon_nominal: item.diskonNominal ?? 0,
+          pajak_persen: 0,
+          pajak_nominal: 0,
+          subtotal: calculateLineSubtotal(item),
+          harga_pokok: item.hargaBeli
+        });
+      }
+
+      const { error: detailError } = await supabase
+        .from("faktur_pembelian_detail")
+        .insert(detailRows);
 
       if (detailError) {
         throw new Error(detailError.message);
@@ -435,7 +544,7 @@ export const pembelianService = {
     return created;
   },
 
-  async receive(id: number) {
+  async receive(id: string) {
     const pembelian = await this.getById(id);
 
     if (!pembelian) {
@@ -466,7 +575,7 @@ export const pembelianService = {
     await receiveStock(pembelian);
 
     const { error } = await supabase
-      .from("pembelian")
+      .from("faktur_pembelian")
       .update({
         status: "diterima",
         updated_at: new Date().toISOString()

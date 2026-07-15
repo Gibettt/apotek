@@ -39,7 +39,7 @@ function toPublicPayment(record: PaymentRecord) {
 }
 
 async function syncSaleToAccurate(
-  saleId: number,
+  saleId: string,
   dependencies: PaymentManagerDependencies
 ) {
   try {

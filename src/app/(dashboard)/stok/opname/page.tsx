@@ -6,14 +6,14 @@ import { Button } from "@/components/ui/Button";
 import { obat } from "@/lib/mock-data";
 
 interface Row {
-  namaObat: string;
+  nama: string;
   stokSistem: number;
   stokFisik: string;
   selisih: string;
 }
 
 const rows: Row[] = obat.map((item) => ({
-  namaObat: item.namaObat,
+  nama: item.nama,
   stokSistem: item.stokTersedia,
   stokFisik: "",
   selisih: "-"
@@ -21,7 +21,7 @@ const rows: Row[] = obat.map((item) => ({
 
 export default function StokOpnamePage() {
   const columns: Column<Row>[] = [
-    { key: "namaObat", header: "Obat", cell: (row) => row.namaObat },
+    { key: "nama", header: "Obat", cell: (row) => row.nama },
     { key: "stokSistem", header: "Stok Sistem", cell: (row) => row.stokSistem },
     { key: "stokFisik", header: "Stok Fisik", cell: () => "Input saat proses opname" },
     { key: "selisih", header: "Selisih", cell: (row) => row.selisih }

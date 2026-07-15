@@ -15,15 +15,15 @@ export function RecentTransactions({ items }: { items: Penjualan[] }) {
         >
           <div>
             <p className="text-sm font-semibold text-slate-950">
-              {item.nomorPenjualan}
+              {item.nomorInvoice}
             </p>
             <p className="text-xs text-slate-500">
-              {item.namaPelanggan} - {formatDateTime(item.tanggalPenjualan)}
+              {item.namaPelanggan} - {formatDateTime(item.tanggal)}
             </p>
           </div>
           <div className="text-right">
             <p className="text-sm font-semibold text-slate-950">
-              {formatCurrency(item.total)}
+              {formatCurrency(item.grandTotal)}
             </p>
             <Badge variant="success">{item.status}</Badge>
           </div>

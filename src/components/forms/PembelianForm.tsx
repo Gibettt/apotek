@@ -19,7 +19,7 @@ import type { StatusPembelian, Supplier } from "@/types";
 import { formatCurrency } from "@/utils/formatCurrency";
 
 interface PembelianFormItem {
-  obatId: string;
+  barangId: string;
   batchNumber: string;
   tanggalExpired: string;
   jumlah: string;
@@ -28,7 +28,7 @@ interface PembelianFormItem {
 }
 
 const emptyItem: PembelianFormItem = {
-  obatId: "",
+  barangId: "",
   batchNumber: "",
   tanggalExpired: "",
   jumlah: "1",
@@ -87,7 +87,7 @@ export function PembelianForm() {
           return;
         }
 
-        setSuppliers(supplierResult.data.filter((supplier) => supplier.status));
+        setSuppliers(supplierResult.data.filter((supplier) => supplier.aktif));
         setObatOptions(obatResult.data.filter((obat) => obat.status));
       } catch (error) {
         if (active) {
@@ -143,8 +143,10 @@ export function PembelianForm() {
 
     updateItem(index, (item) => ({
       ...item,
-      obatId: value,
-      hargaBeli: selectedObat ? String(selectedObat.hargaBeli) : item.hargaBeli
+      barangId: value,
+      hargaBeli: selectedObat
+        ? String(selectedObat.hargaAktif?.hargaBeli ?? 0)
+        : item.hargaBeli
     }));
   }
 
@@ -172,14 +174,14 @@ export function PembelianForm() {
     }
 
     const validItems = items
-      .filter((item) => item.obatId && parseNumberInput(item.jumlah) > 0)
+      .filter((item) => item.barangId && parseNumberInput(item.jumlah) > 0)
       .map((item) => ({
-        obatId: Number(item.obatId),
+        barangId: item.barangId,
         batchNumber: item.batchNumber,
         tanggalExpired: item.tanggalExpired,
         jumlah: parseNumberInput(item.jumlah),
         hargaBeli: parseNumberInput(item.hargaBeli),
-        diskon: parseNumberInput(item.diskon)
+        diskonNominal: parseNumberInput(item.diskon)
       }));
 
     if (!validItems.length) {
@@ -188,12 +190,12 @@ export function PembelianForm() {
     }
 
     const payload: PembelianInput = {
-      supplierId: Number(supplierId),
-      tanggalPembelian,
+      supplierId,
+      tanggalFaktur: tanggalPembelian,
       status,
       catatan,
-      diskon: diskonValue,
-      pajak: pajakValue,
+      diskonTotal: diskonValue,
+      pajakTotal: pajakValue,
       items: validItems
     };
 
@@ -273,7 +275,7 @@ export function PembelianForm() {
               options={[
                 { label: "Pilih supplier", value: "" },
                 ...suppliers.map((supplier) => ({
-                  label: supplier.namaSupplier,
+                  label: supplier.nama,
                   value: supplier.id
                 }))
               ]}
@@ -353,7 +355,7 @@ export function PembelianForm() {
                       Item #{index + 1}
                     </p>
                     <p className="mt-1 truncate text-sm font-black text-[#20201d]">
-                      {obatById[item.obatId]?.namaObat ?? "Pilih obat"}
+                      {obatById[item.barangId]?.nama ?? "Pilih obat"}
                     </p>
                   </div>
                   <button
@@ -370,7 +372,7 @@ export function PembelianForm() {
                   <div className="min-w-0 2xl:col-span-5">
                     <Select
                       label="Obat"
-                      value={item.obatId}
+                      value={item.barangId}
                       disabled={isLoadingOptions}
                       onChange={(event) =>
                         handleObatChange(index, event.target.value)
@@ -378,8 +380,8 @@ export function PembelianForm() {
                       options={[
                         { label: "Pilih obat", value: "" },
                         ...obatOptions.map((obat) => ({
-                          label: `${obat.namaObat} - ${formatCurrency(
-                            obat.hargaBeli
+                          label: `${obat.nama} - ${formatCurrency(
+                            obat.hargaAktif?.hargaBeli ?? 0
                           )}`,
                           value: obat.id
                         }))

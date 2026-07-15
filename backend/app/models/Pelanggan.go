@@ -3,15 +3,17 @@ package models
 import "time"
 
 type Pelanggan struct {
-	ID           int       `json:"id"`
-	Nama         string    `json:"nama"`
-	Telepon      string    `json:"telepon"`
-	Alamat       string    `json:"alamat"`
-	TanggalLahir time.Time `json:"tanggal_lahir"`
-	JenisKelamin string    `json:"jenis_kelamin"`
-	NoBPJS       string    `json:"no_bpjs"`
-	NoKTP        string    `json:"no_ktp"`
-	Alergi       string    `json:"alergi"`
-	CreatedAt    time.Time `json:"created_at"`
-	UpdatedAt    time.Time `json:"updated_at"`
+	ID            string     `json:"id"`
+	Kode          string     `json:"kode"`
+	Nama          string     `json:"nama"`
+	Telepon       *string    `json:"telepon"`
+	Email         *string    `json:"email"`
+	Alamat        *string    `json:"alamat"`
+	TanggalLahir  *time.Time `json:"tanggal_lahir"`
+	JenisKelamin  *string    `json:"jenis_kelamin"`
+	CatatanAlergi *string    `json:"catatan_alergi"`
+	Member        bool       `json:"member"`
+	Aktif         bool       `json:"aktif"`
+	CreatedAt     time.Time  `json:"created_at"`
+	UpdatedAt     time.Time  `json:"updated_at"`
 }

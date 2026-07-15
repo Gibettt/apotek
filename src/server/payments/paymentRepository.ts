@@ -7,13 +7,13 @@ import {
 import type { PaymentLineItem, XenditPaymentSession } from "./xenditClient";
 
 export interface PricedPaymentItem extends PaymentLineItem {
-  obatId: number;
+  barangId: string;
 }
 
 export type StoredPaymentStatus = "PENDING" | "PAID" | "EXPIRED" | "FAILED";
 
 export interface PaymentRecord {
-  id: number;
+  id: string;
   reference: string;
   number: string;
   total: number;
@@ -27,7 +27,7 @@ export interface PaymentRecord {
 export interface PaymentRepository {
   findByReference(reference: string): Promise<PaymentRecord | null>;
   prepareItems(
-    items: Array<{ obatId: number; quantity: number }>
+    items: Array<{ barangId: string; quantity: number }>
   ): Promise<PricedPaymentItem[]>;
   createPendingSale(input: {
     reference: string;
@@ -35,33 +35,43 @@ export interface PaymentRepository {
     total: number;
   }): Promise<PaymentRecord>;
   attachProviderPayment(
-    saleId: number,
+    saleId: string,
     payment: XenditPaymentSession
   ): Promise<PaymentRecord>;
-  markPaymentFailed(saleId: number): Promise<void>;
+  markPaymentFailed(saleId: string): Promise<void>;
   markPaymentExpired(reference: string): Promise<void>;
-  finalizePayment(reference: string, providerPaymentId: string): Promise<number>;
-  loadAccurateInvoice(saleId: number): Promise<AccurateInvoiceInput>;
+  finalizePayment(reference: string, providerPaymentId: string): Promise<string>;
+  loadAccurateInvoice(saleId: string): Promise<AccurateInvoiceInput>;
   markAccurateSync(
-    saleId: number,
+    saleId: string,
     status: string,
     invoiceId?: number,
     errorMessage?: string
   ): Promise<void>;
 }
 
-interface ObatRow {
-  id: number;
-  kode_obat: string;
-  nama_obat: string;
-  harga_jual: number | string | null;
+interface BarangRow {
+  id: string;
+  kode: string;
+  nama: string;
   status: boolean | null;
 }
 
+interface ActivePriceRow {
+  barang_id: string;
+  harga_jual: number | string | null;
+}
+
+interface SaldoStokRow {
+  barang_id: string | null;
+  qty: number | string | null;
+}
+
 interface PaymentRow {
-  id: number;
-  nomor_penjualan: string;
-  total: number | string | null;
+  id: string;
+  cabang_id: string;
+  nomor_invoice: string;
+  grand_total: number | string | null;
   payment_external_id: string;
   payment_provider_id: string | null;
   payment_url: string | null;
@@ -69,6 +79,9 @@ interface PaymentRow {
   payment_expires_at: string | null;
   accurate_sync_status: string | null;
 }
+
+const PAYMENT_ROW_COLUMNS =
+  "id,cabang_id,nomor_invoice,grand_total,payment_external_id,payment_provider_id,payment_url,payment_status,payment_expires_at,accurate_sync_status";
 
 function getAdminClient() {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -88,8 +101,8 @@ function toPaymentRecord(row: PaymentRow): PaymentRecord {
   return {
     id: row.id,
     reference: row.payment_external_id,
-    number: row.nomor_penjualan,
-    total: Number(row.total ?? 0),
+    number: row.nomor_invoice,
+    total: Number(row.grand_total ?? 0),
     status: row.payment_status ?? "PENDING",
     providerId: row.payment_provider_id ?? undefined,
     paymentUrl: row.payment_url ?? undefined,
@@ -104,6 +117,22 @@ function saleNumber(reference: string) {
   return `PJL-${date}-${suffix}`;
 }
 
+async function resolveDefaultCabangId(client: SupabaseClient) {
+  const { data, error } = await client
+    .from("cabang")
+    .select("id")
+    .eq("aktif", true)
+    .order("created_at", { ascending: true })
+    .limit(1)
+    .maybeSingle();
+
+  if (error || !data) {
+    throw new PaymentConfigurationError("Tidak ada cabang aktif untuk transaksi pembayaran");
+  }
+
+  return data.id as string;
+}
+
 export function createPaymentRepository(
   client: SupabaseClient = getAdminClient()
 ): PaymentRepository {
@@ -111,9 +140,7 @@ export function createPaymentRepository(
     async findByReference(reference) {
       const { data, error } = await client
         .from("penjualan")
-        .select(
-          "id,nomor_penjualan,total,payment_external_id,payment_provider_id,payment_url,payment_status,payment_expires_at,accurate_sync_status"
-        )
+        .select(PAYMENT_ROW_COLUMNS)
         .eq("payment_external_id", reference)
         .maybeSingle();
       if (error) {
@@ -123,53 +150,59 @@ export function createPaymentRepository(
     },
 
     async prepareItems(items) {
-      const ids = items.map((item) => item.obatId);
-      const [obatResult, stokResult] = await Promise.all([
+      const ids = items.map((item) => item.barangId);
+      const [barangResult, priceResult, stokResult] = await Promise.all([
+        client.from("barang").select("id,kode,nama,status").in("id", ids),
         client
-          .from("obat")
-          .select("id,kode_obat,nama_obat,harga_jual,status")
-          .in("id", ids),
-        client.from("stok").select("obat_id,jumlah").in("obat_id", ids)
+          .from("v_harga_barang_aktif")
+          .select("barang_id,harga_jual")
+          .in("barang_id", ids)
+          .eq("tipe_harga", "jual"),
+        client.from("saldo_stok").select("barang_id,qty").in("barang_id", ids)
       ]);
-      if (obatResult.error || stokResult.error) {
+      if (barangResult.error || priceResult.error || stokResult.error) {
         throw new Error("Data harga dan stok obat tidak dapat diverifikasi");
       }
 
-      const obatById = new Map(
-        ((obatResult.data ?? []) as ObatRow[]).map((item) => [item.id, item])
+      const barangById = new Map(
+        ((barangResult.data ?? []) as BarangRow[]).map((item) => [item.id, item])
       );
-      const stockById = (stokResult.data ?? []).reduce<Record<number, number>>(
-        (stock, row) => {
-          if (row.obat_id) {
-            stock[row.obat_id] =
-              (stock[row.obat_id] ?? 0) + Number(row.jumlah ?? 0);
-          }
-          return stock;
-        },
-        {}
+      const priceByBarang = new Map(
+        ((priceResult.data ?? []) as ActivePriceRow[]).map((row) => [
+          row.barang_id,
+          Number(row.harga_jual ?? 0)
+        ])
       );
+      const stockById = ((stokResult.data ?? []) as SaldoStokRow[]).reduce<
+        Record<string, number>
+      >((stock, row) => {
+        if (row.barang_id) {
+          stock[row.barang_id] = (stock[row.barang_id] ?? 0) + Number(row.qty ?? 0);
+        }
+        return stock;
+      }, {});
 
       return items.map((requested) => {
-        const obat = obatById.get(requested.obatId);
-        if (!obat || !obat.status) {
+        const barang = barangById.get(requested.barangId);
+        if (!barang || !barang.status) {
           throw new PaymentValidationError(
             "Salah satu obat tidak tersedia untuk dijual"
           );
         }
-        if ((stockById[obat.id] ?? 0) < requested.quantity) {
-          throw new PaymentValidationError(`Stok ${obat.nama_obat} tidak cukup`);
+        if ((stockById[barang.id] ?? 0) < requested.quantity) {
+          throw new PaymentValidationError(`Stok ${barang.nama} tidak cukup`);
         }
 
-        const unitPrice = Number(obat.harga_jual ?? 0);
-        if (!Number.isSafeInteger(unitPrice) || unitPrice <= 0) {
+        const unitPrice = priceByBarang.get(barang.id) ?? 0;
+        if (!Number.isFinite(unitPrice) || unitPrice <= 0) {
           throw new PaymentValidationError(
-            `Harga ${obat.nama_obat} tidak valid untuk pembayaran digital`
+            `Harga ${barang.nama} tidak valid untuk pembayaran digital`
           );
         }
         return {
-          obatId: obat.id,
-          code: obat.kode_obat,
-          name: obat.nama_obat,
+          barangId: barang.id,
+          code: barang.kode,
+          name: barang.nama,
           quantity: requested.quantity,
           unitPrice
         };
@@ -178,28 +211,29 @@ export function createPaymentRepository(
 
     async createPendingSale(input) {
       const now = new Date().toISOString();
+      const cabangId = await resolveDefaultCabangId(client);
       const { data, error } = await client
         .from("penjualan")
         .insert({
-          nomor_penjualan: saleNumber(input.reference),
-          tanggal_penjualan: now,
+          cabang_id: cabangId,
+          nomor_invoice: saleNumber(input.reference),
+          tanggal: now,
+          tipe_penjualan: "umum",
           subtotal: input.total,
-          diskon: 0,
-          pajak: 0,
-          total: input.total,
-          metode_pembayaran: "accurate",
-          bayar: 0,
+          diskon_total: 0,
+          pajak_total: 0,
+          grand_total: input.total,
+          bayar_total: 0,
           kembalian: 0,
+          status_bayar: "belum_bayar",
           status: "menunggu_pembayaran",
           payment_provider: "xendit",
           payment_external_id: input.reference,
           payment_status: "PENDING",
           accurate_sync_status: "PENDING",
-          created_at: now
+          updated_at: now
         })
-        .select(
-          "id,nomor_penjualan,total,payment_external_id,payment_provider_id,payment_url,payment_status,payment_expires_at,accurate_sync_status"
-        )
+        .select(PAYMENT_ROW_COLUMNS)
         .single();
 
       if (error) {
@@ -215,11 +249,13 @@ export function createPaymentRepository(
       const { error: detailError } = await client.from("penjualan_detail").insert(
         input.items.map((item) => ({
           penjualan_id: data.id,
-          obat_id: item.obatId,
-          jumlah: item.quantity,
+          barang_id: item.barangId,
+          qty: item.quantity,
           harga_jual: item.unitPrice,
-          diskon: 0,
-          subtotal: item.unitPrice * item.quantity
+          diskon_persen: 0,
+          diskon_nominal: 0,
+          subtotal: item.unitPrice * item.quantity,
+          harga_pokok: 0
         }))
       );
       if (detailError) {
@@ -240,9 +276,7 @@ export function createPaymentRepository(
           payment_expires_at: payment.expiresAt
         })
         .eq("id", saleId)
-        .select(
-          "id,nomor_penjualan,total,payment_external_id,payment_provider_id,payment_url,payment_status,payment_expires_at,accurate_sync_status"
-        )
+        .select(PAYMENT_ROW_COLUMNS)
         .single();
       if (error) {
         throw new Error("Link pembayaran tidak dapat disimpan");
@@ -279,7 +313,7 @@ export function createPaymentRepository(
       if (error || !data) {
         throw new Error("Pembayaran diterima, tetapi transaksi belum dapat diselesaikan");
       }
-      return Number(data);
+      return String(data);
     },
 
     async loadAccurateInvoice(saleId) {
@@ -293,43 +327,41 @@ export function createPaymentRepository(
       const [saleResult, detailResult] = await Promise.all([
         client
           .from("penjualan")
-          .select("nomor_penjualan,tanggal_penjualan")
+          .select("nomor_invoice,tanggal")
           .eq("id", saleId)
           .single(),
         client
           .from("penjualan_detail")
-          .select("obat_id,jumlah,harga_jual")
+          .select("barang_id,qty,harga_jual")
           .eq("penjualan_id", saleId)
       ]);
       if (saleResult.error || detailResult.error) {
         throw new Error("Transaksi belum dapat disiapkan untuk Accurate");
       }
 
-      const ids = (detailResult.data ?? []).map((item) => item.obat_id);
-      const { data: obatData, error: obatError } = await client
-        .from("obat")
-        .select("id,kode_obat,nama_obat")
+      const ids = (detailResult.data ?? []).map((item) => item.barang_id);
+      const { data: barangData, error: barangError } = await client
+        .from("barang")
+        .select("id,kode,nama")
         .in("id", ids);
-      if (obatError) {
+      if (barangError) {
         throw new Error("Kode obat Accurate tidak dapat dimuat");
       }
-      const obatById = new Map(
-        (obatData ?? []).map((item) => [item.id, item])
-      );
+      const barangById = new Map((barangData ?? []).map((item) => [item.id, item]));
 
       return {
-        number: saleResult.data.nomor_penjualan,
-        date: new Date(saleResult.data.tanggal_penjualan),
+        number: saleResult.data.nomor_invoice,
+        date: new Date(saleResult.data.tanggal),
         customerNo,
         items: (detailResult.data ?? []).map((detail) => {
-          const obat = obatById.get(detail.obat_id);
-          if (!obat) {
+          const barang = barangById.get(detail.barang_id);
+          if (!barang) {
             throw new Error("Kode obat tidak ditemukan untuk sinkronisasi Accurate");
           }
           return {
-            code: obat.kode_obat,
-            name: obat.nama_obat,
-            quantity: Number(detail.jumlah),
+            code: barang.kode,
+            name: barang.nama,
+            quantity: Number(detail.qty),
             unitPrice: Number(detail.harga_jual)
           };
         })

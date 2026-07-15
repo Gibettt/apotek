@@ -67,7 +67,7 @@ function ResepRow({
   onChangeStatus
 }: {
   item: Resep;
-  changingId: number | null;
+  changingId: string | null;
   onChangeStatus: (item: Resep, status: StatusResep) => void;
 }) {
   const meta = statusMeta[item.status];
@@ -166,7 +166,7 @@ export function ResepListPage() {
   const [rows, setRows] = useState<Resep[]>([]);
   const [total, setTotal] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
-  const [changingId, setChangingId] = useState<number | null>(null);
+  const [changingId, setChangingId] = useState<string | null>(null);
   const totalPages = Math.max(1, Math.ceil(total / perPage));
 
   async function loadResep() {

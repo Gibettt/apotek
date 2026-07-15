@@ -58,7 +58,7 @@ function SupplierRow({ supplier }: { supplier: Supplier }) {
           </span>
           <div className="min-w-0">
             <p className="truncate font-black text-[#20201d]">
-              {supplier.namaSupplier}
+              {supplier.nama}
             </p>
             <p className="mt-1 truncate text-xs font-semibold text-stone-400">
               NPWP {supplier.npwp || "-"}
@@ -85,8 +85,8 @@ function SupplierRow({ supplier }: { supplier: Supplier }) {
         </div>
       </td>
       <td className="px-5 py-4">
-        <Badge variant={supplier.status ? "success" : "muted"}>
-          {supplier.status ? "Aktif" : "Nonaktif"}
+        <Badge variant={supplier.aktif ? "success" : "muted"}>
+          {supplier.aktif ? "Aktif" : "Nonaktif"}
         </Badge>
       </td>
       <td className="px-5 py-4 text-right">
@@ -157,7 +157,7 @@ export function SupplierListPage() {
   }, [page, search]);
 
   const stats = useMemo(() => {
-    const activeCount = rows.filter((supplier) => supplier.status).length;
+    const activeCount = rows.filter((supplier) => supplier.aktif).length;
     const completeContacts = rows.filter(
       (supplier) => supplier.telepon && supplier.email
     ).length;

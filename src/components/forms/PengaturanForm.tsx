@@ -2,8 +2,8 @@
 
 import { SettingsPage } from "@/components/pages/SettingsPage";
 import { getSettingsByGroup } from "@/constants/modules";
-import type { SettingGroup } from "@/types";
+import type { PengaturanGroup } from "@/types";
 
-export function PengaturanForm({ group }: { group: SettingGroup }) {
+export function PengaturanForm({ group }: { group: PengaturanGroup }) {
   return <SettingsPage group={group} settings={getSettingsByGroup(group)} />;
 }

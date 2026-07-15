@@ -6,13 +6,13 @@ import type { Supplier } from "@/types";
 function supplierToRecord(supplier: Supplier) {
   return {
     id: supplier.id,
-    namaSupplier: supplier.namaSupplier,
+    nama: supplier.nama,
     kontakPerson: supplier.kontakPerson,
     telepon: supplier.telepon,
     email: supplier.email,
     npwp: supplier.npwp,
     alamat: supplier.alamat,
-    status: supplier.status,
+    aktif: supplier.aktif,
     createdAt: supplier.createdAt,
     updatedAt: supplier.updatedAt
   };
@@ -24,7 +24,7 @@ export default async function DetailSupplierPage({
   params: { id: string };
 }) {
   const supplier = await supplierService
-    .getById(Number(params.id))
+    .getById(params.id)
     .catch(() => null);
   const record = supplier ? supplierToRecord(supplier) : undefined;
 

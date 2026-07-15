@@ -10,27 +10,28 @@ import type {
 import { delay, matchSearch } from "./serviceUtils";
 
 interface PenjualanRow {
-  id: number;
-  nomor_penjualan: string;
-  pelanggan_id: number | null;
-  resep_id: number | null;
-  tanggal_penjualan: string | null;
+  id: string;
+  pelanggan_id: string | null;
+  nomor_invoice: string;
+  tanggal: string | null;
   subtotal: number | string | null;
-  diskon: number | string | null;
-  pajak: number | string | null;
-  total: number | string | null;
-  metode_pembayaran: MetodePembayaran | null;
-  bayar: number | string | null;
+  diskon_total: number | string | null;
+  pajak_total: number | string | null;
+  grand_total: number | string | null;
+  bayar_total: number | string | null;
   kembalian: number | string | null;
   status: StatusPenjualan | null;
-  catatan: string | null;
-  created_by: string | null;
   created_at: string | null;
 }
 
 interface PenjualanDetailRow {
-  penjualan_id: number | null;
-  jumlah: number | null;
+  penjualan_id: string | null;
+  qty: number | null;
+}
+
+interface PembayaranRow {
+  penjualan_id: string | null;
+  metode: MetodePembayaran | null;
 }
 
 export interface SalesReportParams {
@@ -128,16 +129,16 @@ function filterSalesRows(rows: SalesReportRow[], params: SalesReportParams) {
 function localSalesRows() {
   return penjualan.map<SalesReportRow>((item) => ({
     id: item.id,
-    tanggal: item.tanggalPenjualan,
-    referensi: item.nomorPenjualan,
-    kategori: item.metodePembayaran,
-    nilai: item.total,
+    tanggal: item.tanggal,
+    referensi: item.nomorInvoice,
+    kategori: item.metodePembayaran ?? "tunai",
+    nilai: item.grandTotal,
     status: item.status,
     pelanggan: item.namaPelanggan,
     subtotal: item.subtotal,
-    diskon: item.diskon,
-    pajak: item.pajak,
-    bayar: item.bayar,
+    diskon: item.diskonTotal,
+    pajak: item.pajakTotal,
+    bayar: item.bayarTotal,
     kembalian: item.kembalian,
     itemCount: item.details.reduce((sum, detail) => sum + detail.jumlah, 0)
   }));
@@ -148,21 +149,14 @@ async function supabaseSalesRows(params: SalesReportParams) {
     return [];
   }
 
-  let query = supabase
-    .from("penjualan")
-    .select("*")
-    .order("tanggal_penjualan", { ascending: false });
+  let query = supabase.from("penjualan").select("*").order("tanggal", { ascending: false });
 
   if (params.startDate) {
-    query = query.gte("tanggal_penjualan", startOfDay(params.startDate) as string);
+    query = query.gte("tanggal", startOfDay(params.startDate) as string);
   }
 
   if (params.endDate) {
-    query = query.lte("tanggal_penjualan", endOfDay(params.endDate) as string);
-  }
-
-  if (params.metodePembayaran && params.metodePembayaran !== "semua") {
-    query = query.eq("metode_pembayaran", params.metodePembayaran);
+    query = query.lte("tanggal", endOfDay(params.endDate) as string);
   }
 
   if (params.status && params.status !== "semua") {
@@ -179,17 +173,17 @@ async function supabaseSalesRows(params: SalesReportParams) {
   const ids = rows.map((row) => row.id);
   const pelangganIds = rows
     .map((row) => row.pelanggan_id)
-    .filter((id): id is number => Boolean(id));
+    .filter((id): id is string => Boolean(id));
 
-  const [detailResult, pelangganResult] = await Promise.all([
+  const [detailResult, pelangganResult, pembayaranResult] = await Promise.all([
     ids.length
-      ? supabase
-          .from("penjualan_detail")
-          .select("penjualan_id,jumlah")
-          .in("penjualan_id", ids)
+      ? supabase.from("penjualan_detail").select("penjualan_id,qty").in("penjualan_id", ids)
       : Promise.resolve({ data: [], error: null }),
     pelangganIds.length
       ? supabase.from("pelanggan").select("id,nama").in("id", pelangganIds)
+      : Promise.resolve({ data: [], error: null }),
+    ids.length
+      ? supabase.from("pembayaran").select("penjualan_id,metode").in("penjualan_id", ids)
       : Promise.resolve({ data: [], error: null })
   ]);
 
@@ -201,42 +195,61 @@ async function supabaseSalesRows(params: SalesReportParams) {
     throw new Error(pelangganResult.error.message);
   }
 
-  const itemCountBySale = ((detailResult.data ?? []) as PenjualanDetailRow[])
-    .reduce<Record<number, number>>((acc, detail) => {
-      if (!detail.penjualan_id) {
-        return acc;
-      }
+  if (pembayaranResult.error) {
+    throw new Error(pembayaranResult.error.message);
+  }
 
-      acc[detail.penjualan_id] =
-        (acc[detail.penjualan_id] ?? 0) + Number(detail.jumlah ?? 0);
+  const itemCountBySale = ((detailResult.data ?? []) as PenjualanDetailRow[]).reduce<
+    Record<string, number>
+  >((acc, detail) => {
+    if (!detail.penjualan_id) {
       return acc;
-    }, {});
+    }
+
+    acc[detail.penjualan_id] = (acc[detail.penjualan_id] ?? 0) + Number(detail.qty ?? 0);
+    return acc;
+  }, {});
 
   const pelangganById = Object.fromEntries(
     (pelangganResult.data ?? []).map((item) => [item.id, item.nama])
   );
 
+  const metodeBySale = ((pembayaranResult.data ?? []) as PembayaranRow[]).reduce<
+    Record<string, MetodePembayaran>
+  >((acc, row) => {
+    if (row.penjualan_id && row.metode && !acc[row.penjualan_id]) {
+      acc[row.penjualan_id] = row.metode;
+    }
+    return acc;
+  }, {});
+
   const mappedRows = rows.map<SalesReportRow>((row) => {
-    const pelangganId = row.pelanggan_id ?? 0;
+    const pelangganId = row.pelanggan_id ?? "";
+    const kategori = metodeBySale[row.id] ?? "tunai";
 
     return {
       id: row.id,
-      tanggal: row.tanggal_penjualan ?? row.created_at ?? "",
-      referensi: row.nomor_penjualan,
-      kategori: row.metode_pembayaran ?? "tunai",
-      nilai: Number(row.total ?? 0),
+      tanggal: row.tanggal ?? row.created_at ?? "",
+      referensi: row.nomor_invoice,
+      kategori,
+      nilai: Number(row.grand_total ?? 0),
       status: row.status ?? "selesai",
-      pelanggan: pelangganById[pelangganId] ?? "Umum",
+      pelanggan: pelangganId ? pelangganById[pelangganId] ?? "Umum" : "Umum",
       subtotal: Number(row.subtotal ?? 0),
-      diskon: Number(row.diskon ?? 0),
-      pajak: Number(row.pajak ?? 0),
-      bayar: Number(row.bayar ?? 0),
+      diskon: Number(row.diskon_total ?? 0),
+      pajak: Number(row.pajak_total ?? 0),
+      bayar: Number(row.bayar_total ?? 0),
       kembalian: Number(row.kembalian ?? 0),
       itemCount: itemCountBySale[row.id] ?? 0
     };
   });
 
-  return matchSearch(mappedRows, params.search, [
+  const filteredRows =
+    params.metodePembayaran && params.metodePembayaran !== "semua"
+      ? mappedRows.filter((row) => row.kategori === params.metodePembayaran)
+      : mappedRows;
+
+  return matchSearch(filteredRows, params.search, [
     "referensi",
     "pelanggan",
     "kategori",

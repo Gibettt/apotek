@@ -24,20 +24,16 @@ vi.mock("@/services/accuratePaymentService", () => ({
 }));
 
 const medicine: Obat = {
-  id: 12,
-  kodeObat: "OBT-PAY",
-  namaObat: "Obat Bayar",
-  kategoriId: 0,
-  supplierId: 0,
-  satuan: "tablet",
-  hargaBeli: 10000,
-  hargaJual: 30000,
+  id: "12",
+  kode: "OBT-PAY",
+  nama: "Obat Bayar",
   stokMinimum: 10,
+  stokMaksimum: 100,
   stokTersedia: 20,
-  gambarUrl: "",
-  deskripsi: "",
-  golongan: "bebas",
+  perluBatch: true,
+  perluExpired: true,
   membutuhkanResep: false,
+  hargaAktif: { hargaBeli: 10000, hargaJual: 30000 },
   status: true,
   createdAt: "",
   updatedAt: ""
@@ -94,7 +90,7 @@ describe("KasirPaymentModal", () => {
     await waitFor(() => {
       expect(createAccuratePaymentMock).toHaveBeenCalledWith({
         idempotencyKey: expect.any(String),
-        items: [{ obatId: 12, quantity: 1 }]
+        items: [{ barangId: "12", quantity: 1 }]
       });
     });
 

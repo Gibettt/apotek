@@ -94,7 +94,7 @@ export function ResepProcessPage({ resep }: { resep: Resep }) {
                       className="border-t border-stone-100 transition hover:bg-[#f8f7f3]"
                     >
                       <td className="px-5 py-4 font-black text-[#20201d]">
-                        {detail.namaObat}
+                        {detail.namaBarang}
                       </td>
                       <td className="px-5 py-4 font-semibold text-stone-600">
                         {detail.aturanPakai}

@@ -1,122 +1,153 @@
+import { golonganObat as localGolonganObat, defaultCabangId } from "@/lib/mock-data";
+import { resolveActivePrices, type ActivePrice } from "@/lib/pricing";
 import { isSupabaseConfigured, supabase } from "@/lib/supabase";
-import type { Obat, ObatGolongan } from "@/types";
+import type { Obat } from "@/types";
 import { paginate, type ListParams } from "./serviceUtils";
 
 export interface ObatInput {
-  kodeObat: string;
-  namaObat: string;
-  kategoriId?: number;
-  supplierId?: number;
-  satuan?: string;
+  kode: string;
+  nama: string;
+  namaGenerik?: string;
+  kategoriId?: string;
+  golonganId?: string;
+  satuanDefaultId?: string;
+  /** Only used to tag the initial batch_barang row's supplier_id when seeding stock. */
+  supplierId?: string;
   hargaBeli?: number;
   hargaJual?: number;
   stokMinimum?: number;
+  stokMaksimum?: number;
   gambarUrl?: string;
-  deskripsi?: string;
-  golongan?: ObatGolongan;
-  membutuhkanResep?: boolean;
+  komposisi?: string;
+  indikasi?: string;
+  aturanPakai?: string;
+  perluBatch?: boolean;
+  perluExpired?: boolean;
   status?: boolean;
   stokAwal?: number;
   batchNumber?: string;
   tanggalExpired?: string;
-  lokasi?: string;
+  /** Branch used for the initial harga_barang/saldo_stok rows. Defaults to defaultCabangId. */
+  cabangId?: string;
 }
 
-export interface ObatListItem extends Obat {
-  kategoriNama?: string;
-  supplierNama?: string;
-}
+export type ObatListItem = Obat;
 
 export interface MasterOption {
-  id: number;
+  id: string;
   label: string;
 }
 
-interface ObatRow {
-  id: number;
-  kode_obat: string;
-  nama_obat: string;
-  kategori_id: number | null;
-  supplier_id: number | null;
-  satuan: string | null;
-  harga_beli: number | string | null;
-  harga_jual: number | string | null;
+interface BarangRow {
+  id: string;
+  kode: string;
+  nama: string;
+  nama_generik: string | null;
+  kategori_id: string | null;
+  golongan_id: string | null;
+  satuan_default_id: string | null;
   stok_minimum: number | null;
+  stok_maksimum: number | null;
   gambar_url: string | null;
-  deskripsi: string | null;
-  golongan: ObatGolongan | null;
-  membutuhkan_resep: boolean | null;
-  status: boolean | null;
+  komposisi: string | null;
+  indikasi: string | null;
+  aturan_pakai: string | null;
+  perlu_batch: boolean | null;
+  perlu_expired: boolean | null;
+  aktif: boolean | null;
   created_at: string | null;
   updated_at: string | null;
 }
 
-interface StokRow {
-  obat_id: number | null;
-  jumlah: number | null;
+interface SaldoStokRow {
+  barang_id: string | null;
+  qty: number | string | null;
 }
+
+type GolonganLookup = Record<string, { nama: string; butuhResep: boolean }>;
 
 const localObat: ObatListItem[] = [];
 
+function resolveMembutuhkanResepLocal(golonganId?: string) {
+  if (!golonganId) {
+    return false;
+  }
+
+  return (
+    localGolonganObat.find((item) => item.id === golonganId)?.butuhResep ?? false
+  );
+}
+
 function toObatRow(payload: ObatInput) {
   return {
-    kode_obat: payload.kodeObat,
-    nama_obat: payload.namaObat,
+    kode: payload.kode,
+    nama: payload.nama,
+    nama_generik: payload.namaGenerik ?? null,
     kategori_id: payload.kategoriId || null,
-    supplier_id: payload.supplierId || null,
-    satuan: payload.satuan ?? "",
-    harga_beli: payload.hargaBeli ?? 0,
-    harga_jual: payload.hargaJual ?? 0,
-    stok_minimum: payload.stokMinimum ?? 0,
+    golongan_id: payload.golonganId || null,
+    satuan_default_id: payload.satuanDefaultId || null,
+    komposisi: payload.komposisi ?? "",
+    indikasi: payload.indikasi ?? "",
+    aturan_pakai: payload.aturanPakai ?? "",
     gambar_url: payload.gambarUrl ?? "",
-    deskripsi: payload.deskripsi ?? "",
-    golongan: payload.golongan ?? "bebas",
-    membutuhkan_resep: payload.membutuhkanResep ?? false,
-    status: payload.status ?? true,
+    stok_minimum: payload.stokMinimum ?? 0,
+    stok_maksimum: payload.stokMaksimum ?? 0,
+    perlu_batch: payload.perluBatch ?? true,
+    perlu_expired: payload.perluExpired ?? true,
+    aktif: payload.status ?? true,
     updated_at: new Date().toISOString()
   };
 }
 
-function stockMapFrom(rows: StokRow[]) {
-  return rows.reduce<Record<number, number>>((acc, row) => {
-    if (!row.obat_id) {
+function stockMapFrom(rows: SaldoStokRow[]) {
+  return rows.reduce<Record<string, number>>((acc, row) => {
+    if (!row.barang_id) {
       return acc;
     }
 
-    acc[row.obat_id] = (acc[row.obat_id] ?? 0) + Number(row.jumlah ?? 0);
+    acc[row.barang_id] = (acc[row.barang_id] ?? 0) + Number(row.qty ?? 0);
     return acc;
   }, {});
 }
 
 function toObat(
-  row: ObatRow,
-  stockByObat: Record<number, number> = {},
-  kategoriById: Record<number, string> = {},
-  supplierById: Record<number, string> = {}
+  row: BarangRow,
+  stockByBarang: Record<string, number> = {},
+  kategoriById: Record<string, string> = {},
+  golonganById: GolonganLookup = {},
+  satuanById: Record<string, string> = {},
+  hargaByBarang: Record<string, ActivePrice> = {}
 ): ObatListItem {
-  const kategoriId = row.kategori_id ?? 0;
-  const supplierId = row.supplier_id ?? 0;
+  const kategoriId = row.kategori_id ?? undefined;
+  const golonganId = row.golongan_id ?? undefined;
+  const satuanId = row.satuan_default_id ?? undefined;
+  const golongan = golonganId ? golonganById[golonganId] : undefined;
 
   return {
     id: row.id,
-    kodeObat: row.kode_obat,
-    namaObat: row.nama_obat,
+    kode: row.kode,
+    namaGenerik: row.nama_generik ?? undefined,
+    nama: row.nama,
     kategoriId,
-    supplierId,
-    satuan: row.satuan ?? "",
-    hargaBeli: Number(row.harga_beli ?? 0),
-    hargaJual: Number(row.harga_jual ?? 0),
+    kategoriNama: kategoriId ? kategoriById[kategoriId] : undefined,
+    golonganId,
+    golonganNama: golongan?.nama,
+    satuanDefaultId: satuanId,
+    satuanNama: satuanId ? satuanById[satuanId] : undefined,
     stokMinimum: row.stok_minimum ?? 0,
-    stokTersedia: stockByObat[row.id] ?? 0,
-    gambarUrl: row.gambar_url ?? "",
-    deskripsi: row.deskripsi ?? "",
-    golongan: row.golongan ?? "bebas",
-    membutuhkanResep: row.membutuhkan_resep ?? false,
-    status: row.status ?? true,
+    stokMaksimum: row.stok_maksimum ?? 0,
+    stokTersedia: stockByBarang[row.id] ?? 0,
+    gambarUrl: row.gambar_url ?? undefined,
+    komposisi: row.komposisi ?? undefined,
+    indikasi: row.indikasi ?? undefined,
+    aturanPakai: row.aturan_pakai ?? undefined,
+    perluBatch: row.perlu_batch ?? true,
+    perluExpired: row.perlu_expired ?? true,
+    membutuhkanResep: golongan?.butuhResep ?? false,
+    hargaAktif: hargaByBarang[row.id],
+    status: row.aktif ?? true,
     createdAt: row.created_at ?? "",
-    updatedAt: row.updated_at ?? "",
-    kategoriNama: kategoriById[kategoriId],
-    supplierNama: supplierById[supplierId]
+    updatedAt: row.updated_at ?? ""
   };
 }
 
@@ -128,57 +159,169 @@ function filterObat(rows: ObatListItem[], search?: string) {
   const normalized = search.toLowerCase();
 
   return rows.filter((item) =>
-    [
-      item.kodeObat,
-      item.namaObat,
-      item.satuan,
-      item.golongan,
-      item.kategoriNama,
-      item.supplierNama
-    ].some((value) => String(value ?? "").toLowerCase().includes(normalized))
+    [item.kode, item.nama, item.satuanNama, item.golonganNama, item.kategoriNama].some(
+      (value) => String(value ?? "").toLowerCase().includes(normalized)
+    )
   );
 }
 
 async function loadLookupMaps() {
   if (!supabase) {
     return {
-      kategoriById: {} as Record<number, string>,
-      supplierById: {} as Record<number, string>
+      kategoriById: {} as Record<string, string>,
+      golonganById: {} as GolonganLookup,
+      satuanById: {} as Record<string, string>
     };
   }
 
-  const [kategoriResult, supplierResult] = await Promise.all([
-    supabase.from("kategori_obat").select("id,nama"),
-    supabase.from("supplier").select("id,nama_supplier")
+  const [kategoriResult, golonganResult, satuanResult] = await Promise.all([
+    supabase.from("kategori_barang").select("id,nama"),
+    supabase.from("golongan_obat").select("id,nama,butuh_resep"),
+    supabase.from("satuan").select("id,nama")
   ]);
 
   if (kategoriResult.error) {
     throw new Error(kategoriResult.error.message);
   }
 
-  if (supplierResult.error) {
-    throw new Error(supplierResult.error.message);
+  if (golonganResult.error) {
+    throw new Error(golonganResult.error.message);
+  }
+
+  if (satuanResult.error) {
+    throw new Error(satuanResult.error.message);
   }
 
   const kategoriById = Object.fromEntries(
     (kategoriResult.data ?? []).map((item) => [item.id, item.nama])
   );
-  const supplierById = Object.fromEntries(
-    (supplierResult.data ?? []).map((item) => [item.id, item.nama_supplier])
+  const golonganById: GolonganLookup = Object.fromEntries(
+    (golonganResult.data ?? []).map((item) => [
+      item.id,
+      { nama: item.nama, butuhResep: item.butuh_resep ?? false }
+    ])
+  );
+  const satuanById = Object.fromEntries(
+    (satuanResult.data ?? []).map((item) => [item.id, item.nama])
   );
 
-  return { kategoriById, supplierById };
+  return { kategoriById, golonganById, satuanById };
+}
+
+async function findOrCreateBatch(
+  barangId: string,
+  supplierId: string | undefined,
+  nomorBatch: string,
+  tanggalExpired?: string
+) {
+  if (!supabase) {
+    return null;
+  }
+
+  const { data: existing, error: findError } = await supabase
+    .from("batch_barang")
+    .select("id")
+    .eq("barang_id", barangId)
+    .eq("nomor_batch", nomorBatch)
+    .maybeSingle();
+
+  if (findError) {
+    throw new Error(findError.message);
+  }
+
+  if (existing) {
+    return existing.id as string;
+  }
+
+  const { data: created, error: createError } = await supabase
+    .from("batch_barang")
+    .insert({
+      barang_id: barangId,
+      supplier_id: supplierId || null,
+      nomor_batch: nomorBatch,
+      tanggal_expired: tanggalExpired || null
+    })
+    .select("id")
+    .single();
+
+  if (createError) {
+    throw new Error(createError.message);
+  }
+
+  return created.id as string;
+}
+
+async function upsertHargaJual(
+  barangId: string,
+  cabangId: string | undefined,
+  hargaBeli: number,
+  hargaJual: number
+) {
+  if (!supabase) {
+    return;
+  }
+
+  let query = supabase
+    .from("harga_barang")
+    .select("id")
+    .eq("barang_id", barangId)
+    .eq("tipe_harga", "jual")
+    .eq("aktif", true);
+
+  query = cabangId ? query.eq("cabang_id", cabangId) : query.is("cabang_id", null);
+
+  const { data: existing, error: findError } = await query.maybeSingle();
+
+  if (findError) {
+    throw new Error(findError.message);
+  }
+
+  if (existing) {
+    const { error: updateError } = await supabase
+      .from("harga_barang")
+      .update({
+        harga_beli: hargaBeli,
+        harga_jual: hargaJual,
+        updated_at: new Date().toISOString()
+      })
+      .eq("id", existing.id);
+
+    if (updateError) {
+      throw new Error(updateError.message);
+    }
+
+    return;
+  }
+
+  const { error: insertError } = await supabase.from("harga_barang").insert({
+    barang_id: barangId,
+    cabang_id: cabangId || null,
+    tipe_harga: "jual",
+    harga_beli: hargaBeli,
+    harga_jual: hargaJual,
+    tanggal_mulai: new Date().toISOString().slice(0, 10),
+    aktif: true
+  });
+
+  if (insertError) {
+    throw new Error(insertError.message);
+  }
 }
 
 export const obatService = {
-  async list(params: ListParams = {}) {
+  async list(params: ListParams = {}, cabangId?: string) {
     if (!isSupabaseConfigured || !supabase) {
       return paginate(filterObat(localObat, params.search), params);
     }
 
-    const [{ data, error }, stokResult, lookupMaps] = await Promise.all([
-      supabase.from("obat").select("*").order("created_at", { ascending: false }),
-      supabase.from("stok").select("obat_id,jumlah"),
+    let saldoQuery = supabase.from("saldo_stok").select("barang_id,qty");
+    if (cabangId) {
+      saldoQuery = saldoQuery.eq("cabang_id", cabangId);
+    }
+
+    const [{ data, error }, saldoResult, lookupMaps] = await Promise.all([
+      supabase.from("barang").select("*").order("created_at", { ascending: false }),
+      saldoQuery,
       loadLookupMaps()
     ]);
 
@@ -186,14 +329,24 @@ export const obatService = {
       throw new Error(error.message);
     }
 
-    if (stokResult.error) {
-      throw new Error(stokResult.error.message);
+    if (saldoResult.error) {
+      throw new Error(saldoResult.error.message);
     }
 
-    const stockByObat = stockMapFrom(stokResult.data ?? []);
+    const stockByBarang = stockMapFrom(saldoResult.data ?? []);
+    const barangIds = (data ?? []).map((item) => item.id);
+    const hargaByBarang = await resolveActivePrices(barangIds, cabangId);
+
     const rows = filterObat(
       (data ?? []).map((item) =>
-        toObat(item, stockByObat, lookupMaps.kategoriById, lookupMaps.supplierById)
+        toObat(
+          item,
+          stockByBarang,
+          lookupMaps.kategoriById,
+          lookupMaps.golonganById,
+          lookupMaps.satuanById,
+          hargaByBarang
+        )
       ),
       params.search
     );
@@ -206,31 +359,39 @@ export const obatService = {
     return result.data.filter((item) => item.status);
   },
 
-  async getById(id: number) {
+  async getById(id: string, cabangId?: string) {
     if (!isSupabaseConfigured || !supabase) {
       return localObat.find((item) => item.id === id) ?? null;
     }
 
-    const [{ data, error }, stokResult, lookupMaps] = await Promise.all([
-      supabase.from("obat").select("*").eq("id", id).single(),
-      supabase.from("stok").select("obat_id,jumlah").eq("obat_id", id),
-      loadLookupMaps()
+    let saldoQuery = supabase.from("saldo_stok").select("barang_id,qty").eq("barang_id", id);
+    if (cabangId) {
+      saldoQuery = saldoQuery.eq("cabang_id", cabangId);
+    }
+
+    const [{ data, error }, saldoResult, lookupMaps, hargaByBarang] = await Promise.all([
+      supabase.from("barang").select("*").eq("id", id).single(),
+      saldoQuery,
+      loadLookupMaps(),
+      resolveActivePrices([id], cabangId)
     ]);
 
     if (error) {
       throw new Error(error.message);
     }
 
-    if (stokResult.error) {
-      throw new Error(stokResult.error.message);
+    if (saldoResult.error) {
+      throw new Error(saldoResult.error.message);
     }
 
     return data
       ? toObat(
           data,
-          stockMapFrom(stokResult.data ?? []),
+          stockMapFrom(saldoResult.data ?? []),
           lookupMaps.kategoriById,
-          lookupMaps.supplierById
+          lookupMaps.golonganById,
+          lookupMaps.satuanById,
+          hargaByBarang
         )
       : null;
   },
@@ -238,21 +399,28 @@ export const obatService = {
   async create(payload: ObatInput): Promise<ObatListItem> {
     if (!isSupabaseConfigured || !supabase) {
       const now = new Date().toISOString();
-      const created = {
-        id: Date.now(),
-        kodeObat: payload.kodeObat,
-        namaObat: payload.namaObat,
-        kategoriId: payload.kategoriId ?? 0,
-        supplierId: payload.supplierId ?? 0,
-        satuan: payload.satuan ?? "",
-        hargaBeli: payload.hargaBeli ?? 0,
-        hargaJual: payload.hargaJual ?? 0,
+      const created: ObatListItem = {
+        id: crypto.randomUUID(),
+        kode: payload.kode,
+        namaGenerik: payload.namaGenerik,
+        nama: payload.nama,
+        kategoriId: payload.kategoriId,
+        golonganId: payload.golonganId,
+        satuanDefaultId: payload.satuanDefaultId,
         stokMinimum: payload.stokMinimum ?? 0,
+        stokMaksimum: payload.stokMaksimum ?? 0,
         stokTersedia: payload.stokAwal ?? 0,
-        gambarUrl: payload.gambarUrl ?? "",
-        deskripsi: payload.deskripsi ?? "",
-        golongan: payload.golongan ?? "bebas",
-        membutuhkanResep: payload.membutuhkanResep ?? false,
+        gambarUrl: payload.gambarUrl,
+        komposisi: payload.komposisi,
+        indikasi: payload.indikasi,
+        aturanPakai: payload.aturanPakai,
+        perluBatch: payload.perluBatch ?? true,
+        perluExpired: payload.perluExpired ?? true,
+        membutuhkanResep: resolveMembutuhkanResepLocal(payload.golonganId),
+        hargaAktif:
+          payload.hargaBeli !== undefined || payload.hargaJual !== undefined
+            ? { hargaBeli: payload.hargaBeli ?? 0, hargaJual: payload.hargaJual ?? 0 }
+            : undefined,
         status: payload.status ?? true,
         createdAt: now,
         updatedAt: now
@@ -262,7 +430,7 @@ export const obatService = {
     }
 
     const { data, error } = await supabase
-      .from("obat")
+      .from("barang")
       .insert(toObatRow(payload))
       .select("*")
       .single();
@@ -271,23 +439,84 @@ export const obatService = {
       throw new Error(error.message);
     }
 
+    if (payload.hargaBeli !== undefined || payload.hargaJual !== undefined) {
+      await upsertHargaJual(
+        data.id,
+        payload.cabangId,
+        payload.hargaBeli ?? 0,
+        payload.hargaJual ?? 0
+      );
+    }
+
     const stokAwal = Number(payload.stokAwal ?? 0);
 
     if (stokAwal > 0) {
-      const { error: stokError } = await supabase.from("stok").insert({
-        obat_id: data.id,
-        batch_number: payload.batchNumber ?? `AWAL-${data.kode_obat}`,
-        tanggal_expired: payload.tanggalExpired || null,
-        jumlah: stokAwal,
-        lokasi: payload.lokasi ?? "Rak utama"
+      const effectiveCabangId = payload.cabangId || defaultCabangId;
+      const nomorBatch = payload.batchNumber?.trim() || `AWAL-${data.kode}`;
+      const batchId = await findOrCreateBatch(
+        data.id,
+        payload.supplierId,
+        nomorBatch,
+        payload.tanggalExpired
+      );
+
+      const { data: existingSaldo, error: findSaldoError } = await supabase
+        .from("saldo_stok")
+        .select("id,qty")
+        .eq("cabang_id", effectiveCabangId)
+        .eq("barang_id", data.id)
+        .eq("batch_id", batchId)
+        .maybeSingle();
+
+      if (findSaldoError) {
+        throw new Error(findSaldoError.message);
+      }
+
+      let saldoAkhir = stokAwal;
+
+      if (existingSaldo) {
+        saldoAkhir = Number(existingSaldo.qty ?? 0) + stokAwal;
+        const { error: updateError } = await supabase
+          .from("saldo_stok")
+          .update({ qty: saldoAkhir, updated_at: new Date().toISOString() })
+          .eq("id", existingSaldo.id);
+
+        if (updateError) {
+          throw new Error(updateError.message);
+        }
+      } else {
+        const { error: insertSaldoError } = await supabase.from("saldo_stok").insert({
+          cabang_id: effectiveCabangId,
+          barang_id: data.id,
+          batch_id: batchId,
+          qty: stokAwal
+        });
+
+        if (insertSaldoError) {
+          throw new Error(insertSaldoError.message);
+        }
+      }
+
+      const { error: kartuError } = await supabase.from("kartu_stok").insert({
+        cabang_id: effectiveCabangId,
+        barang_id: data.id,
+        batch_id: batchId,
+        tipe_mutasi: "masuk",
+        sumber_tabel: "barang",
+        sumber_id: data.id,
+        qty_masuk: stokAwal,
+        qty_keluar: 0,
+        saldo_akhir: saldoAkhir,
+        harga_pokok: payload.hargaBeli ?? 0,
+        keterangan: `Stok awal ${data.kode}`
       });
 
-      if (stokError) {
-        throw new Error(stokError.message);
+      if (kartuError) {
+        throw new Error(kartuError.message);
       }
     }
 
-    const created = await this.getById(data.id);
+    const created = await this.getById(data.id, payload.cabangId);
 
     if (!created) {
       throw new Error("Obat berhasil dibuat, tetapi data tidak dapat dimuat ulang");
@@ -296,7 +525,7 @@ export const obatService = {
     return created;
   },
 
-  async update(id: number, payload: ObatInput): Promise<ObatListItem | null> {
+  async update(id: string, payload: ObatInput): Promise<ObatListItem | null> {
     if (!isSupabaseConfigured || !supabase) {
       const index = localObat.findIndex((item) => item.id === id);
       if (index === -1) {
@@ -305,18 +534,25 @@ export const obatService = {
 
       localObat[index] = {
         ...localObat[index],
-        kodeObat: payload.kodeObat,
-        namaObat: payload.namaObat,
-        kategoriId: payload.kategoriId ?? 0,
-        supplierId: payload.supplierId ?? 0,
-        satuan: payload.satuan ?? "",
-        hargaBeli: payload.hargaBeli ?? 0,
-        hargaJual: payload.hargaJual ?? 0,
+        kode: payload.kode,
+        nama: payload.nama,
+        namaGenerik: payload.namaGenerik,
+        kategoriId: payload.kategoriId,
+        golonganId: payload.golonganId,
+        satuanDefaultId: payload.satuanDefaultId,
         stokMinimum: payload.stokMinimum ?? 0,
-        gambarUrl: payload.gambarUrl ?? "",
-        deskripsi: payload.deskripsi ?? "",
-        golongan: payload.golongan ?? "bebas",
-        membutuhkanResep: payload.membutuhkanResep ?? false,
+        stokMaksimum: payload.stokMaksimum ?? 0,
+        gambarUrl: payload.gambarUrl,
+        komposisi: payload.komposisi,
+        indikasi: payload.indikasi,
+        aturanPakai: payload.aturanPakai,
+        perluBatch: payload.perluBatch ?? true,
+        perluExpired: payload.perluExpired ?? true,
+        membutuhkanResep: resolveMembutuhkanResepLocal(payload.golonganId),
+        hargaAktif:
+          payload.hargaBeli !== undefined || payload.hargaJual !== undefined
+            ? { hargaBeli: payload.hargaBeli ?? 0, hargaJual: payload.hargaJual ?? 0 }
+            : localObat[index].hargaAktif,
         status: payload.status ?? true,
         updatedAt: new Date().toISOString()
       };
@@ -325,7 +561,7 @@ export const obatService = {
     }
 
     const { data, error } = await supabase
-      .from("obat")
+      .from("barang")
       .update(toObatRow(payload))
       .eq("id", id)
       .select("id")
@@ -335,10 +571,19 @@ export const obatService = {
       throw new Error(error.message);
     }
 
-    return this.getById(data.id);
+    if (payload.hargaBeli !== undefined || payload.hargaJual !== undefined) {
+      await upsertHargaJual(
+        id,
+        payload.cabangId,
+        payload.hargaBeli ?? 0,
+        payload.hargaJual ?? 0
+      );
+    }
+
+    return this.getById(data.id, payload.cabangId);
   },
 
-  async delete(id: number) {
+  async delete(id: string) {
     if (!isSupabaseConfigured || !supabase) {
       const index = localObat.findIndex((item) => item.id === id);
       if (index >= 0) {
@@ -348,16 +593,16 @@ export const obatService = {
       return { id, success: true };
     }
 
-    const { error: stokError } = await supabase
-      .from("stok")
+    const { error: saldoError } = await supabase
+      .from("saldo_stok")
       .delete()
-      .eq("obat_id", id);
+      .eq("barang_id", id);
 
-    if (stokError) {
-      throw new Error(stokError.message);
+    if (saldoError) {
+      throw new Error(saldoError.message);
     }
 
-    const { error } = await supabase.from("obat").delete().eq("id", id);
+    const { error } = await supabase.from("barang").delete().eq("id", id);
 
     if (error) {
       throw new Error(error.message);
@@ -372,7 +617,41 @@ export const obatService = {
     }
 
     const { data, error } = await supabase
-      .from("kategori_obat")
+      .from("kategori_barang")
+      .select("id,nama")
+      .order("nama", { ascending: true });
+
+    if (error) {
+      throw new Error(error.message);
+    }
+
+    return (data ?? []).map((item) => ({ id: item.id, label: item.nama }));
+  },
+
+  async listGolonganOptions(): Promise<MasterOption[]> {
+    if (!isSupabaseConfigured || !supabase) {
+      return [];
+    }
+
+    const { data, error } = await supabase
+      .from("golongan_obat")
+      .select("id,nama")
+      .order("nama", { ascending: true });
+
+    if (error) {
+      throw new Error(error.message);
+    }
+
+    return (data ?? []).map((item) => ({ id: item.id, label: item.nama }));
+  },
+
+  async listSatuanOptions(): Promise<MasterOption[]> {
+    if (!isSupabaseConfigured || !supabase) {
+      return [];
+    }
+
+    const { data, error } = await supabase
+      .from("satuan")
       .select("id,nama")
       .order("nama", { ascending: true });
 
@@ -390,17 +669,14 @@ export const obatService = {
 
     const { data, error } = await supabase
       .from("supplier")
-      .select("id,nama_supplier")
-      .eq("status", true)
-      .order("nama_supplier", { ascending: true });
+      .select("id,nama")
+      .eq("aktif", true)
+      .order("nama", { ascending: true });
 
     if (error) {
       throw new Error(error.message);
     }
 
-    return (data ?? []).map((item) => ({
-      id: item.id,
-      label: item.nama_supplier
-    }));
+    return (data ?? []).map((item) => ({ id: item.id, label: item.nama }));
   }
 };

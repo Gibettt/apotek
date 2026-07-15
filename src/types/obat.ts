@@ -1,56 +1,85 @@
-export type ObatGolongan = "bebas" | "bebas terbatas" | "keras";
-
-export interface KategoriObat {
-  id: number;
+export interface GolonganObat {
+  id: string;
+  kode: string;
   nama: string;
-  deskripsi: string;
+  butuhResep: boolean;
+  butuhSuratPesanan: boolean;
+  deskripsi?: string;
+  aktif: boolean;
+}
+
+export interface KategoriBarang {
+  id: string;
+  kode: string;
+  nama: string;
+  deskripsi?: string;
+  aktif: boolean;
   createdAt: string;
   updatedAt: string;
 }
 
 export interface Supplier {
-  id: number;
-  namaSupplier: string;
-  telepon: string;
-  email: string;
-  alamat: string;
-  kontakPerson: string;
-  npwp: string;
-  status: boolean;
+  id: string;
+  kode: string;
+  nama: string;
+  tipeSupplier?: string;
+  npwp?: string;
+  telepon?: string;
+  email?: string;
+  alamat?: string;
+  kota?: string;
+  provinsi?: string;
+  kontakPerson?: string;
+  tempoBayarHari: number;
+  aktif: boolean;
   createdAt: string;
   updatedAt: string;
 }
 
-export interface Obat {
-  id: number;
-  kodeObat: string;
-  namaObat: string;
-  kategoriId: number;
-  supplierId: number;
-  satuan: string;
+export interface HargaAktif {
   hargaBeli: number;
   hargaJual: number;
+}
+
+export interface Obat {
+  id: string;
+  kode: string;
+  namaGenerik?: string;
+  nama: string;
+  kategoriId?: string;
+  kategoriNama?: string;
+  golonganId?: string;
+  golonganNama?: string;
+  satuanDefaultId?: string;
+  satuanNama?: string;
   stokMinimum: number;
+  stokMaksimum: number;
   stokTersedia: number;
-  gambarUrl: string;
-  deskripsi: string;
-  golongan: ObatGolongan;
+  gambarUrl?: string;
+  komposisi?: string;
+  indikasi?: string;
+  aturanPakai?: string;
+  perluBatch: boolean;
+  perluExpired: boolean;
   membutuhkanResep: boolean;
+  hargaAktif?: HargaAktif;
   status: boolean;
   createdAt: string;
   updatedAt: string;
 }
 
 export interface Pelanggan {
-  id: number;
+  id: string;
+  kode: string;
   nama: string;
-  telepon: string;
-  alamat: string;
-  tanggalLahir: string;
-  jenisKelamin: "L" | "P";
-  noBpjs?: string;
-  noKtp?: string;
-  alergi?: string;
+  telepon?: string;
+  email?: string;
+  alamat?: string;
+  tanggalLahir?: string;
+  jenisKelamin?: "L" | "P";
+  catatanAlergi?: string;
+  member: boolean;
+  aktif: boolean;
   createdAt: string;
   updatedAt: string;
 }

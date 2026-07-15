@@ -9,12 +9,12 @@ describe("payment schemas", () => {
     const result = createAccuratePaymentSchema.parse({
       idempotencyKey: "5dc04f7a-91ab-4fe7-a519-8459f26c04df",
       amount: 1,
-      items: [{ obatId: 12, quantity: 2 }]
+      items: [{ barangId: "b6a1a9d0-1234-4a11-8a11-000000000012", quantity: 2 }]
     });
 
     expect(result).toEqual({
       idempotencyKey: "5dc04f7a-91ab-4fe7-a519-8459f26c04df",
-      items: [{ obatId: 12, quantity: 2 }]
+      items: [{ barangId: "b6a1a9d0-1234-4a11-8a11-000000000012", quantity: 2 }]
     });
   });
 
@@ -22,13 +22,13 @@ describe("payment schemas", () => {
     const duplicate = createAccuratePaymentSchema.safeParse({
       idempotencyKey: "5dc04f7a-91ab-4fe7-a519-8459f26c04df",
       items: [
-        { obatId: 12, quantity: 1 },
-        { obatId: 12, quantity: 2 }
+        { barangId: "b6a1a9d0-1234-4a11-8a11-000000000012", quantity: 1 },
+        { barangId: "b6a1a9d0-1234-4a11-8a11-000000000012", quantity: 2 }
       ]
     });
     const invalidQuantity = createAccuratePaymentSchema.safeParse({
       idempotencyKey: "5dc04f7a-91ab-4fe7-a519-8459f26c04df",
-      items: [{ obatId: 12, quantity: 0 }]
+      items: [{ barangId: "b6a1a9d0-1234-4a11-8a11-000000000012", quantity: 0 }]
     });
 
     expect(duplicate.success).toBe(false);

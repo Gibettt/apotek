@@ -14,25 +14,22 @@ vi.mock("@/services/obatService", () => ({
 }));
 
 const supabaseMedicine = {
-  id: 77,
-  kodeObat: "OBT-SUPA",
-  namaObat: "Obat Supabase 500mg",
-  kategoriId: 0,
-  supplierId: 0,
-  satuan: "tablet",
-  hargaBeli: 500,
-  hargaJual: 1500,
+  id: "77",
+  kode: "OBT-SUPA",
+  nama: "Obat Supabase 500mg",
+  satuanNama: "tablet",
   stokMinimum: 10,
+  stokMaksimum: 100,
   stokTersedia: 24,
-  gambarUrl: "",
-  deskripsi: "",
-  golongan: "bebas" as const,
+  perluBatch: true,
+  perluExpired: true,
   membutuhkanResep: false,
+  hargaAktif: { hargaBeli: 500, hargaJual: 1500 },
   status: true,
   createdAt: "",
   updatedAt: "",
   kategoriNama: "Analgesik",
-  supplierNama: "PT Supabase Farma"
+  golonganNama: "Obat Bebas"
 };
 
 describe("KasirSearch", () => {
@@ -59,8 +56,8 @@ describe("KasirSearch", () => {
     );
 
     expect(useCartStore.getState().items[0]).toMatchObject({
-      obatId: 77,
-      namaObat: "Obat Supabase 500mg",
+      barangId: "77",
+      nama: "Obat Supabase 500mg",
       quantity: 1
     });
   });

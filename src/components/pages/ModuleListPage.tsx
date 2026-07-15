@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { Eye, Pencil, Plus } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type { Column } from "@/components/ui/Table";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
@@ -47,20 +47,45 @@ function formatCell(value: unknown, column: ColumnConfig) {
 
 export function ModuleListPage({ config }: { config: ModuleConfig }) {
   const [search, setSearch] = useState("");
+  const [rowsData, setRowsData] = useState<ModuleRecord[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    let active = true;
+    setIsLoading(true);
+
+    config
+      .load()
+      .then((loaded) => {
+        if (active) {
+          setRowsData(loaded);
+        }
+      })
+      .finally(() => {
+        if (active) {
+          setIsLoading(false);
+        }
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [config]);
+
   const filteredRows = useMemo(() => {
     const normalized = search.toLowerCase();
     if (!normalized) {
-      return config.rows;
+      return rowsData;
     }
 
-    return config.rows.filter((row) =>
+    return rowsData.filter((row) =>
       Object.values(row).some((value) =>
         String(value ?? "")
           .toLowerCase()
           .includes(normalized)
       )
     );
-  }, [config.rows, search]);
+  }, [rowsData, search]);
   const pagination = usePagination(filteredRows.length, 8);
   const rows = filteredRows.slice(
     (pagination.page - 1) * pagination.perPage,
@@ -125,7 +150,11 @@ export function ModuleListPage({ config }: { config: ModuleConfig }) {
             }}
             placeholder={`Cari ${config.title.toLowerCase()}...`}
           />
-          <Table columns={columns} data={rows} />
+          <Table
+            columns={columns}
+            data={rows}
+            emptyText={isLoading ? "Memuat data..." : undefined}
+          />
           <Pagination
             page={pagination.page}
             totalPages={pagination.totalPages}

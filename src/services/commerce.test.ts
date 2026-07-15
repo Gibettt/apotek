@@ -9,9 +9,8 @@ describe("commerce services", () => {
   it("starts medicines without dummy data, then creates and deletes a real record shape", async () => {
     const list = await obatService.list({ search: "vitamin", perPage: 5 });
     const created = await obatService.create({
-      kodeObat: "OBT-9999",
-      namaObat: "Test Obat",
-      satuan: "tablet",
+      kode: "OBT-9999",
+      nama: "Test Obat",
       hargaBeli: 500,
       hargaJual: 1000,
       stokMinimum: 5,
@@ -23,10 +22,10 @@ describe("commerce services", () => {
     const detail = await obatService.getById(created.id);
 
     expect(list.total).toBe(0);
-    expect(created.id).toBeGreaterThan(0);
+    expect(created.id).toEqual(expect.any(String));
     expect(createdList.total).toBe(1);
-    expect(results[0]?.kodeObat).toBe("OBT-9999");
-    expect(detail?.namaObat).toBe("Test Obat");
+    expect(results[0]?.kode).toBe("OBT-9999");
+    expect(detail?.nama).toBe("Test Obat");
     expect(detail?.stokTersedia).toBe(12);
 
     await obatService.delete(created.id);
@@ -37,10 +36,10 @@ describe("commerce services", () => {
 
   it("lists and reads sales history", async () => {
     const list = await penjualanService.list({ search: "PJL" });
-    const detail = await penjualanService.getById(1);
+    const detail = await penjualanService.getById("pj-1");
 
     expect(list.total).toBe(1);
-    expect(detail?.nomorPenjualan).toBe("PJL-20260707-0001");
+    expect(detail?.nomorInvoice).toBe("PJL-20260707-0001");
   });
 
   it("builds a sales report with date and payment filters", async () => {
@@ -63,18 +62,18 @@ describe("commerce services", () => {
 
   it("creates a purchase order and can receive it", async () => {
     const created = await pembelianService.create({
-      nomorPembelian: "PBL-TEST-0001",
-      supplierId: 1,
-      tanggalPembelian: "2026-07-08",
+      nomorInternal: "PBL-TEST-0001",
+      supplierId: "s-1",
+      tanggalFaktur: "2026-07-08",
       status: "draft",
       items: [
         {
-          obatId: 77,
+          barangId: "o-1",
           batchNumber: "BATCH-TEST",
           tanggalExpired: "2027-07-08",
           jumlah: 3,
           hargaBeli: 2000,
-          diskon: 500
+          diskonNominal: 500
         }
       ]
     });
@@ -85,7 +84,7 @@ describe("commerce services", () => {
     });
     const received = await pembelianService.receive(created.id);
 
-    expect(created.total).toBe(5500);
+    expect(created.grandTotal).toBe(5500);
     expect(created.status).toBe("draft");
     expect(list.total).toBe(1);
     expect(received.status).toBe("diterima");
@@ -102,7 +101,7 @@ describe("commerce services", () => {
       status: "menunggu",
       details: [
         {
-          obatId: 77,
+          barangId: "o-1",
           aturanPakai: "3x sehari setelah makan",
           jumlah: 6,
           catatan: "Habiskan"
@@ -131,9 +130,9 @@ describe("commerce services", () => {
       bayar: 10000,
       items: [
         {
-          obatId: 1,
-          kodeObat: "OBT-0001",
-          namaObat: "Paracetamol 500mg",
+          barangId: "o-1",
+          kode: "OBT-0001",
+          nama: "Paracetamol 500mg",
           hargaJual: 650,
           stokTersedia: 10,
           membutuhkanResep: false,
@@ -142,7 +141,7 @@ describe("commerce services", () => {
       ]
     });
 
-    expect(sale.total).toBe(1300);
+    expect(sale.grandTotal).toBe(1300);
     expect(sale.kembalian).toBe(8700);
     expect(sale.details[0].hargaJual).toBe(650);
   });

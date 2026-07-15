@@ -6,14 +6,14 @@ type Migration struct {
 }
 
 var All = []Migration{
-	{ID: "001_create_users_table", SQL: Migration001CreateUsersTable},
-	{ID: "002_create_roles_table", SQL: Migration002CreateRolesTable},
-	{ID: "003_create_obat_table", SQL: Migration003CreateObatTable},
-	{ID: "004_create_supplier_pelanggan_table", SQL: Migration004CreateSupplierPelangganTable},
-	{ID: "005_create_stok_table", SQL: Migration005CreateStokTable},
-	{ID: "006_create_pembelian_table", SQL: Migration006CreatePembelianTable},
-	{ID: "007_create_penjualan_table", SQL: Migration007CreatePenjualanTable},
-	{ID: "008_create_resep_table", SQL: Migration008CreateResepTable},
-	{ID: "009_create_notifikasi_settings_table", SQL: Migration009CreateNotifikasiSettingsTable},
-	{ID: "010_add_payment_gateway", SQL: Migration010AddPaymentGateway},
+	{ID: "001_drop_legacy_schema", SQL: Migration001DropLegacySchema},
+	{ID: "002_create_identity_tables", SQL: Migration002CreateIdentityTables},
+	{ID: "003_create_partner_tables", SQL: Migration003CreatePartnerTables},
+	{ID: "004_create_item_master_tables", SQL: Migration004CreateItemMasterTables},
+	{ID: "005_create_inventory_tables", SQL: Migration005CreateInventoryTables},
+	{ID: "006_create_purchasing_tables", SQL: Migration006CreatePurchasingTables},
+	{ID: "007_create_sales_tables", SQL: Migration007CreateSalesTables},
+	{ID: "008_create_finance_audit_tables", SQL: Migration008CreateFinanceAuditTables},
+	{ID: "009_create_notifikasi_pengaturan_tables", SQL: Migration009CreateNotifikasiPengaturanTables},
+	{ID: "010_create_payment_function", SQL: Migration010CreatePaymentFunction},
 }

@@ -22,7 +22,7 @@ export default async function DetailResepPage({
 }: {
   params: { id: string };
 }) {
-  const resep = await resepService.getById(Number(params.id)).catch(() => null);
+  const resep = await resepService.getById(params.id).catch(() => null);
 
   if (!resep) {
     return (
@@ -48,7 +48,7 @@ export default async function DetailResepPage({
   return (
     <>
       <Header
-        title={resep.nomorResep}
+        title={resep.nomorResep ?? "-"}
         description="Detail resep dokter dan item obat yang tersimpan di Supabase."
         action={
           <div className="flex flex-wrap justify-end gap-2">
@@ -104,7 +104,7 @@ export default async function DetailResepPage({
                       className="border-t border-stone-100 transition hover:bg-[#f8f7f3]"
                     >
                       <td className="px-5 py-4 font-black text-[#20201d]">
-                        {detail.namaObat}
+                        {detail.namaBarang}
                       </td>
                       <td className="px-5 py-4 font-semibold text-stone-600">
                         {detail.aturanPakai}

@@ -13,6 +13,7 @@ import {
   type AccuratePaymentSession
 } from "@/services/accuratePaymentService";
 import { penjualanService } from "@/services/penjualanService";
+import { useCabangStore } from "@/store/cabangStore";
 import { useCartStore } from "@/store/cartStore";
 import type { MetodePembayaran, Penjualan } from "@/types";
 import { formatCurrency } from "@/utils/formatCurrency";
@@ -39,6 +40,7 @@ export function KasirPaymentModal({
   onSuccess: (penjualan: Penjualan) => void;
 }) {
   const { items, subtotal, clear } = useCartStore();
+  const { activeCabangId } = useCabangStore();
   const [metodePembayaran, setMetodePembayaran] =
     useState<MetodePembayaran>("tunai");
   const [bayar, setBayar] = useState(String(subtotal()));
@@ -103,7 +105,7 @@ export function KasirPaymentModal({
       const result = await accuratePaymentService.create({
         idempotencyKey: idempotencyKeyRef.current,
         items: items.map((item) => ({
-          obatId: item.obatId,
+          barangId: item.barangId,
           quantity: item.quantity
         }))
       });
@@ -137,7 +139,8 @@ export function KasirPaymentModal({
       const result = await penjualanService.checkout({
         items,
         metodePembayaran,
-        bayar: bayarValue
+        bayar: bayarValue,
+        cabangId: activeCabangId ?? undefined
       });
       clear();
       onSuccess(result);

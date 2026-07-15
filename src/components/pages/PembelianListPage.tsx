@@ -80,7 +80,7 @@ function PembelianRow({
           </span>
           <div className="min-w-0">
             <p className="truncate font-black text-[#20201d]">
-              {item.nomorPembelian}
+              {item.nomorInternal}
             </p>
             <p className="mt-1 truncate text-xs font-semibold text-stone-400">
               {item.details.length} item pembelian
@@ -96,14 +96,14 @@ function PembelianRow({
       </td>
       <td className="px-5 py-4">
         <p className="text-sm font-bold text-stone-700">
-          {item.tanggalPembelian
-            ? formatDate(item.tanggalPembelian)
+          {item.tanggalFaktur
+            ? formatDate(item.tanggalFaktur)
             : "-"}
         </p>
       </td>
       <td className="px-5 py-4">
         <p className="font-black text-[#20201d]">
-          {formatCurrency(item.total)}
+          {formatCurrency(item.grandTotal)}
         </p>
         <p className="mt-1 text-xs font-semibold text-stone-400">
           Subtotal {formatCurrency(item.subtotal)}
@@ -144,7 +144,7 @@ export function PembelianListPage() {
   const [rows, setRows] = useState<Pembelian[]>([]);
   const [total, setTotal] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
-  const [receivingId, setReceivingId] = useState<number | null>(null);
+  const [receivingId, setReceivingId] = useState<string | null>(null);
   const totalPages = Math.max(1, Math.ceil(total / perPage));
 
   async function loadPembelian() {
@@ -205,7 +205,7 @@ export function PembelianListPage() {
 
     try {
       await pembelianService.receive(item.id);
-      toast.success(`${item.nomorPembelian} diterima dan stok diperbarui`);
+      toast.success(`${item.nomorInternal} diterima dan stok diperbarui`);
       await loadPembelian();
     } catch (error) {
       toast.error(
@@ -219,7 +219,7 @@ export function PembelianListPage() {
   const stats = useMemo(() => {
     const received = rows.filter((item) => item.status === "diterima").length;
     const draft = rows.filter((item) => item.status === "draft").length;
-    const pageValue = rows.reduce((sum, item) => sum + item.total, 0);
+    const pageValue = rows.reduce((sum, item) => sum + item.grandTotal, 0);
 
     return { received, draft, pageValue };
   }, [rows]);

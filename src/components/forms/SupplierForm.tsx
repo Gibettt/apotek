@@ -24,13 +24,13 @@ export function SupplierForm({ record }: { record?: ModuleRecord }) {
   const router = useRouter();
   const defaultValues = useMemo<SupplierFormValues>(
     () => ({
-      namaSupplier: textValue(record?.namaSupplier),
+      nama: textValue(record?.nama),
       kontakPerson: textValue(record?.kontakPerson),
       telepon: textValue(record?.telepon),
       email: textValue(record?.email),
       npwp: textValue(record?.npwp),
       alamat: textValue(record?.alamat),
-      status: typeof record?.status === "boolean" ? record.status : true
+      aktif: typeof record?.aktif === "boolean" ? record.aktif : true
     }),
     [record]
   );
@@ -43,7 +43,7 @@ export function SupplierForm({ record }: { record?: ModuleRecord }) {
 
   async function onSubmit(values: SupplierFormValues) {
     try {
-      if (isEdit && typeof record?.id === "number") {
+      if (isEdit && typeof record?.id === "string") {
         await supplierService.update(record.id, values);
         toast.success("Supplier berhasil diperbarui di Supabase");
       } else {
@@ -98,8 +98,8 @@ export function SupplierForm({ record }: { record?: ModuleRecord }) {
             <Input
               label="Nama Supplier"
               placeholder="Contoh: PT Sehat Farma"
-              error={errors.namaSupplier?.message}
-              {...register("namaSupplier", {
+              error={errors.nama?.message}
+              {...register("nama", {
                 required: "Nama supplier wajib diisi"
               })}
             />
@@ -128,7 +128,7 @@ export function SupplierForm({ record }: { record?: ModuleRecord }) {
               <input
                 type="checkbox"
                 className="h-4 w-4 rounded border-slate-300 text-brand-700 focus:ring-brand-600"
-                {...register("status")}
+                {...register("aktif")}
               />
               Aktif
             </label>

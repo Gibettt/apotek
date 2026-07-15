@@ -30,13 +30,13 @@ export function KasirCart({ onPay }: { onPay: () => void }) {
         {items.length ? (
           items.map((item) => (
             <div
-              key={item.obatId}
+              key={item.barangId}
               className="rounded-lg border border-stone-200 bg-white p-4 transition hover:border-stone-300 hover:shadow-[0_16px_34px_rgba(25,24,21,.08)]"
             >
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0">
                   <p className="truncate font-black text-[#20201d]">
-                    {item.namaObat}
+                    {item.nama}
                   </p>
                   <p className="mt-1 text-sm font-semibold text-stone-500">
                     {formatCurrency(item.hargaJual)} / item
@@ -44,8 +44,8 @@ export function KasirCart({ onPay }: { onPay: () => void }) {
                 </div>
                 <button
                   type="button"
-                  aria-label={`Hapus ${item.namaObat}`}
-                  onClick={() => removeItem(item.obatId)}
+                  aria-label={`Hapus ${item.nama}`}
+                  onClick={() => removeItem(item.barangId)}
                   className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-red-50 text-red-600 transition hover:bg-red-100"
                 >
                   <Trash2 className="h-4 w-4" strokeWidth={1.9} />
@@ -56,30 +56,30 @@ export function KasirCart({ onPay }: { onPay: () => void }) {
                 <div className="flex h-10 items-center overflow-hidden rounded-lg border border-stone-200 bg-[#f8f7f3]">
                   <button
                     type="button"
-                    aria-label={`Kurangi ${item.namaObat}`}
+                    aria-label={`Kurangi ${item.nama}`}
                     onClick={() =>
-                      updateQuantity(item.obatId, item.quantity - 1)
+                      updateQuantity(item.barangId, item.quantity - 1)
                     }
                     className="grid h-full w-10 place-items-center text-stone-500 transition hover:bg-white hover:text-stone-950"
                   >
                     <Minus className="h-4 w-4" strokeWidth={2} />
                   </button>
                   <input
-                    aria-label={`Qty ${item.namaObat}`}
+                    aria-label={`Qty ${item.nama}`}
                     type="number"
                     min={1}
                     max={item.stokTersedia}
                     value={item.quantity}
                     onChange={(event) =>
-                      updateQuantity(item.obatId, Number(event.target.value))
+                      updateQuantity(item.barangId, Number(event.target.value))
                     }
                     className="h-full w-14 border-x border-stone-200 bg-white text-center text-sm font-black text-[#20201d] outline-none"
                   />
                   <button
                     type="button"
-                    aria-label={`Tambah qty ${item.namaObat}`}
+                    aria-label={`Tambah qty ${item.nama}`}
                     onClick={() =>
-                      updateQuantity(item.obatId, item.quantity + 1)
+                      updateQuantity(item.barangId, item.quantity + 1)
                     }
                     className="grid h-full w-10 place-items-center text-stone-500 transition hover:bg-white hover:text-stone-950"
                   >

@@ -6,7 +6,7 @@ import type { Notifikasi } from "@/types";
 
 interface NotifikasiState {
   items: Notifikasi[];
-  markAsRead: (id: number) => void;
+  markAsRead: (id: string) => void;
   markAllAsRead: () => void;
   unreadCount: () => number;
 }

@@ -6,16 +6,16 @@ export function buildReceiptText(penjualan: Penjualan) {
   const lines = [
     "APOTEK ANANDA",
     "Jl. Kesehatan No. 12",
-    `No: ${penjualan.nomorPenjualan}`,
-    `Tanggal: ${formatDateTime(penjualan.tanggalPenjualan)}`,
+    `No: ${penjualan.nomorInvoice}`,
+    `Tanggal: ${formatDateTime(penjualan.tanggal)}`,
     "--------------------------------",
     ...penjualan.details.map(
       (item) =>
-        `${item.namaObat} x${item.jumlah} ${formatCurrency(item.subtotal)}`
+        `${item.namaBarang} x${item.jumlah} ${formatCurrency(item.subtotal)}`
     ),
     "--------------------------------",
-    `Total: ${formatCurrency(penjualan.total)}`,
-    `Bayar: ${formatCurrency(penjualan.bayar)}`,
+    `Total: ${formatCurrency(penjualan.grandTotal)}`,
+    `Bayar: ${formatCurrency(penjualan.bayarTotal)}`,
     `Kembali: ${formatCurrency(penjualan.kembalian)}`,
     "Terima kasih"
   ];

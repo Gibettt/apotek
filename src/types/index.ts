@@ -1,5 +1,7 @@
 export * from "./auth";
 export * from "./user";
+export * from "./cabang";
+export * from "./dokter";
 export * from "./obat";
 export * from "./stok";
 export * from "./pembelian";

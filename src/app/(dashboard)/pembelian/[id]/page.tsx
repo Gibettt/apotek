@@ -23,7 +23,7 @@ export default async function DetailPembelianPage({
   params: { id: string };
 }) {
   const pembelian = await pembelianService
-    .getById(Number(params.id))
+    .getById(params.id)
     .catch(() => null);
 
   if (!pembelian) {
@@ -49,7 +49,7 @@ export default async function DetailPembelianPage({
   return (
     <>
       <Header
-        title={pembelian.nomorPembelian}
+        title={pembelian.nomorInternal}
         description="Detail pembelian supplier dan item stok masuk."
         action={
           <Link
@@ -98,7 +98,7 @@ export default async function DetailPembelianPage({
                       className="border-t border-stone-100 transition hover:bg-[#f8f7f3]"
                     >
                       <td className="px-5 py-4 font-black text-[#20201d]">
-                        {detail.namaObat}
+                        {detail.namaBarang}
                       </td>
                       <td className="px-5 py-4 font-semibold text-stone-600">
                         {detail.batchNumber || "-"}
@@ -157,8 +157,8 @@ export default async function DetailPembelianPage({
             <div className="flex justify-between gap-4">
               <span>Tanggal</span>
               <strong className="text-[#20201d]">
-                {pembelian.tanggalPembelian
-                  ? formatDate(pembelian.tanggalPembelian)
+                {pembelian.tanggalFaktur
+                  ? formatDate(pembelian.tanggalFaktur)
                   : "-"}
               </strong>
             </div>
@@ -171,20 +171,20 @@ export default async function DetailPembelianPage({
             <div className="flex justify-between gap-4">
               <span>Diskon</span>
               <strong className="text-[#20201d]">
-                {formatCurrency(pembelian.diskon)}
+                {formatCurrency(pembelian.diskonTotal)}
               </strong>
             </div>
             <div className="flex justify-between gap-4">
               <span>Pajak</span>
               <strong className="text-[#20201d]">
-                {formatCurrency(pembelian.pajak)}
+                {formatCurrency(pembelian.pajakTotal)}
               </strong>
             </div>
             <div className="border-t border-stone-200 pt-3">
               <div className="flex justify-between gap-4">
                 <span>Total</span>
                 <strong className="text-xl text-[#20201d]">
-                  {formatCurrency(pembelian.total)}
+                  {formatCurrency(pembelian.grandTotal)}
                 </strong>
               </div>
             </div>

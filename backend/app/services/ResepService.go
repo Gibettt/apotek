@@ -8,8 +8,8 @@ type ResepService struct {
 
 func (service ResepService) ProcessToPenjualan(resep models.Resep) (models.Penjualan, error) {
 	penjualan := models.Penjualan{
-		ResepID: &resep.ID,
-		Status:  "selesai",
+		CabangID: "",
+		Status:   "selesai",
 	}
 
 	return service.PenjualanService.Checkout(penjualan, []models.PenjualanDetail{})

@@ -12,9 +12,10 @@ export function ExpiredAlert({ items }: { items: StokBatch[] }) {
         >
           <CalendarClock className="mt-0.5 h-5 w-5 text-red-600" />
           <div>
-            <p className="text-sm font-semibold text-red-950">{item.namaObat}</p>
+            <p className="text-sm font-semibold text-red-950">{item.namaBarang}</p>
             <p className="text-xs text-red-800">
-              Batch {item.batchNumber}, expired {formatDate(item.tanggalExpired)}
+              Batch {item.nomorBatch}, expired{" "}
+              {item.tanggalExpired ? formatDate(item.tanggalExpired) : "-"}
             </p>
           </div>
         </div>

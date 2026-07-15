@@ -1,7 +1,7 @@
 import { z } from "zod";
 
 const paymentItemSchema = z.object({
-  obatId: z.number().int().positive(),
+  barangId: z.string().uuid(),
   quantity: z.number().int().positive().max(999)
 });
 
@@ -11,7 +11,7 @@ export const createAccuratePaymentSchema = z
     items: z.array(paymentItemSchema).min(1).max(100)
   })
   .superRefine((payload, context) => {
-    const ids = payload.items.map((item) => item.obatId);
+    const ids = payload.items.map((item) => item.barangId);
     if (new Set(ids).size !== ids.length) {
       context.addIssue({
         code: z.ZodIssueCode.custom,

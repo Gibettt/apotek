@@ -1,49 +1,82 @@
 import type {
   AuthUser,
+  Cabang,
   ChartPoint,
   DashboardSummary,
-  KategoriObat,
+  Dokter,
+  GolonganObat,
+  KategoriBarang,
   Notifikasi,
   Obat,
   Pelanggan,
   Pembelian,
+  Pengaturan,
   Penjualan,
   ReportRow,
   Resep,
-  Setting,
   StokBatch,
   StokMutasi,
   Supplier,
   User
 } from "@/types";
 
+export const defaultCabangId = "00000000-0000-0000-0000-0000000000c1";
+
 export const currentUser: AuthUser = {
   id: "4e3f8e46-6c48-4b6e-9f30-1b87dbb71b11",
   name: "Nadia Putri",
   email: "owner@apotek.local",
   role: "owner",
-  status: true
+  status: true,
+  cabangIds: [defaultCabangId],
+  activeCabangId: defaultCabangId
 };
 
-export const kategoriObat: KategoriObat[] = [
+export const cabangList: Cabang[] = [
   {
-    id: 1,
+    id: defaultCabangId,
+    kode: "PST",
+    nama: "Apotek Pusat",
+    telepon: "0217700100",
+    email: "pusat@apotek.local",
+    alamat: "Jl. Kesehatan No. 12, Jakarta",
+    kota: "Jakarta",
+    provinsi: "DKI Jakarta",
+    aktif: true
+  }
+];
+
+export const golonganObat: GolonganObat[] = [
+  { id: "g-bebas", kode: "bebas", nama: "Obat Bebas", butuhResep: false, butuhSuratPesanan: false, aktif: true },
+  { id: "g-bebas-terbatas", kode: "bebas_terbatas", nama: "Obat Bebas Terbatas", butuhResep: false, butuhSuratPesanan: false, aktif: true },
+  { id: "g-keras", kode: "keras", nama: "Obat Keras", butuhResep: true, butuhSuratPesanan: true, aktif: true }
+];
+
+export const kategoriBarang: KategoriBarang[] = [
+  {
+    id: "k-1",
+    kode: "analgesik",
     nama: "Analgesik",
     deskripsi: "Obat pereda nyeri dan demam",
+    aktif: true,
     createdAt: "2026-06-01T08:00:00+07:00",
     updatedAt: "2026-07-01T08:00:00+07:00"
   },
   {
-    id: 2,
+    id: "k-2",
+    kode: "antibiotik",
     nama: "Antibiotik",
     deskripsi: "Obat keras untuk infeksi bakteri",
+    aktif: true,
     createdAt: "2026-06-01T08:00:00+07:00",
     updatedAt: "2026-07-01T08:00:00+07:00"
   },
   {
-    id: 3,
+    id: "k-3",
+    kode: "vitamin",
     nama: "Vitamin",
     deskripsi: "Suplemen dan vitamin harian",
+    aktif: true,
     createdAt: "2026-06-02T08:00:00+07:00",
     updatedAt: "2026-07-01T08:00:00+07:00"
   }
@@ -51,26 +84,30 @@ export const kategoriObat: KategoriObat[] = [
 
 export const suppliers: Supplier[] = [
   {
-    id: 1,
-    namaSupplier: "PT Sehat Farma",
+    id: "s-1",
+    kode: "SUP-001",
+    nama: "PT Sehat Farma",
     telepon: "02177889900",
     email: "sales@sehatfarma.co.id",
     alamat: "Jl. Industri Farmasi No. 7, Jakarta",
     kontakPerson: "Riko Pratama",
     npwp: "01.234.567.8-901.000",
-    status: true,
+    tempoBayarHari: 30,
+    aktif: true,
     createdAt: "2026-05-10T09:00:00+07:00",
     updatedAt: "2026-07-01T09:00:00+07:00"
   },
   {
-    id: 2,
-    namaSupplier: "CV Medika Nusantara",
+    id: "s-2",
+    kode: "SUP-002",
+    nama: "CV Medika Nusantara",
     telepon: "02288997766",
     email: "admin@medikanusantara.id",
     alamat: "Jl. Pajajaran No. 22, Bandung",
     kontakPerson: "Maya Lestari",
     npwp: "02.345.678.9-012.000",
-    status: true,
+    tempoBayarHari: 14,
+    aktif: true,
     createdAt: "2026-05-11T09:00:00+07:00",
     updatedAt: "2026-07-01T09:00:00+07:00"
   }
@@ -78,81 +115,93 @@ export const suppliers: Supplier[] = [
 
 export const obat: Obat[] = [
   {
-    id: 1,
-    kodeObat: "OBT-0001",
-    namaObat: "Paracetamol 500mg",
-    kategoriId: 1,
-    supplierId: 1,
-    satuan: "tablet",
-    hargaBeli: 300,
-    hargaJual: 650,
+    id: "o-1",
+    kode: "OBT-0001",
+    nama: "Paracetamol 500mg",
+    kategoriId: "k-1",
+    kategoriNama: "Analgesik",
+    golonganId: "g-bebas",
+    golonganNama: "Obat Bebas",
+    satuanNama: "tablet",
     stokMinimum: 120,
+    stokMaksimum: 500,
     stokTersedia: 340,
     gambarUrl:
       "https://images.unsplash.com/photo-1584308666744-24d5c474f2ae?auto=format&fit=crop&w=800&q=80",
-    deskripsi: "Pereda demam dan nyeri ringan",
-    golongan: "bebas",
+    indikasi: "Pereda demam dan nyeri ringan",
+    perluBatch: true,
+    perluExpired: true,
     membutuhkanResep: false,
+    hargaAktif: { hargaBeli: 300, hargaJual: 650 },
     status: true,
     createdAt: "2026-06-01T08:00:00+07:00",
     updatedAt: "2026-07-07T08:00:00+07:00"
   },
   {
-    id: 2,
-    kodeObat: "OBT-0002",
-    namaObat: "Amoxicillin 500mg",
-    kategoriId: 2,
-    supplierId: 1,
-    satuan: "kapsul",
-    hargaBeli: 850,
-    hargaJual: 1500,
+    id: "o-2",
+    kode: "OBT-0002",
+    nama: "Amoxicillin 500mg",
+    kategoriId: "k-2",
+    kategoriNama: "Antibiotik",
+    golonganId: "g-keras",
+    golonganNama: "Obat Keras",
+    satuanNama: "kapsul",
     stokMinimum: 80,
+    stokMaksimum: 400,
     stokTersedia: 52,
     gambarUrl:
       "https://images.unsplash.com/photo-1471864190281-a93a3070b6de?auto=format&fit=crop&w=800&q=80",
-    deskripsi: "Antibiotik golongan penisilin",
-    golongan: "keras",
+    indikasi: "Antibiotik golongan penisilin",
+    perluBatch: true,
+    perluExpired: true,
     membutuhkanResep: true,
+    hargaAktif: { hargaBeli: 850, hargaJual: 1500 },
     status: true,
     createdAt: "2026-06-01T08:00:00+07:00",
     updatedAt: "2026-07-07T08:00:00+07:00"
   },
   {
-    id: 3,
-    kodeObat: "OBT-0003",
-    namaObat: "Vitamin C 500mg",
-    kategoriId: 3,
-    supplierId: 2,
-    satuan: "tablet",
-    hargaBeli: 600,
-    hargaJual: 1200,
+    id: "o-3",
+    kode: "OBT-0003",
+    nama: "Vitamin C 500mg",
+    kategoriId: "k-3",
+    kategoriNama: "Vitamin",
+    golonganId: "g-bebas",
+    golonganNama: "Obat Bebas",
+    satuanNama: "tablet",
     stokMinimum: 100,
+    stokMaksimum: 500,
     stokTersedia: 210,
     gambarUrl:
       "https://images.unsplash.com/photo-1550572017-edd951aa8f72?auto=format&fit=crop&w=800&q=80",
-    deskripsi: "Suplemen daya tahan tubuh",
-    golongan: "bebas",
+    indikasi: "Suplemen daya tahan tubuh",
+    perluBatch: true,
+    perluExpired: true,
     membutuhkanResep: false,
+    hargaAktif: { hargaBeli: 600, hargaJual: 1200 },
     status: true,
     createdAt: "2026-06-02T08:00:00+07:00",
     updatedAt: "2026-07-07T08:00:00+07:00"
   },
   {
-    id: 4,
-    kodeObat: "OBT-0004",
-    namaObat: "Ibuprofen 400mg",
-    kategoriId: 1,
-    supplierId: 2,
-    satuan: "tablet",
-    hargaBeli: 500,
-    hargaJual: 1000,
+    id: "o-4",
+    kode: "OBT-0004",
+    nama: "Ibuprofen 400mg",
+    kategoriId: "k-1",
+    kategoriNama: "Analgesik",
+    golonganId: "g-bebas-terbatas",
+    golonganNama: "Obat Bebas Terbatas",
+    satuanNama: "tablet",
     stokMinimum: 90,
+    stokMaksimum: 400,
     stokTersedia: 18,
     gambarUrl:
       "https://images.unsplash.com/photo-1576602975754-efdf313b9342?auto=format&fit=crop&w=800&q=80",
-    deskripsi: "Antiinflamasi non-steroid",
-    golongan: "bebas terbatas",
+    indikasi: "Antiinflamasi non-steroid",
+    perluBatch: true,
+    perluExpired: true,
     membutuhkanResep: false,
+    hargaAktif: { hargaBeli: 500, hargaJual: 1000 },
     status: true,
     createdAt: "2026-06-03T08:00:00+07:00",
     updatedAt: "2026-07-07T08:00:00+07:00"
@@ -161,61 +210,78 @@ export const obat: Obat[] = [
 
 export const pelanggan: Pelanggan[] = [
   {
-    id: 1,
+    id: "p-1",
+    kode: "PLG-0001",
     nama: "Siti Rahma",
     telepon: "081234567890",
     alamat: "Jl. Melati No. 3",
     tanggalLahir: "1992-03-14",
     jenisKelamin: "P",
-    noBpjs: "0001234567890",
-    noKtp: "3273015403920001",
-    alergi: "Penisilin",
+    catatanAlergi: "Penisilin",
+    member: true,
+    aktif: true,
     createdAt: "2026-06-10T10:00:00+07:00",
     updatedAt: "2026-07-01T10:00:00+07:00"
   },
   {
-    id: 2,
+    id: "p-2",
+    kode: "PLG-0002",
     nama: "Budi Santoso",
     telepon: "081298765432",
     alamat: "Jl. Kenanga No. 8",
     tanggalLahir: "1987-11-20",
     jenisKelamin: "L",
+    member: false,
+    aktif: true,
     createdAt: "2026-06-11T10:00:00+07:00",
     updatedAt: "2026-07-01T10:00:00+07:00"
   }
 ];
 
+export const dokterList: Dokter[] = [
+  {
+    id: "d-1",
+    kode: "DOK-0001",
+    nama: "dr. Andika Wijaya",
+    nomorSip: "SIP.445/2024",
+    aktif: true
+  }
+];
+
 export const stokBatches: StokBatch[] = [
   {
-    id: 1,
-    obatId: 1,
-    namaObat: "Paracetamol 500mg",
-    batchNumber: "B-PCT-0726",
+    id: "sb-1",
+    barangId: "o-1",
+    namaBarang: "Paracetamol 500mg",
+    nomorBatch: "B-PCT-0726",
     tanggalExpired: "2027-07-01",
-    jumlah: 340,
-    lokasi: "Rak A1",
+    qty: 340,
+    cabangId: defaultCabangId,
+    lokasiNama: "Rak A1",
     createdAt: "2026-07-01T08:00:00+07:00",
     updatedAt: "2026-07-07T08:00:00+07:00"
   },
   {
-    id: 2,
-    obatId: 2,
-    namaObat: "Amoxicillin 500mg",
-    batchNumber: "B-AMX-0127",
+    id: "sb-2",
+    barangId: "o-2",
+    namaBarang: "Amoxicillin 500mg",
+    nomorBatch: "B-AMX-0127",
     tanggalExpired: "2027-01-20",
-    jumlah: 52,
-    lokasi: "Rak B2",
+    qty: 52,
+    cabangId: defaultCabangId,
+    lokasiNama: "Rak B2",
     createdAt: "2026-07-01T08:00:00+07:00",
     updatedAt: "2026-07-07T08:00:00+07:00"
   },
   {
-    id: 3,
-    obatId: 4,
-    namaObat: "Ibuprofen 400mg",
-    batchNumber: "B-IBU-0826",
+    id: "sb-3",
+    barangId: "o-4",
+    namaBarang: "Ibuprofen 400mg",
+    nomorBatch: "B-IBU-0826",
     tanggalExpired: "2026-08-18",
-    jumlah: 18,
-    lokasi: "Rak A2",
+    qty: 18,
+    cabangId: defaultCabangId,
+    lokasiNama: "Rak A2",
     createdAt: "2026-07-01T08:00:00+07:00",
     updatedAt: "2026-07-07T08:00:00+07:00"
   }
@@ -223,29 +289,31 @@ export const stokBatches: StokBatch[] = [
 
 export const stokMutasi: StokMutasi[] = [
   {
-    id: 1,
-    obatId: 1,
-    namaObat: "Paracetamol 500mg",
+    id: "km-1",
+    cabangId: defaultCabangId,
+    barangId: "o-1",
+    namaBarang: "Paracetamol 500mg",
     tipeMutasi: "masuk",
-    jumlah: 200,
-    sumber: "pembelian",
-    referensiId: 1,
-    stokSebelum: 140,
-    stokSesudah: 340,
+    qtyMasuk: 200,
+    qtyKeluar: 0,
+    saldoAkhir: 340,
+    hargaPokok: 300,
+    sumberTabel: "faktur_pembelian",
     keterangan: "Penerimaan PO Juli",
     createdBy: currentUser.id,
     createdAt: "2026-07-07T08:35:00+07:00"
   },
   {
-    id: 2,
-    obatId: 4,
-    namaObat: "Ibuprofen 400mg",
+    id: "km-2",
+    cabangId: defaultCabangId,
+    barangId: "o-4",
+    namaBarang: "Ibuprofen 400mg",
     tipeMutasi: "keluar",
-    jumlah: 12,
-    sumber: "penjualan",
-    referensiId: 1,
-    stokSebelum: 30,
-    stokSesudah: 18,
+    qtyMasuk: 0,
+    qtyKeluar: 12,
+    saldoAkhir: 18,
+    hargaPokok: 500,
+    sumberTabel: "penjualan",
     keterangan: "Transaksi kasir",
     createdBy: currentUser.id,
     createdAt: "2026-07-07T10:12:00+07:00"
@@ -254,15 +322,17 @@ export const stokMutasi: StokMutasi[] = [
 
 export const pembelian: Pembelian[] = [
   {
-    id: 1,
-    nomorPembelian: "PBL-20260707-0001",
-    supplierId: 1,
+    id: "pb-1",
+    cabangId: defaultCabangId,
+    nomorFaktur: "FKT-0001",
+    nomorInternal: "PBL-20260707-0001",
+    supplierId: "s-1",
     namaSupplier: "PT Sehat Farma",
-    tanggalPembelian: "2026-07-07",
+    tanggalFaktur: "2026-07-07",
     subtotal: 230000,
-    diskon: 0,
-    pajak: 25300,
-    total: 255300,
+    diskonTotal: 0,
+    pajakTotal: 25300,
+    grandTotal: 255300,
     status: "diterima",
     catatan: "Restock awal bulan",
     createdBy: currentUser.id,
@@ -270,28 +340,32 @@ export const pembelian: Pembelian[] = [
     updatedAt: "2026-07-07T09:00:00+07:00",
     details: [
       {
-        id: 1,
-        pembelianId: 1,
-        obatId: 1,
-        namaObat: "Paracetamol 500mg",
+        id: "pbd-1",
+        pembelianId: "pb-1",
+        barangId: "o-1",
+        namaBarang: "Paracetamol 500mg",
         batchNumber: "B-PCT-0726",
         tanggalExpired: "2027-07-01",
         jumlah: 200,
         hargaBeli: 300,
-        diskon: 0,
-        subtotal: 60000
+        diskonPersen: 0,
+        diskonNominal: 0,
+        subtotal: 60000,
+        hargaPokok: 300
       },
       {
-        id: 2,
-        pembelianId: 1,
-        obatId: 2,
-        namaObat: "Amoxicillin 500mg",
+        id: "pbd-2",
+        pembelianId: "pb-1",
+        barangId: "o-2",
+        namaBarang: "Amoxicillin 500mg",
         batchNumber: "B-AMX-0127",
         tanggalExpired: "2027-01-20",
         jumlah: 200,
         hargaBeli: 850,
-        diskon: 0,
-        subtotal: 170000
+        diskonPersen: 0,
+        diskonNominal: 0,
+        subtotal: 170000,
+        hargaPokok: 850
       }
     ]
   }
@@ -299,41 +373,48 @@ export const pembelian: Pembelian[] = [
 
 export const penjualan: Penjualan[] = [
   {
-    id: 1,
-    nomorPenjualan: "PJL-20260707-0001",
-    pelangganId: 2,
+    id: "pj-1",
+    cabangId: defaultCabangId,
+    nomorInvoice: "PJL-20260707-0001",
+    pelangganId: "p-2",
     namaPelanggan: "Budi Santoso",
-    tanggalPenjualan: "2026-07-07T10:12:00+07:00",
+    tanggal: "2026-07-07T10:12:00+07:00",
+    tipePenjualan: "umum",
     subtotal: 19200,
-    diskon: 0,
-    pajak: 0,
-    total: 19200,
-    metodePembayaran: "tunai",
-    bayar: 20000,
+    diskonTotal: 0,
+    pajakTotal: 0,
+    grandTotal: 19200,
+    bayarTotal: 20000,
     kembalian: 800,
+    statusBayar: "lunas",
     status: "selesai",
+    metodePembayaran: "tunai",
     createdBy: currentUser.id,
     createdAt: "2026-07-07T10:12:00+07:00",
     details: [
       {
-        id: 1,
-        penjualanId: 1,
-        obatId: 1,
-        namaObat: "Paracetamol 500mg",
+        id: "pjd-1",
+        penjualanId: "pj-1",
+        barangId: "o-1",
+        namaBarang: "Paracetamol 500mg",
         jumlah: 12,
         hargaJual: 650,
-        diskon: 0,
-        subtotal: 7800
+        diskonPersen: 0,
+        diskonNominal: 0,
+        subtotal: 7800,
+        hargaPokok: 300
       },
       {
-        id: 2,
-        penjualanId: 1,
-        obatId: 4,
-        namaObat: "Ibuprofen 400mg",
+        id: "pjd-2",
+        penjualanId: "pj-1",
+        barangId: "o-4",
+        namaBarang: "Ibuprofen 400mg",
         jumlah: 12,
         hargaJual: 950,
-        diskon: 0,
-        subtotal: 11400
+        diskonPersen: 0,
+        diskonNominal: 0,
+        subtotal: 11400,
+        hargaPokok: 500
       }
     ]
   }
@@ -341,10 +422,11 @@ export const penjualan: Penjualan[] = [
 
 export const resep: Resep[] = [
   {
-    id: 1,
+    id: "r-1",
     nomorResep: "RSP-20260707-0001",
-    pelangganId: 1,
+    pelangganId: "p-1",
     namaPelanggan: "Siti Rahma",
+    dokterId: "d-1",
     namaDokter: "dr. Andika Wijaya",
     noSipDokter: "SIP.445/2024",
     asalPuskesmas: "Klinik Melati",
@@ -356,12 +438,13 @@ export const resep: Resep[] = [
     updatedAt: "2026-07-07T11:00:00+07:00",
     details: [
       {
-        id: 1,
-        resepId: 1,
-        obatId: 3,
-        namaObat: "Vitamin C 500mg",
+        id: "rd-1",
+        resepId: "r-1",
+        barangId: "o-3",
+        namaBarang: "Vitamin C 500mg",
         aturanPakai: "1x1 setelah makan",
-        jumlah: 10
+        jumlah: 10,
+        racikan: false
       }
     ]
   }
@@ -370,19 +453,23 @@ export const resep: Resep[] = [
 export const users: User[] = [
   {
     id: currentUser.id,
-    name: currentUser.name,
+    namaLengkap: currentUser.name,
     email: currentUser.email,
     role: "owner",
     status: true,
+    cabangIds: [defaultCabangId],
+    defaultCabangId,
     createdAt: "2026-06-01T08:00:00+07:00",
     updatedAt: "2026-07-01T08:00:00+07:00"
   },
   {
     id: "21bb6e22-2c0f-44ec-9b0e-931dbe64275b",
-    name: "Dimas Kasir",
+    namaLengkap: "Dimas Kasir",
     email: "kasir@apotek.local",
     role: "kasir",
     status: true,
+    cabangIds: [defaultCabangId],
+    defaultCabangId,
     createdAt: "2026-06-15T08:00:00+07:00",
     updatedAt: "2026-07-01T08:00:00+07:00"
   }
@@ -390,58 +477,67 @@ export const users: User[] = [
 
 export const notifikasi: Notifikasi[] = [
   {
-    id: 1,
+    id: "n-1",
+    cabangId: defaultCabangId,
     tipe: "stok_menipis",
     judul: "Stok Amoxicillin menipis",
     pesan: "Sisa 52 kapsul, di bawah minimum 80.",
-    referensiId: 2,
+    referensiTabel: "barang",
+    referensiId: "o-2",
     isRead: false,
     targetRole: "admin",
     createdAt: "2026-07-07T08:45:00+07:00"
   },
   {
-    id: 2,
+    id: "n-2",
+    cabangId: defaultCabangId,
     tipe: "obat_expired",
     judul: "Ibuprofen mendekati expired",
     pesan: "Batch B-IBU-0826 expired pada 18 Agustus 2026.",
-    referensiId: 3,
+    referensiTabel: "batch_barang",
+    referensiId: "sb-3",
     isRead: false,
     targetRole: "apoteker",
     createdAt: "2026-07-07T08:50:00+07:00"
   }
 ];
 
-export const settings: Setting[] = [
+export const settings: Pengaturan[] = [
   {
-    id: 1,
+    id: "st-1",
+    cabangId: defaultCabangId,
     key: "apotek_nama",
     value: "Apotek Ananda",
     group: "apotek",
     label: "Nama Apotek"
   },
   {
-    id: 2,
+    id: "st-2",
+    cabangId: defaultCabangId,
     key: "apotek_alamat",
     value: "Jl. Kesehatan No. 12, Jakarta",
     group: "apotek",
     label: "Alamat"
   },
   {
-    id: 3,
+    id: "st-3",
+    cabangId: defaultCabangId,
     key: "struk_footer",
     value: "Terima kasih, semoga lekas sehat.",
     group: "struk",
     label: "Footer Struk"
   },
   {
-    id: 4,
+    id: "st-4",
+    cabangId: defaultCabangId,
     key: "stok_minimum_default",
     value: "50",
     group: "stok",
     label: "Stok Minimum Default"
   },
   {
-    id: 5,
+    id: "st-5",
+    cabangId: defaultCabangId,
     key: "notifikasi_expired_hari",
     value: "60",
     group: "notifikasi",
@@ -455,7 +551,7 @@ export const dashboardSummary: DashboardSummary = {
   stokMenipis: obat.filter((item) => item.stokTersedia < item.stokMinimum)
     .length,
   obatExpired: stokBatches.filter(
-    (item) => new Date(item.tanggalExpired) < new Date("2026-09-07")
+    (item) => item.tanggalExpired && new Date(item.tanggalExpired) < new Date("2026-09-07")
   ).length,
   pembelianTerbaru: pembelian.length
 };
@@ -473,30 +569,30 @@ export const salesChart: ChartPoint[] = [
 export const reportRows: Record<string, ReportRow[]> = {
   penjualan: penjualan.map((item) => ({
     id: item.id,
-    tanggal: item.tanggalPenjualan,
-    referensi: item.nomorPenjualan,
-    kategori: item.metodePembayaran,
-    nilai: item.total,
+    tanggal: item.tanggal,
+    referensi: item.nomorInvoice,
+    kategori: item.metodePembayaran ?? "tunai",
+    nilai: item.grandTotal,
     status: item.status
   })),
   pembelian: pembelian.map((item) => ({
     id: item.id,
-    tanggal: item.tanggalPembelian,
-    referensi: item.nomorPembelian,
+    tanggal: item.tanggalFaktur,
+    referensi: item.nomorInternal,
     kategori: item.namaSupplier,
-    nilai: item.total,
+    nilai: item.grandTotal,
     status: item.status
   })),
   stok: stokBatches.map((item) => ({
     id: item.id,
-    tanggal: item.tanggalExpired,
-    referensi: item.batchNumber,
-    kategori: item.namaObat,
-    nilai: item.jumlah,
-    status: item.lokasi
+    tanggal: item.tanggalExpired ?? "",
+    referensi: item.nomorBatch,
+    kategori: item.namaBarang,
+    nilai: item.qty,
+    status: item.lokasiNama ?? ""
   })),
   "laba-rugi": salesChart.map((item, index) => ({
-    id: index + 1,
+    id: String(index + 1),
     tanggal: `2026-07-0${index + 1}`,
     referensi: item.label,
     kategori: "Laba kotor",

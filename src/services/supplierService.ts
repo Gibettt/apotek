@@ -4,24 +4,34 @@ import type { Supplier } from "@/types";
 import { delay, matchSearch, paginate, type ListParams } from "./serviceUtils";
 
 export interface SupplierInput {
-  namaSupplier: string;
+  kode?: string;
+  nama: string;
+  tipeSupplier?: string;
   telepon?: string;
   email?: string;
   alamat?: string;
+  kota?: string;
+  provinsi?: string;
   kontakPerson?: string;
   npwp?: string;
-  status?: boolean;
+  tempoBayarHari?: number;
+  aktif?: boolean;
 }
 
 interface SupplierRow {
-  id: number;
-  nama_supplier: string;
+  id: string;
+  kode: string;
+  nama: string;
+  tipe_supplier: string | null;
+  npwp: string | null;
   telepon: string | null;
   email: string | null;
   alamat: string | null;
-  kontak_person: string | null;
-  npwp: string | null;
-  status: boolean | null;
+  kota: string | null;
+  provinsi: string | null;
+  contact_person: string | null;
+  tempo_bayar_hari: number | null;
+  aktif: boolean | null;
   created_at: string | null;
   updated_at: string | null;
 }
@@ -29,13 +39,18 @@ interface SupplierRow {
 function toSupplier(row: SupplierRow): Supplier {
   return {
     id: row.id,
-    namaSupplier: row.nama_supplier,
+    kode: row.kode,
+    nama: row.nama,
+    tipeSupplier: row.tipe_supplier ?? undefined,
+    npwp: row.npwp ?? "",
     telepon: row.telepon ?? "",
     email: row.email ?? "",
     alamat: row.alamat ?? "",
-    kontakPerson: row.kontak_person ?? "",
-    npwp: row.npwp ?? "",
-    status: row.status ?? true,
+    kota: row.kota ?? undefined,
+    provinsi: row.provinsi ?? undefined,
+    kontakPerson: row.contact_person ?? "",
+    tempoBayarHari: row.tempo_bayar_hari ?? 0,
+    aktif: row.aktif ?? true,
     createdAt: row.created_at ?? "",
     updatedAt: row.updated_at ?? ""
   };
@@ -43,24 +58,24 @@ function toSupplier(row: SupplierRow): Supplier {
 
 function toSupplierRow(payload: SupplierInput) {
   return {
-    nama_supplier: payload.namaSupplier,
+    kode: payload.kode?.trim() || `SUP-${Date.now()}`,
+    nama: payload.nama,
+    tipe_supplier: payload.tipeSupplier ?? null,
     telepon: payload.telepon ?? "",
     email: payload.email ?? "",
     alamat: payload.alamat ?? "",
-    kontak_person: payload.kontakPerson ?? "",
+    kota: payload.kota ?? "",
+    provinsi: payload.provinsi ?? "",
+    contact_person: payload.kontakPerson ?? "",
     npwp: payload.npwp ?? "",
-    status: payload.status ?? true,
+    tempo_bayar_hari: payload.tempoBayarHari ?? 0,
+    aktif: payload.aktif ?? true,
     updated_at: new Date().toISOString()
   };
 }
 
 function filterSuppliers(rows: Supplier[], search?: string) {
-  return matchSearch(rows, search, [
-    "namaSupplier",
-    "telepon",
-    "email",
-    "kontakPerson"
-  ]);
+  return matchSearch(rows, search, ["nama", "telepon", "email", "kontakPerson"]);
 }
 
 export const supplierService = {
@@ -82,7 +97,7 @@ export const supplierService = {
     return paginate(rows, params);
   },
 
-  async getById(id: number) {
+  async getById(id: string) {
     if (!isSupabaseConfigured || !supabase) {
       return delay(suppliers.find((item) => item.id === id) ?? null);
     }
@@ -104,14 +119,19 @@ export const supplierService = {
     if (!isSupabaseConfigured || !supabase) {
       const now = new Date().toISOString();
       return delay({
-        id: Date.now(),
-        namaSupplier: payload.namaSupplier,
+        id: crypto.randomUUID(),
+        kode: payload.kode?.trim() || `SUP-${Date.now()}`,
+        nama: payload.nama,
+        tipeSupplier: payload.tipeSupplier,
         telepon: payload.telepon ?? "",
         email: payload.email ?? "",
         alamat: payload.alamat ?? "",
+        kota: payload.kota,
+        provinsi: payload.provinsi,
         kontakPerson: payload.kontakPerson ?? "",
         npwp: payload.npwp ?? "",
-        status: payload.status ?? true,
+        tempoBayarHari: payload.tempoBayarHari ?? 0,
+        aktif: payload.aktif ?? true,
         createdAt: now,
         updatedAt: now
       });
@@ -130,17 +150,22 @@ export const supplierService = {
     return toSupplier(data);
   },
 
-  async update(id: number, payload: SupplierInput) {
+  async update(id: string, payload: SupplierInput) {
     if (!isSupabaseConfigured || !supabase) {
       return delay({
         id,
-        namaSupplier: payload.namaSupplier,
+        kode: payload.kode?.trim() || `SUP-${Date.now()}`,
+        nama: payload.nama,
+        tipeSupplier: payload.tipeSupplier,
         telepon: payload.telepon ?? "",
         email: payload.email ?? "",
         alamat: payload.alamat ?? "",
+        kota: payload.kota,
+        provinsi: payload.provinsi,
         kontakPerson: payload.kontakPerson ?? "",
         npwp: payload.npwp ?? "",
-        status: payload.status ?? true,
+        tempoBayarHari: payload.tempoBayarHari ?? 0,
+        aktif: payload.aktif ?? true,
         createdAt: "",
         updatedAt: new Date().toISOString()
       });
