@@ -1,4 +1,4 @@
-import { golonganObat as localGolonganObat, defaultCabangId } from "@/lib/mock-data";
+import { golonganObat as localGolonganObat } from "@/lib/mock-data";
 import { resolveActivePrices, type ActivePrice } from "@/lib/pricing";
 import { isSupabaseConfigured, supabase } from "@/lib/supabase";
 import type { Obat } from "@/types";
@@ -27,7 +27,7 @@ export interface ObatInput {
   stokAwal?: number;
   batchNumber?: string;
   tanggalExpired?: string;
-  /** Branch used for the initial harga_barang/saldo_stok rows. Defaults to defaultCabangId. */
+  /** Branch used for the initial harga_barang/saldo_stok rows. Defaults to the first active branch. */
   cabangId?: string;
 }
 
@@ -67,6 +67,54 @@ interface SaldoStokRow {
 type GolonganLookup = Record<string, { nama: string; butuhResep: boolean }>;
 
 const localObat: ObatListItem[] = [];
+
+function toObatErrorMessage(error: { message?: string; code?: string }) {
+  if (
+    error.code === "23505" ||
+    error.message?.includes("barang_kode_key") ||
+    error.message?.includes("duplicate key")
+  ) {
+    return "Kode obat sudah digunakan. Pakai kode lain atau edit data obat yang sudah ada.";
+  }
+
+  return error.message ?? "Gagal menyimpan obat";
+}
+
+async function resolveCabangId(cabangId?: string) {
+  if (cabangId || !supabase) {
+    return cabangId;
+  }
+
+  const { data, error } = await supabase
+    .from("cabang")
+    .select("id")
+    .eq("aktif", true)
+    .order("created_at", { ascending: true })
+    .limit(1)
+    .maybeSingle();
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  if (!data?.id) {
+    throw new Error("Cabang aktif belum tersedia. Tambahkan cabang terlebih dahulu.");
+  }
+
+  return data.id as string;
+}
+
+async function cleanupCreatedObat(barangId: string) {
+  if (!supabase) {
+    return;
+  }
+
+  await supabase.from("kartu_stok").delete().eq("barang_id", barangId);
+  await supabase.from("saldo_stok").delete().eq("barang_id", barangId);
+  await supabase.from("harga_barang").delete().eq("barang_id", barangId);
+  await supabase.from("batch_barang").delete().eq("barang_id", barangId);
+  await supabase.from("barang").delete().eq("id", barangId);
+}
 
 function resolveMembutuhkanResepLocal(golonganId?: string) {
   if (!golonganId) {
@@ -429,6 +477,8 @@ export const obatService = {
       return created;
     }
 
+    const effectiveCabangId = await resolveCabangId(payload.cabangId);
+
     const { data, error } = await supabase
       .from("barang")
       .insert(toObatRow(payload))
@@ -436,93 +486,97 @@ export const obatService = {
       .single();
 
     if (error) {
-      throw new Error(error.message);
+      throw new Error(toObatErrorMessage(error));
     }
 
-    if (payload.hargaBeli !== undefined || payload.hargaJual !== undefined) {
-      await upsertHargaJual(
-        data.id,
-        payload.cabangId,
-        payload.hargaBeli ?? 0,
-        payload.hargaJual ?? 0
-      );
-    }
-
-    const stokAwal = Number(payload.stokAwal ?? 0);
-
-    if (stokAwal > 0) {
-      const effectiveCabangId = payload.cabangId || defaultCabangId;
-      const nomorBatch = payload.batchNumber?.trim() || `AWAL-${data.kode}`;
-      const batchId = await findOrCreateBatch(
-        data.id,
-        payload.supplierId,
-        nomorBatch,
-        payload.tanggalExpired
-      );
-
-      const { data: existingSaldo, error: findSaldoError } = await supabase
-        .from("saldo_stok")
-        .select("id,qty")
-        .eq("cabang_id", effectiveCabangId)
-        .eq("barang_id", data.id)
-        .eq("batch_id", batchId)
-        .maybeSingle();
-
-      if (findSaldoError) {
-        throw new Error(findSaldoError.message);
+    try {
+      if (payload.hargaBeli !== undefined || payload.hargaJual !== undefined) {
+        await upsertHargaJual(
+          data.id,
+          effectiveCabangId,
+          payload.hargaBeli ?? 0,
+          payload.hargaJual ?? 0
+        );
       }
 
-      let saldoAkhir = stokAwal;
+      const stokAwal = Number(payload.stokAwal ?? 0);
 
-      if (existingSaldo) {
-        saldoAkhir = Number(existingSaldo.qty ?? 0) + stokAwal;
-        const { error: updateError } = await supabase
+      if (stokAwal > 0) {
+        const nomorBatch = payload.batchNumber?.trim() || `AWAL-${data.kode}`;
+        const batchId = await findOrCreateBatch(
+          data.id,
+          payload.supplierId,
+          nomorBatch,
+          payload.tanggalExpired
+        );
+
+        const { data: existingSaldo, error: findSaldoError } = await supabase
           .from("saldo_stok")
-          .update({ qty: saldoAkhir, updated_at: new Date().toISOString() })
-          .eq("id", existingSaldo.id);
+          .select("id,qty")
+          .eq("cabang_id", effectiveCabangId)
+          .eq("barang_id", data.id)
+          .eq("batch_id", batchId)
+          .maybeSingle();
 
-        if (updateError) {
-          throw new Error(updateError.message);
+        if (findSaldoError) {
+          throw new Error(findSaldoError.message);
         }
-      } else {
-        const { error: insertSaldoError } = await supabase.from("saldo_stok").insert({
+
+        let saldoAkhir = stokAwal;
+
+        if (existingSaldo) {
+          saldoAkhir = Number(existingSaldo.qty ?? 0) + stokAwal;
+          const { error: updateError } = await supabase
+            .from("saldo_stok")
+            .update({ qty: saldoAkhir, updated_at: new Date().toISOString() })
+            .eq("id", existingSaldo.id);
+
+          if (updateError) {
+            throw new Error(updateError.message);
+          }
+        } else {
+          const { error: insertSaldoError } = await supabase.from("saldo_stok").insert({
+            cabang_id: effectiveCabangId,
+            barang_id: data.id,
+            batch_id: batchId,
+            qty: stokAwal
+          });
+
+          if (insertSaldoError) {
+            throw new Error(insertSaldoError.message);
+          }
+        }
+
+        const { error: kartuError } = await supabase.from("kartu_stok").insert({
           cabang_id: effectiveCabangId,
           barang_id: data.id,
           batch_id: batchId,
-          qty: stokAwal
+          tipe_mutasi: "masuk",
+          sumber_tabel: "barang",
+          sumber_id: data.id,
+          qty_masuk: stokAwal,
+          qty_keluar: 0,
+          saldo_akhir: saldoAkhir,
+          harga_pokok: payload.hargaBeli ?? 0,
+          keterangan: `Stok awal ${data.kode}`
         });
 
-        if (insertSaldoError) {
-          throw new Error(insertSaldoError.message);
+        if (kartuError) {
+          throw new Error(kartuError.message);
         }
       }
 
-      const { error: kartuError } = await supabase.from("kartu_stok").insert({
-        cabang_id: effectiveCabangId,
-        barang_id: data.id,
-        batch_id: batchId,
-        tipe_mutasi: "masuk",
-        sumber_tabel: "barang",
-        sumber_id: data.id,
-        qty_masuk: stokAwal,
-        qty_keluar: 0,
-        saldo_akhir: saldoAkhir,
-        harga_pokok: payload.hargaBeli ?? 0,
-        keterangan: `Stok awal ${data.kode}`
-      });
+      const created = await this.getById(data.id, effectiveCabangId);
 
-      if (kartuError) {
-        throw new Error(kartuError.message);
+      if (!created) {
+        throw new Error("Obat berhasil dibuat, tetapi data tidak dapat dimuat ulang");
       }
+
+      return created;
+    } catch (createError) {
+      await cleanupCreatedObat(data.id);
+      throw createError;
     }
-
-    const created = await this.getById(data.id, payload.cabangId);
-
-    if (!created) {
-      throw new Error("Obat berhasil dibuat, tetapi data tidak dapat dimuat ulang");
-    }
-
-    return created;
   },
 
   async update(id: string, payload: ObatInput): Promise<ObatListItem | null> {
@@ -593,6 +647,15 @@ export const obatService = {
       return { id, success: true };
     }
 
+    const { error: kartuError } = await supabase
+      .from("kartu_stok")
+      .delete()
+      .eq("barang_id", id);
+
+    if (kartuError) {
+      throw new Error(kartuError.message);
+    }
+
     const { error: saldoError } = await supabase
       .from("saldo_stok")
       .delete()
@@ -600,6 +663,24 @@ export const obatService = {
 
     if (saldoError) {
       throw new Error(saldoError.message);
+    }
+
+    const { error: hargaError } = await supabase
+      .from("harga_barang")
+      .delete()
+      .eq("barang_id", id);
+
+    if (hargaError) {
+      throw new Error(hargaError.message);
+    }
+
+    const { error: batchError } = await supabase
+      .from("batch_barang")
+      .delete()
+      .eq("barang_id", id);
+
+    if (batchError) {
+      throw new Error(batchError.message);
     }
 
     const { error } = await supabase.from("barang").delete().eq("id", id);
