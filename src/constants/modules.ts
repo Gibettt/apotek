@@ -83,6 +83,8 @@ export interface ModuleConfig {
   basePath: string;
   addPath?: string;
   load: () => Promise<ModuleRecord[]>;
+  create?: (payload: ModuleRecord) => Promise<ModuleRecord | null | void>;
+  update?: (id: string, payload: ModuleRecord, record?: ModuleRecord) => Promise<ModuleRecord | null | void>;
   columns: ColumnConfig[];
   fields: FieldConfig[];
   detailTitleKey?: string;
@@ -177,6 +179,7 @@ export const moduleConfigs = {
       const result = await kategoriService.list(LOAD_ALL);
       return result.data.map((item) => ({
         id: item.id,
+        kode: item.kode,
         nama: item.nama,
         deskripsi: item.deskripsi ?? "-",
         updatedAt: item.updatedAt
@@ -187,7 +190,40 @@ export const moduleConfigs = {
       { key: "deskripsi", header: "Deskripsi" },
       { key: "updatedAt", header: "Update", type: "date" }
     ],
+    create: async (payload) => {
+      const created = await kategoriService.create({
+        kode: String(payload.kode ?? "").trim() || undefined,
+        nama: String(payload.nama ?? ""),
+        deskripsi: String(payload.deskripsi ?? "").trim() || undefined
+      });
+
+      return {
+        id: created.id,
+        kode: created.kode,
+        nama: created.nama,
+        deskripsi: created.deskripsi ?? "-",
+        updatedAt: created.updatedAt
+      };
+    },
+    update: async (id, payload, record) => {
+      const updated = await kategoriService.update(id, {
+        kode: String(payload.kode ?? record?.kode ?? "").trim() || undefined,
+        nama: String(payload.nama ?? record?.nama ?? ""),
+        deskripsi: String(payload.deskripsi ?? "").trim() || undefined
+      });
+
+      return updated
+        ? {
+            id: updated.id,
+            kode: updated.kode,
+            nama: updated.nama,
+            deskripsi: updated.deskripsi ?? "-",
+            updatedAt: updated.updatedAt
+          }
+        : null;
+    },
     fields: [
+      { name: "kode", label: "Kode Kategori", type: "text" },
       { name: "nama", label: "Nama Kategori", type: "text" },
       { name: "deskripsi", label: "Deskripsi", type: "textarea" }
     ],
@@ -344,8 +380,8 @@ export const moduleConfigs = {
   },
   penjualan: {
     key: "penjualan",
-    title: "Penjualan",
-    description: "Riwayat transaksi kasir, pembayaran, kembalian, dan status.",
+    title: "Riwayat Transaksi",
+    description: "Riwayat transaksi penjualan, pembayaran, kembalian, dan status.",
     basePath: "/penjualan",
     load: async () => {
       const result = await penjualanService.list(LOAD_ALL);

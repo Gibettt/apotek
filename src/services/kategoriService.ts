@@ -4,7 +4,7 @@ import type { KategoriBarang } from "@/types";
 import { delay, matchSearch, paginate, type ListParams } from "./serviceUtils";
 
 export interface KategoriBarangInput {
-  kode: string;
+  kode?: string;
   nama: string;
   deskripsi?: string;
   aktif?: boolean;
@@ -13,6 +13,17 @@ export interface KategoriBarangInput {
 export interface MasterOption {
   id: string;
   label: string;
+}
+
+function generateKategoriKode(nama?: string) {
+  const normalized = String(nama ?? "")
+    .trim()
+    .toUpperCase()
+    .replace(/[^A-Z0-9]+/g, "_")
+    .replace(/^_+|_+$/g, "")
+    .slice(0, 24);
+
+  return `KAT_${normalized || Date.now()}`;
 }
 
 interface KategoriBarangRow {
@@ -38,13 +49,18 @@ function toKategoriBarang(row: KategoriBarangRow): KategoriBarang {
 }
 
 function toKategoriBarangRow(payload: KategoriBarangInput) {
-  return {
-    kode: payload.kode,
+  const row: Record<string, string | boolean> = {
     nama: payload.nama,
     deskripsi: payload.deskripsi ?? "",
     aktif: payload.aktif ?? true,
     updated_at: new Date().toISOString()
   };
+
+  if (payload.kode !== undefined) {
+    row.kode = payload.kode;
+  }
+
+  return row;
 }
 
 function filterKategori(rows: KategoriBarang[], search?: string) {
@@ -93,14 +109,19 @@ export const kategoriService = {
   },
 
   async create(payload: KategoriBarangInput): Promise<KategoriBarang> {
+    const normalizedPayload = {
+      ...payload,
+      kode: payload.kode?.trim() || generateKategoriKode(payload.nama)
+    };
+
     if (!isSupabaseConfigured || !supabase) {
       const now = new Date().toISOString();
       return delay({
         id: `local-${Date.now()}`,
-        kode: payload.kode,
-        nama: payload.nama,
-        deskripsi: payload.deskripsi,
-        aktif: payload.aktif ?? true,
+        kode: normalizedPayload.kode,
+        nama: normalizedPayload.nama,
+        deskripsi: normalizedPayload.deskripsi,
+        aktif: normalizedPayload.aktif ?? true,
         createdAt: now,
         updatedAt: now
       });
@@ -108,7 +129,7 @@ export const kategoriService = {
 
     const { data, error } = await supabase
       .from("kategori_barang")
-      .insert(toKategoriBarangRow(payload))
+      .insert(toKategoriBarangRow(normalizedPayload))
       .select("*")
       .single();
 
@@ -121,7 +142,21 @@ export const kategoriService = {
 
   async update(id: string, payload: KategoriBarangInput): Promise<KategoriBarang | null> {
     if (!isSupabaseConfigured || !supabase) {
-      return delay(null);
+      const index = localKategoriBarang.findIndex((item) => item.id === id);
+      if (index === -1) {
+        return delay(null);
+      }
+
+      localKategoriBarang[index] = {
+        ...localKategoriBarang[index],
+        kode: payload.kode ?? localKategoriBarang[index].kode,
+        nama: payload.nama,
+        deskripsi: payload.deskripsi,
+        aktif: payload.aktif ?? localKategoriBarang[index].aktif,
+        updatedAt: new Date().toISOString()
+      };
+
+      return delay(localKategoriBarang[index]);
     }
 
     const { data, error } = await supabase

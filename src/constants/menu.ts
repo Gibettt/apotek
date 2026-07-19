@@ -23,7 +23,7 @@ export const menuGroups: MenuGroup[] = [
         roles: ["owner", "admin", "apoteker", "kasir"]
       },
       {
-        label: "Kasir",
+        label: "Penjualan",
         href: "/penjualan/kasir",
         icon: "ShoppingCart",
         roles: ["kasir", "admin", "owner"]
@@ -81,7 +81,7 @@ export const menuGroups: MenuGroup[] = [
         roles: ["owner", "admin"]
       },
       {
-        label: "Penjualan",
+        label: "Riwayat Transaksi",
         href: "/penjualan",
         icon: "ReceiptText",
         roles: ["owner", "admin", "kasir"]

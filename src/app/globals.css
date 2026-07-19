@@ -21,6 +21,12 @@ body {
   color: #0f172a;
 }
 
+html:has(.dashboard-app-shell),
+body:has(.dashboard-app-shell) {
+  height: 100%;
+  overflow: hidden;
+}
+
 button,
 input,
 select,
@@ -30,9 +36,14 @@ textarea {
 
 .dashboard-app-shell {
   display: flex;
-  min-height: 100dvh;
+  height: 100%;
   overflow: hidden;
   background: #fbfcfb;
+}
+
+.dashboard-content {
+  height: 100%;
+  overflow-y: auto;
 }
 
 .dashboard-page {

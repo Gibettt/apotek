@@ -16,7 +16,6 @@ interface PenjualanRow {
   cabang_id: string | null;
   shift_kasir_id: string | null;
   pelanggan_id: string | null;
-  resep_id: string | null;
   nomor_invoice: string;
   tanggal: string | null;
   tipe_penjualan: string | null;
@@ -58,6 +57,46 @@ interface CheckoutPayload {
 }
 
 const localPenjualan: Penjualan[] = [...initialPenjualan];
+
+async function resolveCabangId(cabangId?: string) {
+  if (!supabase) {
+    return cabangId || defaultCabangId;
+  }
+
+  if (cabangId) {
+    const { data, error } = await supabase
+      .from("cabang")
+      .select("id")
+      .eq("id", cabangId)
+      .maybeSingle();
+
+    if (error) {
+      throw new Error(error.message);
+    }
+
+    if (data?.id) {
+      return data.id as string;
+    }
+  }
+
+  const { data, error } = await supabase
+    .from("cabang")
+    .select("id")
+    .eq("aktif", true)
+    .order("created_at", { ascending: true })
+    .limit(1)
+    .maybeSingle();
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  if (!data?.id) {
+    throw new Error("Cabang aktif belum tersedia. Tambahkan cabang terlebih dahulu.");
+  }
+
+  return data.id as string;
+}
 
 function generateNomorInvoice(date = new Date()) {
   const stamp = date.toISOString().slice(0, 10).replace(/-/g, "");
@@ -164,7 +203,6 @@ function toPenjualan(
     nomorInvoice: row.nomor_invoice,
     pelangganId,
     namaPelanggan: pelangganId ? pelangganById[pelangganId] ?? "Pelanggan" : "Umum",
-    resepId: row.resep_id ?? undefined,
     tanggal: row.tanggal ?? row.created_at ?? "",
     tipePenjualan: row.tipe_penjualan ?? "umum",
     subtotal: Number(row.subtotal ?? 0),
@@ -407,7 +445,7 @@ export const penjualanService = {
       return localCheckout(payload);
     }
 
-    const cabangId = payload.cabangId || defaultCabangId;
+    const cabangId = await resolveCabangId(payload.cabangId);
     const barangIds = payload.items.map((item) => item.barangId);
     const hargaByBarang = await resolveActivePrices(barangIds, cabangId);
 
@@ -428,7 +466,6 @@ export const penjualanService = {
       .insert({
         cabang_id: cabangId,
         pelanggan_id: payload.pelangganId || null,
-        resep_id: payload.resepId || null,
         nomor_invoice: nomorInvoice,
         tanggal: now,
         tipe_penjualan: payload.tipePenjualan ?? "umum",

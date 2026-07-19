@@ -5,6 +5,14 @@ import { ChevronRight, Home } from "lucide-react";
 import { usePathname } from "next/navigation";
 
 function segmentLabel(segment: string) {
+  if (segment === "penjualan") {
+    return "Riwayat Transaksi";
+  }
+
+  if (segment === "kasir") {
+    return "Penjualan";
+  }
+
   return decodeURIComponent(segment)
     .replaceAll("-", " ")
     .replaceAll("[id]", "detail")

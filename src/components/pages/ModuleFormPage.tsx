@@ -91,15 +91,32 @@ export function ModuleFormPage({
 }) {
   const router = useRouter();
   const values = useMemo(() => defaultValues(config.fields, record), [config.fields, record]);
-  const { register, handleSubmit } = useForm({ values });
+  const {
+    register,
+    handleSubmit,
+    formState: { isSubmitting }
+  } = useForm({ values });
 
-  function onSubmit() {
-    toast.success(
-      mode === "edit"
-        ? `${config.title} berhasil diperbarui`
-        : `${config.title} berhasil disimpan`
-    );
-    router.push(config.basePath);
+  async function onSubmit(values: Record<string, string | number | boolean>) {
+    try {
+      if (mode === "edit" && record?.id && config.update) {
+        await config.update(String(record.id), values, record);
+      } else if (mode !== "edit" && config.create) {
+        await config.create(values);
+      }
+
+      toast.success(
+        mode === "edit"
+          ? `${config.title} berhasil diperbarui`
+          : `${config.title} berhasil disimpan`
+      );
+      router.push(config.basePath);
+      router.refresh();
+    } catch (error) {
+      toast.error(
+        error instanceof Error ? error.message : `Gagal menyimpan ${config.title.toLowerCase()}`
+      );
+    }
   }
 
   return (
@@ -125,7 +142,7 @@ export function ModuleFormPage({
               ))}
             </div>
             <div className="flex justify-end">
-              <Button type="submit">
+              <Button type="submit" isLoading={isSubmitting}>
                 <Save className="h-4 w-4" />
                 Simpan
               </Button>

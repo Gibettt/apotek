@@ -16,7 +16,7 @@ export default function KasirPage() {
   return (
     <>
       <Header
-        title="Kasir POS"
+        title="Penjualan"
         description="Transaksi penjualan tanpa resep dengan keranjang, pembayaran, dan struk."
       />
       <section className="grid gap-5 xl:grid-cols-[minmax(0,1.45fr)_minmax(360px,.85fr)]">

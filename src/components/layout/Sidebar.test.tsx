@@ -11,7 +11,8 @@ describe("Sidebar", () => {
     render(<Sidebar />);
 
     expect(screen.getAllByRole("link", { name: "Overview" })).toHaveLength(1);
-    expect(screen.getAllByRole("link", { name: "Kasir" })).toHaveLength(1);
+    expect(screen.getAllByRole("link", { name: "Penjualan" })).toHaveLength(1);
+    expect(screen.getAllByRole("link", { name: "Riwayat Transaksi" })).toHaveLength(1);
     expect(screen.getByText("Operasional")).toBeInTheDocument();
   });
 

@@ -42,8 +42,8 @@ const menuGroups = [
   {
     label: "Operasional",
     items: [
-      { label: "Kasir", href: "/penjualan/kasir", icon: ShoppingCart },
-      { label: "Penjualan", href: "/penjualan", icon: ReceiptText },
+      { label: "Penjualan", href: "/penjualan/kasir", icon: ShoppingCart },
+      { label: "Riwayat Transaksi", href: "/penjualan", icon: ReceiptText },
       { label: "Pembelian", href: "/pembelian", icon: Package },
       { label: "Resep", href: "/resep", icon: ClipboardList },
       { label: "Stok", href: "/stok", icon: Boxes }

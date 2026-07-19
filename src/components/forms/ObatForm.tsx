@@ -109,7 +109,7 @@ export function ObatForm({ record }: { record?: ObatListItem | null }) {
           toast.error(
             error instanceof Error
               ? error.message
-              : "Gagal memuat master data obat"
+              : "Gagal memuat master data barang"
           );
         }
       } finally {
@@ -149,17 +149,17 @@ export function ObatForm({ record }: { record?: ObatListItem | null }) {
     try {
       if (isEdit && record?.id) {
         await obatService.update(record.id, payload);
-        toast.success("Obat berhasil diperbarui di Supabase");
+        toast.success("Barang berhasil diperbarui di Supabase");
       } else {
         await obatService.create(payload);
-        toast.success("Obat berhasil ditambahkan ke Supabase");
+        toast.success("Barang berhasil ditambahkan ke Supabase");
       }
 
       router.push("/obat");
       router.refresh();
     } catch (error) {
       toast.error(
-        error instanceof Error ? error.message : "Gagal menyimpan obat"
+        error instanceof Error ? error.message : "Gagal menyimpan barang"
       );
     }
   }
@@ -167,8 +167,8 @@ export function ObatForm({ record }: { record?: ObatListItem | null }) {
   return (
     <>
       <Header
-        title={isEdit ? "Edit Obat" : "Tambah Obat"}
-        description="Simpan data obat langsung ke Supabase. Stok awal akan dicatat sebagai batch stok pertama."
+        title={isEdit ? "Edit Barang" : "Tambah Barang"}
+        description="Simpan data barang langsung ke Supabase. Stok awal akan dicatat sebagai batch stok pertama."
         action={
           <Link
             href="/obat"
@@ -187,7 +187,7 @@ export function ObatForm({ record }: { record?: ObatListItem | null }) {
           </span>
           <div>
             <h2 className="text-lg font-black text-[#20201d]">
-              Informasi Obat
+              Informasi Barang
             </h2>
             <p className="mt-1 text-sm font-semibold leading-6 text-stone-500">
               Data dummy tidak dipakai lagi. Semua data pada form ini tersimpan
@@ -199,16 +199,16 @@ export function ObatForm({ record }: { record?: ObatListItem | null }) {
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
           <div className="grid gap-4 md:grid-cols-2">
             <Input
-              label="Kode Obat"
+              label="Kode Barang"
               placeholder="OBT-0001"
               error={errors.kode?.message}
-              {...register("kode", { required: "Kode obat wajib diisi" })}
+              {...register("kode", { required: "Kode barang wajib diisi" })}
             />
             <Input
-              label="Nama Obat"
+              label="Nama Barang"
               placeholder="Paracetamol 500mg"
               error={errors.nama?.message}
-              {...register("nama", { required: "Nama obat wajib diisi" })}
+              {...register("nama", { required: "Nama barang wajib diisi" })}
             />
             <Select
               label="Kategori"
@@ -281,20 +281,11 @@ export function ObatForm({ record }: { record?: ObatListItem | null }) {
               Aktif
             </label>
             <label className="grid gap-1.5 text-sm font-medium text-slate-700 md:col-span-2">
-              <span>Komposisi</span>
-              <textarea
-                rows={3}
-                className="rounded-md border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 outline-none transition focus:border-brand-600 focus:ring-2 focus:ring-brand-100"
-                placeholder="Kandungan bahan aktif"
-                {...register("komposisi")}
-              />
-            </label>
-            <label className="grid gap-1.5 text-sm font-medium text-slate-700 md:col-span-2">
               <span>Indikasi</span>
               <textarea
                 rows={3}
                 className="rounded-md border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 outline-none transition focus:border-brand-600 focus:ring-2 focus:ring-brand-100"
-                placeholder="Kegunaan obat"
+                placeholder="Kegunaan barang"
                 {...register("indikasi")}
               />
             </label>

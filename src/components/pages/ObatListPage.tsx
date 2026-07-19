@@ -6,13 +6,10 @@ import {
   AlertTriangle,
   Boxes,
   Eye,
-  PackageCheck,
   Pencil,
   Pill,
   Plus,
   Search,
-  ShieldCheck,
-  Stethoscope,
   Trash2
 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
@@ -251,20 +248,18 @@ export function ObatListPage() {
   }, [page, search]);
 
   const stats = useMemo(() => {
-    const activeItems = rows.filter((item) => item.status).length;
     const lowItems = rows.filter(
       (item) => item.stokTersedia < item.stokMinimum
     ).length;
-    const recipeItems = rows.filter((item) => item.membutuhkanResep).length;
 
-    return { activeItems, lowItems, recipeItems };
+    return { lowItems };
   }, [rows]);
 
   return (
     <>
       <Header
-        title="Stok Obat"
-        description="Daftar obat dengan harga, stok, kategori, supplier, dan status resep."
+        title="Stok Barang"
+        description="Daftar barang dengan harga, stok, kategori, supplier, dan status resep."
         action={
           <Link
             href="/obat/tambah"
@@ -277,11 +272,9 @@ export function ObatListPage() {
       />
 
       <section className="rounded-lg bg-white p-5 shadow-[0_24px_70px_rgba(25,24,21,.08)]">
-        <div className="grid gap-3 md:grid-cols-4">
-          <StockStat label="Total obat" value={total} icon={Boxes} />
-          <StockStat label="Obat aktif" value={stats.activeItems} icon={PackageCheck} />
+        <div className="grid gap-3 md:grid-cols-2">
+          <StockStat label="Total barang" value={total} icon={Boxes} />
           <StockStat label="Stok menipis" value={stats.lowItems} icon={AlertTriangle} />
-          <StockStat label="Butuh resep" value={stats.recipeItems} icon={Stethoscope} />
         </div>
 
         <div className="mt-5 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
@@ -293,13 +286,13 @@ export function ObatListPage() {
                 setSearch(event.target.value);
                 setPage(1);
               }}
-              placeholder="Cari obat, kode, satuan, golongan..."
+              placeholder="Cari barang, kode, satuan, golongan..."
               className="h-11 w-full rounded-lg border border-stone-200 bg-white pl-10 pr-4 text-sm font-semibold text-stone-700 outline-none transition placeholder:text-stone-400 focus:border-[#ff6a3d] focus:ring-4 focus:ring-[#ff6a3d]/10"
             />
           </div>
 
           <p className="text-sm font-semibold text-stone-500">
-            {total} item obat ditemukan
+            {total} item barang ditemukan
           </p>
         </div>
 
@@ -308,7 +301,7 @@ export function ObatListPage() {
             <table className="min-w-full text-left text-sm">
               <thead className="bg-[#f8f7f3] text-xs font-black uppercase text-stone-500">
                 <tr>
-                  <th className="px-5 py-4">Obat</th>
+                  <th className="px-5 py-4">Barang</th>
                   <th className="px-5 py-4">Kategori</th>
                   <th className="px-5 py-4">Stok</th>
                   <th className="px-5 py-4">Harga</th>
@@ -340,7 +333,7 @@ export function ObatListPage() {
                       colSpan={6}
                       className="px-5 py-12 text-center text-sm font-semibold text-stone-500"
                     >
-                      Belum ada obat yang cocok.
+                      Belum ada barang yang cocok.
                     </td>
                   </tr>
                 )}

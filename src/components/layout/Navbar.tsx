@@ -10,11 +10,23 @@ import { cn } from "@/utils/cn";
 
 const mobileItems = [
   { label: "Overview", href: "/dashboard" },
-  { label: "Kasir", href: "/penjualan/kasir" },
+  { label: "Penjualan", href: "/penjualan/kasir" },
   { label: "Obat", href: "/obat" },
   { label: "Resep", href: "/resep" },
   { label: "Laporan", href: "/laporan/penjualan" }
 ];
+
+function resolvePageLabel(pathname: string) {
+  if (pathname === "/penjualan") {
+    return "Riwayat Transaksi";
+  }
+
+  if (pathname === "/penjualan/kasir") {
+    return "Penjualan";
+  }
+
+  return pathname.split("/").filter(Boolean).at(-1)?.replace(/-/g, " ") ?? "Overview";
+}
 
 export function Navbar() {
   const pathname = usePathname();
@@ -22,7 +34,7 @@ export function Navbar() {
   const { unreadCount } = useNotifikasi();
   const { activeCabangId, availableCabang, isAllBranches, setActiveCabang } = useCabang();
   const notifications = unreadCount();
-  const currentPage = pathname === "/dashboard" ? "Overview" : pathname.split("/").filter(Boolean).at(-1)?.replace(/-/g, " ") ?? "Overview";
+  const currentPage = pathname === "/dashboard" ? "Overview" : resolvePageLabel(pathname);
   const showAllBranchesOption = user?.role === "owner";
 
   return (
