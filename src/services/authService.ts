@@ -96,6 +96,11 @@ export const authService = {
       throw new Error("Akun ditemukan di Supabase Auth, tetapi data pengguna tidak terdaftar.");
     }
 
+    await supabase
+      .from("pengguna")
+      .update({ last_login_at: new Date().toISOString() })
+      .eq("id", user.id);
+
     return {
       accessToken: data.session.access_token,
       user

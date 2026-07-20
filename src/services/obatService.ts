@@ -6,11 +6,18 @@ import { paginate, type ListParams } from "./serviceUtils";
 
 export interface ObatInput {
   kode: string;
+  barcodeDefault?: string;
   nama: string;
   namaGenerik?: string;
   kategoriId?: string;
+  jenisId?: string;
   golonganId?: string;
+  pabrikId?: string;
+  principalId?: string;
   satuanDefaultId?: string;
+  satuanBeliId?: string;
+  satuanJualId?: string;
+  lokasiDefaultId?: string;
   /** Only used to tag the initial batch_barang row's supplier_id when seeding stock. */
   supplierId?: string;
   hargaBeli?: number;
@@ -41,11 +48,18 @@ export interface MasterOption {
 interface BarangRow {
   id: string;
   kode: string;
+  barcode_default: string | null;
   nama: string;
   nama_generik: string | null;
   kategori_id: string | null;
+  jenis_id: string | null;
   golongan_id: string | null;
+  pabrik_id: string | null;
+  principal_id: string | null;
   satuan_default_id: string | null;
+  satuan_beli_id: string | null;
+  satuan_jual_id: string | null;
+  lokasi_default_id: string | null;
   stok_minimum: number | null;
   stok_maksimum: number | null;
   gambar_url: string | null;
@@ -129,11 +143,18 @@ function resolveMembutuhkanResepLocal(golonganId?: string) {
 function toObatRow(payload: ObatInput) {
   return {
     kode: payload.kode,
+    barcode_default: payload.barcodeDefault || null,
     nama: payload.nama,
     nama_generik: payload.namaGenerik ?? null,
     kategori_id: payload.kategoriId || null,
+    jenis_id: payload.jenisId || null,
     golongan_id: payload.golonganId || null,
+    pabrik_id: payload.pabrikId || null,
+    principal_id: payload.principalId || null,
     satuan_default_id: payload.satuanDefaultId || null,
+    satuan_beli_id: payload.satuanBeliId || null,
+    satuan_jual_id: payload.satuanJualId || null,
+    lokasi_default_id: payload.lokasiDefaultId || null,
     komposisi: payload.komposisi ?? "",
     indikasi: payload.indikasi ?? "",
     aturan_pakai: payload.aturanPakai ?? "",
@@ -164,24 +185,47 @@ function toObat(
   kategoriById: Record<string, string> = {},
   golonganById: GolonganLookup = {},
   satuanById: Record<string, string> = {},
-  hargaByBarang: Record<string, ActivePrice> = {}
+  hargaByBarang: Record<string, ActivePrice> = {},
+  jenisById: Record<string, string> = {},
+  pabrikById: Record<string, string> = {},
+  principalById: Record<string, string> = {},
+  lokasiById: Record<string, string> = {}
 ): ObatListItem {
   const kategoriId = row.kategori_id ?? undefined;
   const golonganId = row.golongan_id ?? undefined;
   const satuanId = row.satuan_default_id ?? undefined;
+  const jenisId = row.jenis_id ?? undefined;
+  const pabrikId = row.pabrik_id ?? undefined;
+  const principalId = row.principal_id ?? undefined;
+  const satuanBeliId = row.satuan_beli_id ?? undefined;
+  const satuanJualId = row.satuan_jual_id ?? undefined;
+  const lokasiDefaultId = row.lokasi_default_id ?? undefined;
   const golongan = golonganId ? golonganById[golonganId] : undefined;
 
   return {
     id: row.id,
     kode: row.kode,
+    barcodeDefault: row.barcode_default ?? undefined,
     namaGenerik: row.nama_generik ?? undefined,
     nama: row.nama,
     kategoriId,
     kategoriNama: kategoriId ? kategoriById[kategoriId] : undefined,
+    jenisId,
+    jenisNama: jenisId ? jenisById[jenisId] : undefined,
     golonganId,
     golonganNama: golongan?.nama,
+    pabrikId,
+    pabrikNama: pabrikId ? pabrikById[pabrikId] : undefined,
+    principalId,
+    principalNama: principalId ? principalById[principalId] : undefined,
     satuanDefaultId: satuanId,
     satuanNama: satuanId ? satuanById[satuanId] : undefined,
+    satuanBeliId,
+    satuanBeliNama: satuanBeliId ? satuanById[satuanBeliId] : undefined,
+    satuanJualId,
+    satuanJualNama: satuanJualId ? satuanById[satuanJualId] : undefined,
+    lokasiDefaultId,
+    lokasiDefaultNama: lokasiDefaultId ? lokasiById[lokasiDefaultId] : undefined,
     stokMinimum: row.stok_minimum ?? 0,
     stokMaksimum: row.stok_maksimum ?? 0,
     stokTersedia: stockByBarang[row.id] ?? 0,
@@ -218,15 +262,24 @@ async function loadLookupMaps() {
     return {
       kategoriById: {} as Record<string, string>,
       golonganById: {} as GolonganLookup,
-      satuanById: {} as Record<string, string>
+      satuanById: {} as Record<string, string>,
+      jenisById: {} as Record<string, string>,
+      pabrikById: {} as Record<string, string>,
+      principalById: {} as Record<string, string>,
+      lokasiById: {} as Record<string, string>
     };
   }
 
-  const [kategoriResult, golonganResult, satuanResult] = await Promise.all([
-    supabase.from("kategori_barang").select("id,nama"),
-    supabase.from("golongan_obat").select("id,nama,butuh_resep"),
-    supabase.from("satuan").select("id,nama")
-  ]);
+  const [kategoriResult, golonganResult, satuanResult, jenisResult, pabrikResult, principalResult, lokasiResult] =
+    await Promise.all([
+      supabase.from("kategori_barang").select("id,nama"),
+      supabase.from("golongan_obat").select("id,nama,butuh_resep"),
+      supabase.from("satuan").select("id,nama"),
+      supabase.from("jenis_barang").select("id,nama"),
+      supabase.from("pabrik").select("id,nama"),
+      supabase.from("principal").select("id,nama"),
+      supabase.from("lokasi_simpan").select("id,nama")
+    ]);
 
   if (kategoriResult.error) {
     throw new Error(kategoriResult.error.message);
@@ -239,6 +292,35 @@ async function loadLookupMaps() {
   if (satuanResult.error) {
     throw new Error(satuanResult.error.message);
   }
+
+  if (jenisResult.error) {
+    throw new Error(jenisResult.error.message);
+  }
+
+  if (pabrikResult.error) {
+    throw new Error(pabrikResult.error.message);
+  }
+
+  if (principalResult.error) {
+    throw new Error(principalResult.error.message);
+  }
+
+  if (lokasiResult.error) {
+    throw new Error(lokasiResult.error.message);
+  }
+
+  const jenisById = Object.fromEntries(
+    (jenisResult.data ?? []).map((item) => [item.id, item.nama])
+  );
+  const pabrikById = Object.fromEntries(
+    (pabrikResult.data ?? []).map((item) => [item.id, item.nama])
+  );
+  const principalById = Object.fromEntries(
+    (principalResult.data ?? []).map((item) => [item.id, item.nama])
+  );
+  const lokasiById = Object.fromEntries(
+    (lokasiResult.data ?? []).map((item) => [item.id, item.nama])
+  );
 
   const kategoriById = Object.fromEntries(
     (kategoriResult.data ?? []).map((item) => [item.id, item.nama])
@@ -253,7 +335,7 @@ async function loadLookupMaps() {
     (satuanResult.data ?? []).map((item) => [item.id, item.nama])
   );
 
-  return { kategoriById, golonganById, satuanById };
+  return { kategoriById, golonganById, satuanById, jenisById, pabrikById, principalById, lokasiById };
 }
 
 async function findOrCreateBatch(
@@ -393,7 +475,11 @@ export const obatService = {
           lookupMaps.kategoriById,
           lookupMaps.golonganById,
           lookupMaps.satuanById,
-          hargaByBarang
+          hargaByBarang,
+          lookupMaps.jenisById,
+          lookupMaps.pabrikById,
+          lookupMaps.principalById,
+          lookupMaps.lokasiById
         )
       ),
       params.search
@@ -439,7 +525,11 @@ export const obatService = {
           lookupMaps.kategoriById,
           lookupMaps.golonganById,
           lookupMaps.satuanById,
-          hargaByBarang
+          hargaByBarang,
+          lookupMaps.jenisById,
+          lookupMaps.pabrikById,
+          lookupMaps.principalById,
+          lookupMaps.lokasiById
         )
       : null;
   },
@@ -450,11 +540,18 @@ export const obatService = {
       const created: ObatListItem = {
         id: crypto.randomUUID(),
         kode: payload.kode,
+        barcodeDefault: payload.barcodeDefault,
         namaGenerik: payload.namaGenerik,
         nama: payload.nama,
         kategoriId: payload.kategoriId,
+        jenisId: payload.jenisId,
         golonganId: payload.golonganId,
+        pabrikId: payload.pabrikId,
+        principalId: payload.principalId,
         satuanDefaultId: payload.satuanDefaultId,
+        satuanBeliId: payload.satuanBeliId,
+        satuanJualId: payload.satuanJualId,
+        lokasiDefaultId: payload.lokasiDefaultId,
         stokMinimum: payload.stokMinimum ?? 0,
         stokMaksimum: payload.stokMaksimum ?? 0,
         stokTersedia: payload.stokAwal ?? 0,
@@ -589,11 +686,18 @@ export const obatService = {
       localObat[index] = {
         ...localObat[index],
         kode: payload.kode,
+        barcodeDefault: payload.barcodeDefault,
         nama: payload.nama,
         namaGenerik: payload.namaGenerik,
         kategoriId: payload.kategoriId,
+        jenisId: payload.jenisId,
         golonganId: payload.golonganId,
+        pabrikId: payload.pabrikId,
+        principalId: payload.principalId,
         satuanDefaultId: payload.satuanDefaultId,
+        satuanBeliId: payload.satuanBeliId,
+        satuanJualId: payload.satuanJualId,
+        lokasiDefaultId: payload.lokasiDefaultId,
         stokMinimum: payload.stokMinimum ?? 0,
         stokMaksimum: payload.stokMaksimum ?? 0,
         gambarUrl: payload.gambarUrl,
@@ -752,6 +856,74 @@ export const obatService = {
       .from("supplier")
       .select("id,nama")
       .eq("aktif", true)
+      .order("nama", { ascending: true });
+
+    if (error) {
+      throw new Error(error.message);
+    }
+
+    return (data ?? []).map((item) => ({ id: item.id, label: item.nama }));
+  },
+
+  async listJenisOptions(): Promise<MasterOption[]> {
+    if (!isSupabaseConfigured || !supabase) {
+      return [];
+    }
+
+    const { data, error } = await supabase
+      .from("jenis_barang")
+      .select("id,nama")
+      .order("nama", { ascending: true });
+
+    if (error) {
+      throw new Error(error.message);
+    }
+
+    return (data ?? []).map((item) => ({ id: item.id, label: item.nama }));
+  },
+
+  async listPabrikOptions(): Promise<MasterOption[]> {
+    if (!isSupabaseConfigured || !supabase) {
+      return [];
+    }
+
+    const { data, error } = await supabase
+      .from("pabrik")
+      .select("id,nama")
+      .order("nama", { ascending: true });
+
+    if (error) {
+      throw new Error(error.message);
+    }
+
+    return (data ?? []).map((item) => ({ id: item.id, label: item.nama }));
+  },
+
+  async listPrincipalOptions(): Promise<MasterOption[]> {
+    if (!isSupabaseConfigured || !supabase) {
+      return [];
+    }
+
+    const { data, error } = await supabase
+      .from("principal")
+      .select("id,nama")
+      .order("nama", { ascending: true });
+
+    if (error) {
+      throw new Error(error.message);
+    }
+
+    return (data ?? []).map((item) => ({ id: item.id, label: item.nama }));
+  },
+
+  async listLokasiOptions(): Promise<MasterOption[]> {
+    if (!isSupabaseConfigured || !supabase) {
+      return [];
+    }
+
+    const { data, error } = await supabase
+      .from("lokasi_simpan")
+      .select("id,nama")
       .order("nama", { ascending: true });
 
     if (error) {

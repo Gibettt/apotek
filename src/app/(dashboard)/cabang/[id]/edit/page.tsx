@@ -1,9 +1,7 @@
-import { ModuleFormPage } from "@/components/pages/ModuleFormPage";
-import { moduleConfigs } from "@/constants/modules";
+"use client";
 
-export default async function EditCabangPage({ params }: { params: { id: string } }) {
-  const rows = await moduleConfigs.cabang.load();
-  const record = rows.find((item) => String(item.id) === params.id);
+import { ModuleEditPage } from "@/components/pages/ModuleEditPage";
 
-  return <ModuleFormPage config={moduleConfigs.cabang} record={record} mode="edit" />;
+export default function EditCabangPage() {
+  return <ModuleEditPage moduleKey="cabang" />;
 }

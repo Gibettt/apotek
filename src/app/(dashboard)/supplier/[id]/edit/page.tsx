@@ -5,12 +5,13 @@ import type { Supplier } from "@/types";
 function supplierToRecord(supplier: Supplier) {
   return {
     id: supplier.id,
+    kode: supplier.kode,
     nama: supplier.nama,
-    kontakPerson: supplier.kontakPerson,
-    telepon: supplier.telepon,
-    email: supplier.email,
-    npwp: supplier.npwp,
-    alamat: supplier.alamat,
+    kontakPerson: supplier.kontakPerson ?? "",
+    telepon: supplier.telepon ?? "",
+    email: supplier.email ?? "",
+    npwp: supplier.npwp ?? "",
+    alamat: supplier.alamat ?? "",
     aktif: supplier.aktif
   };
 }
@@ -20,9 +21,7 @@ export default async function EditSupplierPage({
 }: {
   params: { id: string };
 }) {
-  const supplier = await supplierService
-    .getById(params.id)
-    .catch(() => null);
+  const supplier = await supplierService.getById(params.id).catch(() => null);
   const record = supplier ? supplierToRecord(supplier) : undefined;
 
   return <SupplierForm record={record} />;

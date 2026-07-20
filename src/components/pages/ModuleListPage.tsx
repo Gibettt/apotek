@@ -1,8 +1,9 @@
 "use client";
 
 import Link from "next/link";
-import { Eye, Pencil, Plus } from "lucide-react";
+import { Eye, Pencil, Plus, Trash2 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
+import { toast } from "sonner";
 import type { Column } from "@/components/ui/Table";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
@@ -45,10 +46,39 @@ function formatCell(value: unknown, column: ColumnConfig) {
   return String(value ?? "-");
 }
 
+function BooleanCell({
+  checked,
+  disabled,
+  onChange
+}: {
+  checked: boolean;
+  disabled: boolean;
+  onChange?: (nextValue: boolean) => void;
+}) {
+  if (!onChange) {
+    return <Badge variant={checked ? "success" : "muted"}>{statusLabel(checked)}</Badge>;
+  }
+
+  return (
+    <label className="inline-flex items-center gap-2 text-sm text-slate-700">
+      <input
+        type="checkbox"
+        className="h-4 w-4 rounded border-slate-300 text-brand-700 focus:ring-brand-600"
+        checked={checked}
+        disabled={disabled}
+        onChange={(event) => onChange(event.target.checked)}
+      />
+      <Badge variant={checked ? "success" : "muted"}>{statusLabel(checked)}</Badge>
+    </label>
+  );
+}
+
 export function ModuleListPage({ config }: { config: ModuleConfig }) {
   const [search, setSearch] = useState("");
   const [rowsData, setRowsData] = useState<ModuleRecord[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [togglingId, setTogglingId] = useState<string | null>(null);
 
   useEffect(() => {
     let active = true;
@@ -71,6 +101,62 @@ export function ModuleListPage({ config }: { config: ModuleConfig }) {
       active = false;
     };
   }, [config]);
+
+  async function handleDelete(row: ModuleRecord) {
+    if (!config.remove) {
+      return;
+    }
+
+    const id = String(row.id);
+    const label = config.detailTitleKey ? String(row[config.detailTitleKey] ?? "") : "";
+
+    if (
+      !window.confirm(
+        `Hapus ${config.title.toLowerCase()}${label ? ` "${label}"` : ""}? Tindakan ini tidak dapat dibatalkan.`
+      )
+    ) {
+      return;
+    }
+
+    setDeletingId(id);
+
+    try {
+      await config.remove(id);
+      setRowsData((current) => current.filter((item) => String(item.id) !== id));
+      toast.success(`${config.title} berhasil dihapus`);
+    } catch (error) {
+      toast.error(
+        error instanceof Error ? error.message : `Gagal menghapus ${config.title.toLowerCase()}`
+      );
+    } finally {
+      setDeletingId(null);
+    }
+  }
+
+  async function handleBooleanToggle(row: ModuleRecord, key: string, nextValue: boolean) {
+    if (!config.update) {
+      return;
+    }
+
+    const id = String(row.id);
+    setTogglingId(id);
+
+    try {
+      const updated = await config.update(id, { ...row, [key]: nextValue }, row);
+      setRowsData((current) =>
+        current.map((item) =>
+          String(item.id) === id ? { ...item, ...(updated ?? row), [key]: nextValue } : item
+        )
+      );
+      toast.success(`${config.title} berhasil diperbarui`);
+    } catch (error) {
+      toast.error(
+        error instanceof Error ? error.message : `Gagal memperbarui ${config.title.toLowerCase()}`
+      );
+    } finally {
+      setTogglingId(null);
+    }
+  }
 
   const filteredRows = useMemo(() => {
     const normalized = search.toLowerCase();
@@ -96,12 +182,21 @@ export function ModuleListPage({ config }: { config: ModuleConfig }) {
     ...config.columns.map((column) => ({
       key: column.key,
       header: column.header,
-      cell: (row: ModuleRecord) => formatCell(row[column.key], column)
+      cell: (row: ModuleRecord) =>
+        column.type === "boolean" && config.toggleBooleanKey === column.key ? (
+          <BooleanCell
+            checked={Boolean(row[column.key])}
+            disabled={togglingId === String(row.id)}
+            onChange={(nextValue) => handleBooleanToggle(row, column.key, nextValue)}
+          />
+        ) : (
+          formatCell(row[column.key], column)
+        )
     })),
     {
       key: "actions",
       header: "",
-      className: "w-28 text-right",
+      className: "w-36 text-right",
       cell: (row: ModuleRecord) => (
         <div className="flex justify-end gap-1">
           {config.allowDetail ? (
@@ -117,6 +212,19 @@ export function ModuleListPage({ config }: { config: ModuleConfig }) {
                 <Pencil className="h-4 w-4" />
               </Button>
             </Link>
+          ) : null}
+          {config.allowDelete && config.remove ? (
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              aria-label="Hapus"
+              disabled={deletingId === String(row.id)}
+              onClick={() => handleDelete(row)}
+              className="text-red-600 hover:bg-red-50 hover:text-red-700"
+            >
+              <Trash2 className="h-4 w-4" />
+            </Button>
           ) : null}
         </div>
       )

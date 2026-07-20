@@ -1,6 +1,6 @@
 import { isSupabaseConfigured, supabase } from "@/lib/supabase";
 import type { Resep, ResepDetail, StatusResep } from "@/types";
-import { matchSearch, paginate, type ListParams } from "./serviceUtils";
+import { getCurrentUserId, matchSearch, paginate, type ListParams } from "./serviceUtils";
 
 export interface ResepDetailInput {
   barangId: string;
@@ -374,6 +374,7 @@ export const resepService = {
         alamat_pasien: payload.alamatPasien ?? null,
         catatan,
         status,
+        dibuat_oleh: getCurrentUserId(),
         updated_at: new Date().toISOString()
       })
       .select("*")

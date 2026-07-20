@@ -19,14 +19,23 @@ import {
 
 interface ObatFormValues {
   kode: string;
+  barcodeDefault: string;
   nama: string;
   kategoriId: string;
+  jenisId: string;
   golonganId: string;
+  pabrikId: string;
+  principalId: string;
   satuanDefaultId: string;
+  satuanBeliId: string;
+  satuanJualId: string;
+  lokasiDefaultId: string;
   supplierId: string;
   hargaBeli: number;
   hargaJual: number;
   stokMinimum: number;
+  stokMaksimum: number;
+  gambarUrl: string;
   stokAwal: number;
   batchNumber: string;
   tanggalExpired: string;
@@ -39,14 +48,23 @@ interface ObatFormValues {
 function toDefaultValues(record?: ObatListItem | null): ObatFormValues {
   return {
     kode: record?.kode ?? "",
+    barcodeDefault: record?.barcodeDefault ?? "",
     nama: record?.nama ?? "",
     kategoriId: record?.kategoriId ? String(record.kategoriId) : "",
+    jenisId: record?.jenisId ? String(record.jenisId) : "",
     golonganId: record?.golonganId ? String(record.golonganId) : "",
+    pabrikId: record?.pabrikId ? String(record.pabrikId) : "",
+    principalId: record?.principalId ? String(record.principalId) : "",
     satuanDefaultId: record?.satuanDefaultId ? String(record.satuanDefaultId) : "",
+    satuanBeliId: record?.satuanBeliId ? String(record.satuanBeliId) : "",
+    satuanJualId: record?.satuanJualId ? String(record.satuanJualId) : "",
+    lokasiDefaultId: record?.lokasiDefaultId ? String(record.lokasiDefaultId) : "",
     supplierId: "",
     hargaBeli: record?.hargaAktif?.hargaBeli ?? 0,
     hargaJual: record?.hargaAktif?.hargaJual ?? 0,
     stokMinimum: record?.stokMinimum ?? 0,
+    stokMaksimum: record?.stokMaksimum ?? 0,
+    gambarUrl: record?.gambarUrl ?? "",
     stokAwal: 0,
     batchNumber: "",
     tanggalExpired: "",
@@ -73,6 +91,10 @@ export function ObatForm({ record }: { record?: ObatListItem | null }) {
   const [golonganOptions, setGolonganOptions] = useState<MasterOption[]>([]);
   const [satuanOptions, setSatuanOptions] = useState<MasterOption[]>([]);
   const [supplierOptions, setSupplierOptions] = useState<MasterOption[]>([]);
+  const [jenisOptions, setJenisOptions] = useState<MasterOption[]>([]);
+  const [pabrikOptions, setPabrikOptions] = useState<MasterOption[]>([]);
+  const [principalOptions, setPrincipalOptions] = useState<MasterOption[]>([]);
+  const [lokasiOptions, setLokasiOptions] = useState<MasterOption[]>([]);
   const [isLoadingOptions, setIsLoadingOptions] = useState(true);
   const isEdit = Boolean(record?.id);
   const values = useMemo(() => toDefaultValues(record), [record]);
@@ -89,12 +111,17 @@ export function ObatForm({ record }: { record?: ObatListItem | null }) {
       setIsLoadingOptions(true);
 
       try {
-        const [kategori, golongan, satuan, supplier] = await Promise.all([
-          obatService.listKategoriOptions(),
-          obatService.listGolonganOptions(),
-          obatService.listSatuanOptions(),
-          obatService.listSupplierOptions()
-        ]);
+        const [kategori, golongan, satuan, supplier, jenis, pabrik, principal, lokasi] =
+          await Promise.all([
+            obatService.listKategoriOptions(),
+            obatService.listGolonganOptions(),
+            obatService.listSatuanOptions(),
+            obatService.listSupplierOptions(),
+            obatService.listJenisOptions(),
+            obatService.listPabrikOptions(),
+            obatService.listPrincipalOptions(),
+            obatService.listLokasiOptions()
+          ]);
 
         if (!active) {
           return;
@@ -104,6 +131,10 @@ export function ObatForm({ record }: { record?: ObatListItem | null }) {
         setGolonganOptions(golongan);
         setSatuanOptions(satuan);
         setSupplierOptions(supplier);
+        setJenisOptions(jenis);
+        setPabrikOptions(pabrik);
+        setPrincipalOptions(principal);
+        setLokasiOptions(lokasi);
       } catch (error) {
         if (active) {
           toast.error(
@@ -129,14 +160,23 @@ export function ObatForm({ record }: { record?: ObatListItem | null }) {
   async function onSubmit(formValues: ObatFormValues) {
     const payload: ObatInput = {
       kode: formValues.kode,
+      barcodeDefault: formValues.barcodeDefault || undefined,
       nama: formValues.nama,
       kategoriId: formValues.kategoriId || undefined,
+      jenisId: formValues.jenisId || undefined,
       golonganId: formValues.golonganId || undefined,
+      pabrikId: formValues.pabrikId || undefined,
+      principalId: formValues.principalId || undefined,
       satuanDefaultId: formValues.satuanDefaultId || undefined,
+      satuanBeliId: formValues.satuanBeliId || undefined,
+      satuanJualId: formValues.satuanJualId || undefined,
+      lokasiDefaultId: formValues.lokasiDefaultId || undefined,
       supplierId: formValues.supplierId || undefined,
       hargaBeli: Number(formValues.hargaBeli || 0),
       hargaJual: Number(formValues.hargaJual || 0),
       stokMinimum: Number(formValues.stokMinimum || 0),
+      stokMaksimum: Number(formValues.stokMaksimum || 0),
+      gambarUrl: formValues.gambarUrl,
       komposisi: formValues.komposisi,
       indikasi: formValues.indikasi,
       aturanPakai: formValues.aturanPakai,
@@ -210,11 +250,22 @@ export function ObatForm({ record }: { record?: ObatListItem | null }) {
               error={errors.nama?.message}
               {...register("nama", { required: "Nama barang wajib diisi" })}
             />
+            <Input
+              label="Barcode"
+              placeholder="899xxxxxxxxxx"
+              {...register("barcodeDefault")}
+            />
             <Select
               label="Kategori"
               options={optionList("Tanpa kategori", kategoriOptions)}
               disabled={isLoadingOptions}
               {...register("kategoriId")}
+            />
+            <Select
+              label="Jenis Barang"
+              options={optionList("Tanpa jenis", jenisOptions)}
+              disabled={isLoadingOptions}
+              {...register("jenisId")}
             />
             <Select
               label="Golongan"
@@ -223,10 +274,40 @@ export function ObatForm({ record }: { record?: ObatListItem | null }) {
               {...register("golonganId")}
             />
             <Select
+              label="Pabrik"
+              options={optionList("Tanpa pabrik", pabrikOptions)}
+              disabled={isLoadingOptions}
+              {...register("pabrikId")}
+            />
+            <Select
+              label="Principal"
+              options={optionList("Tanpa principal", principalOptions)}
+              disabled={isLoadingOptions}
+              {...register("principalId")}
+            />
+            <Select
+              label="Lokasi Simpan"
+              options={optionList("Tanpa lokasi", lokasiOptions)}
+              disabled={isLoadingOptions}
+              {...register("lokasiDefaultId")}
+            />
+            <Select
               label="Satuan"
               options={optionList("Pilih satuan", satuanOptions)}
               disabled={isLoadingOptions}
               {...register("satuanDefaultId")}
+            />
+            <Select
+              label="Satuan Beli"
+              options={optionList("Sama dengan satuan", satuanOptions)}
+              disabled={isLoadingOptions}
+              {...register("satuanBeliId")}
+            />
+            <Select
+              label="Satuan Jual"
+              options={optionList("Sama dengan satuan", satuanOptions)}
+              disabled={isLoadingOptions}
+              {...register("satuanJualId")}
             />
             <Input
               label="Harga Beli"
@@ -246,6 +327,19 @@ export function ObatForm({ record }: { record?: ObatListItem | null }) {
               min={0}
               {...register("stokMinimum", { valueAsNumber: true })}
             />
+            <Input
+              label="Stok Maksimum"
+              type="number"
+              min={0}
+              {...register("stokMaksimum", { valueAsNumber: true })}
+            />
+            <div className="md:col-span-2">
+              <Input
+                label="URL Gambar"
+                placeholder="https://..."
+                {...register("gambarUrl")}
+              />
+            </div>
             {!isEdit ? (
               <>
                 <Input

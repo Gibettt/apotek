@@ -59,7 +59,7 @@ const menuGroups = [
   {
     label: "Master Data",
     items: [
-      { label: "Obat", href: "/obat", icon: Pill },
+      { label: "Barang", href: "/obat", icon: Pill },
       { label: "Kategori", href: "/kategori", icon: Tag },
       { label: "Golongan Obat", href: "/golongan", icon: ShieldCheck },
       { label: "Jenis Barang", href: "/jenis-barang", icon: Boxes },

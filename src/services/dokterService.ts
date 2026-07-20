@@ -8,6 +8,31 @@ export interface MasterOption {
   label: string;
 }
 
+export interface DokterInput {
+  kode: string;
+  nama: string;
+  nomorSip?: string;
+  spesialisId?: string;
+  telepon?: string;
+  email?: string;
+  alamat?: string;
+  aktif?: boolean;
+}
+
+function toDokterRow(payload: DokterInput) {
+  return {
+    kode: payload.kode,
+    nama: payload.nama,
+    nomor_sip: payload.nomorSip || null,
+    spesialis_id: payload.spesialisId || null,
+    telepon: payload.telepon || null,
+    email: payload.email || null,
+    alamat: payload.alamat || null,
+    aktif: payload.aktif ?? true,
+    updated_at: new Date().toISOString()
+  };
+}
+
 interface DokterRow {
   id: string;
   kode: string;
@@ -89,6 +114,67 @@ export const dokterService = {
     }
 
     return data ? toDokter(data) : null;
+  },
+
+  async create(payload: DokterInput): Promise<Dokter> {
+    if (!isSupabaseConfigured || !supabase) {
+      return delay({
+        id: `local-${Date.now()}`,
+        kode: payload.kode,
+        nama: payload.nama,
+        nomorSip: payload.nomorSip,
+        spesialisId: payload.spesialisId,
+        telepon: payload.telepon,
+        email: payload.email,
+        alamat: payload.alamat,
+        aktif: payload.aktif ?? true
+      });
+    }
+
+    const { data, error } = await supabase
+      .from("dokter")
+      .insert(toDokterRow(payload))
+      .select("*,dokter_spesialis(nama)")
+      .single();
+
+    if (error) {
+      throw new Error(error.message);
+    }
+
+    return toDokter(data);
+  },
+
+  async update(id: string, payload: DokterInput): Promise<Dokter | null> {
+    if (!isSupabaseConfigured || !supabase) {
+      return delay(null);
+    }
+
+    const { data, error } = await supabase
+      .from("dokter")
+      .update(toDokterRow(payload))
+      .eq("id", id)
+      .select("*,dokter_spesialis(nama)")
+      .single();
+
+    if (error) {
+      throw new Error(error.message);
+    }
+
+    return data ? toDokter(data) : null;
+  },
+
+  async delete(id: string) {
+    if (!isSupabaseConfigured || !supabase) {
+      return delay({ id, success: true });
+    }
+
+    const { error } = await supabase.from("dokter").delete().eq("id", id);
+
+    if (error) {
+      throw new Error(error.message);
+    }
+
+    return { id, success: true };
   },
 
   async listOptions(): Promise<MasterOption[]> {

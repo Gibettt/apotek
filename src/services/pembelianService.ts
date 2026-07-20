@@ -1,7 +1,7 @@
 import { defaultCabangId } from "@/lib/mock-data";
 import { isSupabaseConfigured, supabase } from "@/lib/supabase";
 import type { Pembelian, PembelianDetail, StatusPembelian } from "@/types";
-import { matchSearch, paginate, type ListParams } from "./serviceUtils";
+import { getCurrentUserId, matchSearch, paginate, type ListParams } from "./serviceUtils";
 
 export interface PembelianItemInput {
   barangId: string;
@@ -18,6 +18,7 @@ export interface PembelianInput {
   nomorFaktur?: string;
   nomorInternal?: string;
   cabangId?: string;
+  suratPesananId?: string;
   supplierId: string;
   tanggalFaktur: string;
   tanggalJatuhTempo?: string;
@@ -282,6 +283,58 @@ async function findOrCreateBatch(
   return created.id as string;
 }
 
+async function resolveCabangId(preferred?: string): Promise<string> {
+  if (!isSupabaseConfigured || !supabase) {
+    return preferred || defaultCabangId;
+  }
+
+  if (preferred) {
+    const { data } = await supabase
+      .from("cabang")
+      .select("id")
+      .eq("id", preferred)
+      .maybeSingle();
+
+    if (data?.id) {
+      return data.id as string;
+    }
+  }
+
+  const { data, error } = await supabase
+    .from("cabang")
+    .select("id")
+    .eq("aktif", true)
+    .order("nama", { ascending: true })
+    .limit(1)
+    .maybeSingle();
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  if (!data?.id) {
+    throw new Error("Belum ada cabang terdaftar. Tambahkan data cabang terlebih dahulu.");
+  }
+
+  return data.id as string;
+}
+
+async function resolvePenggunaId(): Promise<string | null> {
+  const current = getCurrentUserId();
+
+  if (!isSupabaseConfigured || !supabase || !current) {
+    return null;
+  }
+
+  const { data } = await supabase
+    .from("pengguna")
+    .select("id")
+    .eq("id", current)
+    .maybeSingle();
+
+  return data?.id ? (data.id as string) : null;
+}
+
 async function receiveStock(pembelian: Pembelian) {
   if (!isSupabaseConfigured || !supabase || !pembelian.details.length) {
     return;
@@ -418,7 +471,8 @@ export const pembelianService = {
   async create(payload: PembelianInput): Promise<Pembelian> {
     const totals = calculateTotals(payload);
     const status = payload.status ?? "draft";
-    const cabangId = payload.cabangId || defaultCabangId;
+    const cabangId = await resolveCabangId(payload.cabangId);
+    const dibuatOleh = await resolvePenggunaId();
     const nomorInternal =
       payload.nomorInternal?.trim() ||
       generateNomorInternal(new Date(payload.tanggalFaktur || Date.now()));
@@ -471,6 +525,7 @@ export const pembelianService = {
       .insert({
         cabang_id: cabangId,
         supplier_id: payload.supplierId,
+        surat_pesanan_id: payload.suratPesananId || null,
         nomor_faktur: nomorFaktur,
         nomor_internal: nomorInternal,
         tanggal_faktur: payload.tanggalFaktur || null,
@@ -481,6 +536,7 @@ export const pembelianService = {
         grand_total: totals.grandTotal,
         status,
         catatan: payload.catatan ?? "",
+        dibuat_oleh: dibuatOleh,
         updated_at: new Date().toISOString()
       })
       .select("*")

@@ -58,15 +58,14 @@ function toPelangganRow(payload: PelangganInput) {
   return {
     kode: payload.kode?.trim() || generateKodePelanggan(),
     nama: payload.nama,
-    telepon: payload.telepon ?? "",
-    email: payload.email ?? "",
-    alamat: payload.alamat ?? "",
+    telepon: payload.telepon ?? null,
+    email: payload.email ?? null,
+    alamat: payload.alamat ?? null,
     tanggal_lahir: payload.tanggalLahir || null,
     jenis_kelamin: payload.jenisKelamin ?? null,
-    catatan_alergi: payload.catatanAlergi ?? "",
+    catatan_alergi: payload.catatanAlergi ?? null,
     member: payload.member ?? false,
-    aktif: payload.aktif ?? true,
-    updated_at: new Date().toISOString()
+    aktif: payload.aktif ?? true
   };
 }
 

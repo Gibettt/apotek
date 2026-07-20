@@ -40,7 +40,7 @@ export const menuGroups: MenuGroup[] = [
     label: "Master Data",
     items: [
       {
-        label: "Obat",
+        label: "Barang",
         href: "/obat",
         icon: "Pill",
         roles: ["owner", "admin", "apoteker", "kasir"]

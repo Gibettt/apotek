@@ -15,6 +15,7 @@ import {
 } from "@/services/pembelianService";
 import { obatService, type ObatListItem } from "@/services/obatService";
 import { supplierService } from "@/services/supplierService";
+import { useCabangStore } from "@/store/cabangStore";
 import type { StatusPembelian, Supplier } from "@/types";
 import { formatCurrency } from "@/utils/formatCurrency";
 
@@ -59,6 +60,7 @@ function lineSubtotal(item: PembelianFormItem) {
 
 export function PembelianForm() {
   const router = useRouter();
+  const { activeCabangId } = useCabangStore();
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
   const [obatOptions, setObatOptions] = useState<ObatListItem[]>([]);
   const [isLoadingOptions, setIsLoadingOptions] = useState(true);
@@ -191,6 +193,7 @@ export function PembelianForm() {
 
     const payload: PembelianInput = {
       supplierId,
+      cabangId: activeCabangId ?? undefined,
       tanggalFaktur: tanggalPembelian,
       status,
       catatan,

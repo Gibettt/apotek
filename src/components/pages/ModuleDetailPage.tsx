@@ -59,6 +59,18 @@ export function ModuleDetailPage({
     (config.detailTitleKey ? record[config.detailTitleKey] : record.id) ?? config.title
   );
 
+  const labelByKey: Record<string, string> = {};
+  for (const column of config.columns) {
+    labelByKey[column.key] = column.header;
+  }
+  for (const field of config.fields) {
+    labelByKey[field.name] = field.label;
+  }
+
+  const entries = Object.entries(record).filter(
+    ([key, value]) => key !== "id" && value !== undefined && value !== null && value !== ""
+  );
+
   return (
     <>
       <Header
@@ -78,10 +90,11 @@ export function ModuleDetailPage({
       <Card>
         <CardContent>
           <dl className="grid gap-4 md:grid-cols-2">
-            {Object.entries(record).map(([key, value]) => (
+            {entries.map(([key, value]) => (
               <div key={key} className="rounded-lg border border-slate-100 bg-slate-50 p-4">
                 <dt className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-                  {key.replace(/([A-Z])/g, " $1")}
+                  {labelByKey[key] ??
+                    key.charAt(0).toUpperCase() + key.slice(1).replace(/([A-Z])/g, " $1")}
                 </dt>
                 <dd className="mt-2 text-sm font-medium text-slate-900">
                   {formatValue(key, value)}

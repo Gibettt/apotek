@@ -9,7 +9,7 @@ import type {
   StatusBayar,
   StatusPenjualan
 } from "@/types";
-import { matchSearch, paginate, type ListParams } from "./serviceUtils";
+import { getCurrentUserId, matchSearch, paginate, type ListParams } from "./serviceUtils";
 
 interface PenjualanRow {
   id: string;
@@ -144,6 +144,28 @@ async function loadLookupMaps() {
   };
 }
 
+async function loadResepIdBySale(ids: string[]) {
+  if (!supabase || !ids.length) {
+    return {} as Record<string, string>;
+  }
+
+  const { data, error } = await supabase
+    .from("resep")
+    .select("id,penjualan_id")
+    .in("penjualan_id", ids);
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  return (data ?? []).reduce<Record<string, string>>((acc, row) => {
+    if (row.penjualan_id) {
+      acc[row.penjualan_id] = row.id;
+    }
+    return acc;
+  }, {});
+}
+
 async function loadMetodeBySale(ids: string[]) {
   if (!supabase || !ids.length) {
     return {} as Record<string, MetodePembayaran>;
@@ -192,7 +214,8 @@ function toPenjualan(
   row: PenjualanRow,
   details: PenjualanDetail[] = [],
   pelangganById: Record<string, string> = {},
-  metodeById: Record<string, MetodePembayaran> = {}
+  metodeById: Record<string, MetodePembayaran> = {},
+  resepIdBySale: Record<string, string> = {}
 ): Penjualan {
   const pelangganId = row.pelanggan_id ?? undefined;
 
@@ -203,6 +226,7 @@ function toPenjualan(
     nomorInvoice: row.nomor_invoice,
     pelangganId,
     namaPelanggan: pelangganId ? pelangganById[pelangganId] ?? "Pelanggan" : "Umum",
+    resepId: resepIdBySale[row.id] ?? undefined,
     tanggal: row.tanggal ?? row.created_at ?? "",
     tipePenjualan: row.tipe_penjualan ?? "umum",
     subtotal: Number(row.subtotal ?? 0),
@@ -395,14 +419,21 @@ export const penjualanService = {
     const rows = (data ?? []) as PenjualanRow[];
     const ids = rows.map((item) => item.id);
 
-    const [detailBySale, metodeById] = await Promise.all([
+    const [detailBySale, metodeById, resepIdBySale] = await Promise.all([
       loadDetailsForSales(ids),
-      loadMetodeBySale(ids)
+      loadMetodeBySale(ids),
+      loadResepIdBySale(ids)
     ]);
 
     const result = filterPenjualan(
       rows.map((item) =>
-        toPenjualan(item, detailBySale[item.id] ?? [], lookupMaps.pelangganById, metodeById)
+        toPenjualan(
+          item,
+          detailBySale[item.id] ?? [],
+          lookupMaps.pelangganById,
+          metodeById,
+          resepIdBySale
+        )
       ),
       params.search
     );
@@ -415,11 +446,12 @@ export const penjualanService = {
       return localPenjualan.find((item) => item.id === id) ?? null;
     }
 
-    const [{ data, error }, lookupMaps, detailBySale, metodeById] = await Promise.all([
+    const [{ data, error }, lookupMaps, detailBySale, metodeById, resepIdBySale] = await Promise.all([
       supabase.from("penjualan").select("*").eq("id", id).single(),
       loadLookupMaps(),
       loadDetailsForSales([id]),
-      loadMetodeBySale([id])
+      loadMetodeBySale([id]),
+      loadResepIdBySale([id])
     ]);
 
     if (error) {
@@ -435,7 +467,8 @@ export const penjualanService = {
           data as PenjualanRow,
           detailBySale[id] ?? [],
           lookupMaps.pelangganById,
-          metodeById
+          metodeById,
+          resepIdBySale
         )
       : null;
   },
@@ -460,6 +493,7 @@ export const penjualanService = {
     );
     const now = new Date().toISOString();
     const nomorInvoice = generateNomorInvoice(new Date(now));
+    const dibuatOleh = getCurrentUserId();
 
     const { data, error } = await supabase
       .from("penjualan")
@@ -477,6 +511,7 @@ export const penjualanService = {
         kembalian: payload.bayar - subtotal,
         status_bayar: payload.bayar >= subtotal ? "lunas" : "sebagian",
         status: "selesai",
+        dibuat_oleh: dibuatOleh,
         updated_at: now
       })
       .select("*")
@@ -484,6 +519,17 @@ export const penjualanService = {
 
     if (error) {
       throw new Error(error.message);
+    }
+
+    if (payload.resepId) {
+      const { error: resepLinkError } = await supabase
+        .from("resep")
+        .update({ penjualan_id: data.id })
+        .eq("id", payload.resepId);
+
+      if (resepLinkError) {
+        throw new Error(resepLinkError.message);
+      }
     }
 
     if (resolvedItems.length) {

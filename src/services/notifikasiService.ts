@@ -2,6 +2,10 @@ import { notifikasi as localNotifikasi } from "@/lib/mock-data";
 import { isSupabaseConfigured, supabase } from "@/lib/supabase";
 import type { Notifikasi, RoleName, TipeNotifikasi } from "@/types";
 import { delay, matchSearch, paginate, type ListParams } from "./serviceUtils";
+import { stokService } from "./stokService";
+
+// Batas peringatan expired: 3 bulan (~90 hari) sebelum tanggal kadaluarsa.
+const EXPIRY_ALERT_DAYS = 90;
 
 interface NotifikasiRow {
   id: string;
@@ -38,6 +42,42 @@ function filterNotifikasi(rows: Notifikasi[], search?: string) {
 }
 
 export const notifikasiService = {
+  // Bikin notifikasi otomatis dari kondisi stok:
+  // - stok menipis (stok tersedia < stok minimum)
+  // - obat akan expired dalam 3 bulan (atau sudah expired)
+  async generateAlerts(): Promise<Notifikasi[]> {
+    const [lowStock, expiring] = await Promise.all([
+      stokService.lowStock(),
+      stokService.expiredSoon(EXPIRY_ALERT_DAYS)
+    ]);
+
+    const createdAt = new Date().toISOString();
+
+    const lowStockAlerts: Notifikasi[] = lowStock.map((item) => ({
+      id: `alert-stok-${item.id}`,
+      tipe: "stok_menipis",
+      judul: `Stok menipis: ${item.nama}`,
+      pesan: `Sisa stok ${item.stokTersedia}, minimum ${item.stokMinimum}. Segera lakukan pembelian.`,
+      referensiTabel: "barang",
+      referensiId: item.id,
+      isRead: false,
+      createdAt
+    }));
+
+    const expiredAlerts: Notifikasi[] = expiring.map((batch) => ({
+      id: `alert-expired-${batch.id}`,
+      tipe: "obat_expired",
+      judul: `Akan kadaluarsa: ${batch.namaBarang}`,
+      pesan: `Batch ${batch.nomorBatch} kadaluarsa ${batch.tanggalExpired} (sisa ${batch.qty}).`,
+      referensiTabel: "batch_barang",
+      referensiId: batch.id,
+      isRead: false,
+      createdAt
+    }));
+
+    return [...lowStockAlerts, ...expiredAlerts];
+  },
+
   async list(params: ListParams = {}) {
     if (!isSupabaseConfigured || !supabase) {
       return delay(paginate(filterNotifikasi(localNotifikasi, params.search), params));

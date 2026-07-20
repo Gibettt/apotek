@@ -61,16 +61,15 @@ function toSupplierRow(payload: SupplierInput) {
     kode: payload.kode?.trim() || `SUP-${Date.now()}`,
     nama: payload.nama,
     tipe_supplier: payload.tipeSupplier ?? null,
-    telepon: payload.telepon ?? "",
-    email: payload.email ?? "",
-    alamat: payload.alamat ?? "",
-    kota: payload.kota ?? "",
-    provinsi: payload.provinsi ?? "",
-    contact_person: payload.kontakPerson ?? "",
-    npwp: payload.npwp ?? "",
+    telepon: payload.telepon ?? null,
+    email: payload.email ?? null,
+    alamat: payload.alamat ?? null,
+    kota: payload.kota ?? null,
+    provinsi: payload.provinsi ?? null,
+    contact_person: payload.kontakPerson ?? null,
+    npwp: payload.npwp ?? null,
     tempo_bayar_hari: payload.tempoBayarHari ?? 0,
-    aktif: payload.aktif ?? true,
-    updated_at: new Date().toISOString()
+    aktif: payload.aktif ?? true
   };
 }
 
@@ -183,5 +182,24 @@ export const supplierService = {
     }
 
     return toSupplier(data);
+  },
+
+  async delete(id: string) {
+    if (!isSupabaseConfigured || !supabase) {
+      const index = suppliers.findIndex((item) => item.id === id);
+      if (index >= 0) {
+        suppliers.splice(index, 1);
+      }
+
+      return delay({ id, success: true });
+    }
+
+    const { error } = await supabase.from("supplier").delete().eq("id", id);
+
+    if (error) {
+      throw new Error(error.message);
+    }
+
+    return { id, success: true };
   }
 };

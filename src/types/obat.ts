@@ -44,14 +44,27 @@ export interface HargaAktif {
 export interface Obat {
   id: string;
   kode: string;
+  barcodeDefault?: string;
   namaGenerik?: string;
   nama: string;
   kategoriId?: string;
   kategoriNama?: string;
+  jenisId?: string;
+  jenisNama?: string;
   golonganId?: string;
   golonganNama?: string;
+  pabrikId?: string;
+  pabrikNama?: string;
+  principalId?: string;
+  principalNama?: string;
   satuanDefaultId?: string;
   satuanNama?: string;
+  satuanBeliId?: string;
+  satuanBeliNama?: string;
+  satuanJualId?: string;
+  satuanJualNama?: string;
+  lokasiDefaultId?: string;
+  lokasiDefaultNama?: string;
   stokMinimum: number;
   stokMaksimum: number;
   stokTersedia: number;

@@ -1,3 +1,13 @@
+import { useAuthStore } from "@/store/authStore";
+
+export function getCurrentUserId(): string | null {
+  if (typeof window === "undefined") {
+    return null;
+  }
+
+  return useAuthStore.getState().user?.id ?? null;
+}
+
 export interface ListParams {
   search?: string;
   page?: number;

@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useEffect } from "react";
 import { Bell, Building2, ChevronDown, ChevronRight, HelpCircle, Search, Settings } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useCabang } from "@/hooks/useCabang";
@@ -31,8 +32,13 @@ function resolvePageLabel(pathname: string) {
 export function Navbar() {
   const pathname = usePathname();
   const { user } = useAuth();
-  const { unreadCount } = useNotifikasi();
+  const { unreadCount, loadAlerts } = useNotifikasi();
   const { activeCabangId, availableCabang, isAllBranches, setActiveCabang } = useCabang();
+
+  useEffect(() => {
+    void loadAlerts();
+  }, [loadAlerts, activeCabangId]);
+
   const notifications = unreadCount();
   const currentPage = pathname === "/dashboard" ? "Overview" : resolvePageLabel(pathname);
   const showAllBranchesOption = user?.role === "owner";

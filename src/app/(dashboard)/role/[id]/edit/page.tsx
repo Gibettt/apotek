@@ -1,9 +1,7 @@
-import { ModuleFormPage } from "@/components/pages/ModuleFormPage";
-import { moduleConfigs } from "@/constants/modules";
+"use client";
 
-export default async function EditRolePage({ params }: { params: { id: string } }) {
-  const rows = await moduleConfigs.role.load();
-  const record = rows.find((item) => String(item.id) === params.id);
+import { ModuleEditPage } from "@/components/pages/ModuleEditPage";
 
-  return <ModuleFormPage config={moduleConfigs.role} record={record} mode="edit" />;
+export default function EditRolePage() {
+  return <ModuleEditPage moduleKey="role" />;
 }

@@ -5,50 +5,37 @@ import { useEffect, useState } from "react";
 import { ModuleFormPage } from "@/components/pages/ModuleFormPage";
 import { moduleConfigs } from "@/constants/modules";
 import type { ModuleRecord } from "@/constants/modules";
-import { lokasiSimpanService } from "@/services/masterDataService";
 
-export default function EditLokasiSimpanPage() {
-  const config = moduleConfigs.lokasiSimpan;
+type ModuleKey = keyof typeof moduleConfigs;
+
+export function ModuleEditPage({ moduleKey }: { moduleKey: ModuleKey }) {
+  const config = moduleConfigs[moduleKey];
   const params = useParams<{ id: string }>();
   const id = params?.id;
   const [record, setRecord] = useState<ModuleRecord | undefined>(undefined);
   const [isLoading, setIsLoading] = useState(true);
-  const [notFound, setNotFound] = useState(false);
 
   useEffect(() => {
-    if (!id) return;
     let active = true;
     setIsLoading(true);
-    setNotFound(false);
 
-    lokasiSimpanService
-      .getById(id)
-      .then((item) => {
-        if (!active) return;
-        if (!item) {
-          setNotFound(true);
-          return;
+    config
+      .load()
+      .then((rows) => {
+        if (active) {
+          setRecord(rows.find((item) => String(item.id) === String(id)));
         }
-        setRecord({
-          id: item.id,
-          kode: item.kode,
-          nama: item.nama,
-          tipeLokasi: item.tipeLokasi ?? "",
-          deskripsi: item.deskripsi ?? "",
-          aktif: item.aktif
-        });
-      })
-      .catch(() => {
-        if (active) setNotFound(true);
       })
       .finally(() => {
-        if (active) setIsLoading(false);
+        if (active) {
+          setIsLoading(false);
+        }
       });
 
     return () => {
       active = false;
     };
-  }, [id]);
+  }, [config, id]);
 
   if (isLoading) {
     return (
@@ -58,10 +45,10 @@ export default function EditLokasiSimpanPage() {
     );
   }
 
-  if (notFound || !record) {
+  if (!record) {
     return (
       <p className="rounded-lg bg-white p-6 text-sm font-semibold text-red-600 shadow-sm">
-        Data lokasi simpan tidak ditemukan.
+        Data {config.title.toLowerCase()} tidak ditemukan.
       </p>
     );
   }
