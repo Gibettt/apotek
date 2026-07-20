@@ -16,7 +16,14 @@ const config: Config = {
           600: "#0d9488",
           700: "#0f766e",
           900: "#134e4a"
-        }
+        },
+        background: "var(--background)",
+        foreground: "var(--foreground)",
+        card: "var(--card)",
+        "card-foreground": "var(--card-foreground)",
+        border: "var(--border)",
+        input: "var(--input)",
+        ring: "var(--ring)"
       },
       boxShadow: {
         soft: "0 12px 32px rgba(15, 23, 42, 0.08)"
