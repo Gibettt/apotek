@@ -118,6 +118,41 @@ async function resolveCabangId(cabangId?: string) {
   return data.id as string;
 }
 
+const TRANSACTION_HISTORY_TABLES = [
+  "faktur_pembelian_detail",
+  "penjualan_detail",
+  "retur_pembelian_detail",
+  "stok_opname_detail",
+  "mutasi_stok_detail",
+  "surat_pesanan_detail",
+  "resep_detail"
+] as const;
+
+async function assertNoTransactionHistory(barangId: string) {
+  if (!supabase) {
+    return;
+  }
+
+  const results = await Promise.all(
+    TRANSACTION_HISTORY_TABLES.map((table) =>
+      supabase!.from(table).select("id").eq("barang_id", barangId).limit(1)
+    )
+  );
+
+  const hasHistory = results.some((result) => {
+    if (result.error) {
+      throw new Error(result.error.message);
+    }
+    return (result.data ?? []).length > 0;
+  });
+
+  if (hasHistory) {
+    throw new Error(
+      "Obat ini sudah memiliki riwayat transaksi (pembelian/penjualan/retur/opname/resep) dan tidak bisa dihapus permanen. Nonaktifkan obat ini lewat halaman edit sebagai gantinya."
+    );
+  }
+}
+
 async function cleanupCreatedObat(barangId: string) {
   if (!supabase) {
     return;
@@ -751,6 +786,8 @@ export const obatService = {
       return { id, success: true };
     }
 
+    await assertNoTransactionHistory(id);
+
     const { error: kartuError } = await supabase
       .from("kartu_stok")
       .delete()
@@ -776,6 +813,24 @@ export const obatService = {
 
     if (hargaError) {
       throw new Error(hargaError.message);
+    }
+
+    const { error: konversiError } = await supabase
+      .from("konversi_satuan")
+      .delete()
+      .eq("barang_id", id);
+
+    if (konversiError) {
+      throw new Error(konversiError.message);
+    }
+
+    const { error: barcodeError } = await supabase
+      .from("barcode_barang")
+      .delete()
+      .eq("barang_id", id);
+
+    if (barcodeError) {
+      throw new Error(barcodeError.message);
     }
 
     const { error: batchError } = await supabase

@@ -16,4 +16,6 @@ var All = []Migration{
 	{ID: "008_create_finance_audit_tables", SQL: Migration008CreateFinanceAuditTables},
 	{ID: "009_create_notifikasi_pengaturan_tables", SQL: Migration009CreateNotifikasiPengaturanTables},
 	{ID: "010_create_payment_function", SQL: Migration010CreatePaymentFunction},
+	{ID: "011_extend_jurnal_umum", SQL: Migration011ExtendJurnalUmum},
+	{ID: "012_extend_biaya_operasional", SQL: Migration012ExtendBiayaOperasional},
 }

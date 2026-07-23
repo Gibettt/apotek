@@ -1,8 +1,7 @@
 "use client";
 
-import { ModuleFormPage } from "@/components/pages/ModuleFormPage";
-import { moduleConfigs } from "@/constants/modules";
+import { BiayaForm } from "@/components/forms/BiayaForm";
 
 export default function TambahBiayaPage() {
-  return <ModuleFormPage config={moduleConfigs.biaya} mode="create" />;
+  return <BiayaForm />;
 }

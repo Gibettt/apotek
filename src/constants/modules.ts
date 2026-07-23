@@ -6,7 +6,6 @@ import {
   settings,
   suppliers
 } from "@/lib/mock-data";
-import { biayaService } from "@/services/biayaService";
 import { cabangService } from "@/services/cabangService";
 import { dokterService } from "@/services/dokterService";
 import { golonganService } from "@/services/golonganService";
@@ -23,8 +22,6 @@ import { supplierService } from "@/services/supplierService";
 import { userService } from "@/services/userService";
 import {
   auditLogList,
-  biayaOperasionalList,
-  jurnalUmumList,
   permissionList,
   returPembelianList,
   roleList,
@@ -1170,91 +1167,6 @@ export const moduleConfigs = {
     detailTitleKey: "nama",
     allowDetail: true,
     allowEdit: true
-  },
-  jurnal: {
-    key: "jurnal",
-    title: "Jurnal Umum",
-    description: "Catatan jurnal akuntansi dari transaksi dan penyesuaian manual.",
-    basePath: "/jurnal",
-    load: async () => [...jurnalUmumList],
-    columns: [
-      { key: "nomor", header: "Nomor" },
-      { key: "tanggal", header: "Tanggal", type: "date" },
-      { key: "sumber", header: "Sumber", type: "status" },
-      { key: "deskripsi", header: "Keterangan" },
-      { key: "status", header: "Status", type: "status" }
-    ],
-    fields: [],
-    detailTitleKey: "nomor",
-    allowDetail: true
-  },
-  biaya: {
-    key: "biaya",
-    title: "Biaya Operasional",
-    description: "Pencatatan biaya operasional apotek.",
-    basePath: "/biaya",
-    addPath: "/biaya/tambah",
-    load: async () => {
-      const result = await biayaService.list(LOAD_ALL);
-      return result.data.map((item) => ({
-        id: item.id,
-        nomor: item.nomor,
-        tanggal: item.tanggal,
-        namaBiaya: item.namaBiaya,
-        jumlah: item.jumlah,
-        metodeBayar: item.metodeBayar,
-        catatan: item.catatan ?? ""
-      }));
-    },
-    create: (payload) =>
-      biayaService
-        .create({
-          nomor: payload.nomor ? String(payload.nomor) : undefined,
-          tanggal: String(payload.tanggal ?? ""),
-          namaBiaya: String(payload.namaBiaya ?? ""),
-          jumlah: Number(payload.jumlah ?? 0),
-          metodeBayar: String(payload.metodeBayar ?? "tunai"),
-          catatan: payload.catatan ? String(payload.catatan) : undefined
-        })
-        .then((item) => ({ ...item })),
-    update: (id, payload) =>
-      biayaService
-        .update(id, {
-          nomor: payload.nomor ? String(payload.nomor) : undefined,
-          tanggal: String(payload.tanggal ?? ""),
-          namaBiaya: String(payload.namaBiaya ?? ""),
-          jumlah: Number(payload.jumlah ?? 0),
-          metodeBayar: String(payload.metodeBayar ?? "tunai"),
-          catatan: payload.catatan ? String(payload.catatan) : undefined
-        })
-        .then((item) => (item ? { ...item } : null)),
-    remove: (id) => biayaService.delete(id),
-    columns: [
-      { key: "nomor", header: "Nomor" },
-      { key: "tanggal", header: "Tanggal", type: "date" },
-      { key: "namaBiaya", header: "Nama Biaya" },
-      { key: "jumlah", header: "Jumlah", type: "currency" },
-      { key: "metodeBayar", header: "Metode" }
-    ],
-    fields: [
-      { name: "tanggal", label: "Tanggal", type: "date" },
-      { name: "namaBiaya", label: "Nama Biaya", type: "text" },
-      { name: "jumlah", label: "Jumlah", type: "number" },
-      {
-        name: "metodeBayar",
-        label: "Metode Bayar",
-        type: "select",
-        options: [
-          { label: "Tunai", value: "tunai" },
-          { label: "Transfer", value: "transfer" }
-        ]
-      },
-      { name: "catatan", label: "Catatan", type: "textarea" }
-    ],
-    detailTitleKey: "namaBiaya",
-    allowDetail: true,
-    allowEdit: true,
-    allowDelete: true
   },
   retur: {
     key: "retur",

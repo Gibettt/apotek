@@ -10,3 +10,4 @@ export * from "./resep";
 export * from "./laporan";
 export * from "./notifikasi";
 export * from "./pengaturan";
+export * from "./jurnal";

@@ -1,9 +1,7 @@
-import { ModuleDetailPage } from "@/components/pages/ModuleDetailPage";
-import { moduleConfigs } from "@/constants/modules";
+"use client";
 
-export default async function DetailBiayaPage({ params }: { params: { id: string } }) {
-  const rows = await moduleConfigs.biaya.load();
-  const record = rows.find((item) => String(item.id) === params.id);
+import { BiayaDetailPage } from "@/components/pages/BiayaDetailPage";
 
-  return <ModuleDetailPage config={moduleConfigs.biaya} record={record} />;
+export default function DetailBiayaPage({ params }: { params: { id: string } }) {
+  return <BiayaDetailPage id={params.id} />;
 }

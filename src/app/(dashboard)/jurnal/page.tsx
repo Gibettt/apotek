@@ -1,8 +1,7 @@
 "use client";
 
-import { ModuleListPage } from "@/components/pages/ModuleListPage";
-import { moduleConfigs } from "@/constants/modules";
+import { JurnalListPage } from "@/components/pages/JurnalListPage";
 
 export default function JurnalPage() {
-  return <ModuleListPage config={moduleConfigs.jurnal} />;
+  return <JurnalListPage />;
 }

@@ -1,9 +1,7 @@
-import { ModuleDetailPage } from "@/components/pages/ModuleDetailPage";
-import { moduleConfigs } from "@/constants/modules";
+"use client";
 
-export default async function DetailJurnalPage({ params }: { params: { id: string } }) {
-  const rows = await moduleConfigs.jurnal.load();
-  const record = rows.find((item) => String(item.id) === params.id);
+import { JurnalDetailPage } from "@/components/pages/JurnalDetailPage";
 
-  return <ModuleDetailPage config={moduleConfigs.jurnal} record={record} />;
+export default function DetailJurnalPage({ params }: { params: { id: string } }) {
+  return <JurnalDetailPage id={params.id} />;
 }

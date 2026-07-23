@@ -10,6 +10,7 @@ var All = []Seeder{
 	{ID: "cabang_seeder", SQL: CabangSeederSQL},
 	{ID: "golongan_obat_seeder", SQL: GolonganObatSeederSQL},
 	{ID: "satuan_seeder", SQL: SatuanSeederSQL},
+	{ID: "akun_seeder", SQL: AkunSeederSQL},
 	{ID: "admin_seeder", SQL: AdminSeederSQL},
 	{ID: "barang_seeder", SQL: BarangSeederSQL},
 }
