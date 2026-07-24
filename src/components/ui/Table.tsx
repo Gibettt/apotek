@@ -18,7 +18,7 @@ export function Table<T>({
   emptyText?: string;
 }) {
   return (
-    <div className="overflow-hidden rounded-lg border border-slate-200 bg-white">
+    <div className="overflow-hidden rounded-2xl border-none bg-white shadow-[0_20px_60px_rgba(31,41,35,0.06)]">
       <div className="overflow-x-auto">
         <table className="min-w-full divide-y divide-slate-200 text-sm">
           <thead className="bg-slate-50">

@@ -87,7 +87,7 @@ export function SupplierForm({ record }: { record?: ModuleRecord }) {
         }
       />
 
-      <section className="rounded-lg bg-white p-5 shadow-[0_24px_70px_rgba(25,24,21,.08)]">
+      <section className="dashboard-surface">
         {/* Info Banner */}
         <div className="mb-6 flex items-start gap-4 rounded-lg bg-[#f8f7f3] p-4">
           <span className="grid h-12 w-12 shrink-0 place-items-center rounded-lg bg-[#fff0ea] text-[#ff6a3d]">

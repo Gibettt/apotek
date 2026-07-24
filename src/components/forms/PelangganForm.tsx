@@ -115,7 +115,7 @@ export function PelangganForm({ record }: { record?: ModuleRecord }) {
         }
       />
 
-      <section className="rounded-lg bg-white p-5 shadow-[0_24px_70px_rgba(25,24,21,.08)]">
+      <section className="dashboard-surface">
         {/* Banner */}
         <div className="mb-6 flex items-start gap-4 rounded-lg bg-[#f0fdf9] p-4 ring-1 ring-[#99f6e4]">
           <span className="grid h-12 w-12 shrink-0 place-items-center rounded-lg bg-[#ccfbf1] text-[#0d9488]">

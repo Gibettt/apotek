@@ -98,7 +98,7 @@ export function JurnalDetailPage({ id }: { id: string }) {
 
   if (isLoading) {
     return (
-      <div className="rounded-lg bg-white p-10 text-center text-sm font-semibold text-stone-500 shadow-[0_24px_70px_rgba(25,24,21,.08)]">
+      <div className="dashboard-surface text-center text-sm font-semibold text-stone-500">
         Memuat detail jurnal...
       </div>
     );
@@ -106,7 +106,7 @@ export function JurnalDetailPage({ id }: { id: string }) {
 
   if (!jurnal) {
     return (
-      <div className="rounded-lg bg-white p-10 text-center shadow-[0_24px_70px_rgba(25,24,21,.08)]">
+      <div className="dashboard-surface text-center">
         <p className="text-sm font-bold text-stone-500">Jurnal tidak ditemukan.</p>
         <Link href="/jurnal" className="mt-3 inline-block text-sm font-black text-[#0f766e] hover:underline">
           Kembali ke Jurnal Umum
@@ -184,7 +184,7 @@ export function JurnalDetailPage({ id }: { id: string }) {
         />
       </div>
 
-      <section className="rounded-lg bg-white p-6 shadow-[0_24px_70px_rgba(25,24,21,.08)] print:shadow-none">
+      <section className="dashboard-surface print:shadow-none">
         <div className="flex flex-wrap items-start justify-between gap-4 border-b border-stone-100 pb-5">
           <div>
             <p className="text-xs font-black uppercase text-stone-400">Nomor Jurnal</p>

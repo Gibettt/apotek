@@ -12,6 +12,7 @@ import type { Penjualan } from "@/types";
 export default function KasirPage() {
   const [paymentOpen, setPaymentOpen] = useState(false);
   const [lastSale, setLastSale] = useState<Penjualan | null>(null);
+  const [stockRefreshToken, setStockRefreshToken] = useState(0);
 
   return (
     <>
@@ -20,18 +21,18 @@ export default function KasirPage() {
         description="Transaksi penjualan tanpa resep dengan keranjang, pembayaran, dan struk."
       />
       <section className="grid gap-5 xl:grid-cols-[minmax(0,1.45fr)_minmax(360px,.85fr)]">
-        <Card className="overflow-hidden rounded-lg border-stone-200 bg-white shadow-[0_24px_70px_rgba(25,24,21,.08)]">
+        <Card className="overflow-hidden">
           <CardHeader title="Cari Obat">
             <p className="mt-1 text-sm font-semibold text-stone-500">
               Data obat diambil langsung dari Supabase stok obat.
             </p>
           </CardHeader>
           <CardContent className="p-5">
-            <KasirSearch />
+            <KasirSearch refreshToken={stockRefreshToken} />
           </CardContent>
         </Card>
         <div className="space-y-4 xl:sticky xl:top-24 xl:self-start">
-          <Card className="overflow-hidden rounded-lg border-stone-200 bg-white shadow-[0_24px_70px_rgba(25,24,21,.08)]">
+          <Card className="overflow-hidden">
             <CardHeader title="Keranjang">
               <p className="mt-1 text-sm font-semibold text-stone-500">
                 Atur qty, hapus item, lalu lanjut pembayaran.
@@ -47,7 +48,10 @@ export default function KasirPage() {
       <KasirPaymentModal
         open={paymentOpen}
         onClose={() => setPaymentOpen(false)}
-        onSuccess={setLastSale}
+        onSuccess={(penjualan) => {
+          setLastSale(penjualan);
+          setStockRefreshToken((token) => token + 1);
+        }}
       />
     </>
   );

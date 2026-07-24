@@ -247,7 +247,7 @@ export function ResepForm() {
         onSubmit={handleSubmit}
         className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_340px]"
       >
-        <section className="min-w-0 overflow-hidden rounded-lg bg-white p-5 shadow-[0_24px_70px_rgba(25,24,21,.08)]">
+        <section className="min-w-0 overflow-hidden dashboard-surface">
           <div className="mb-6 flex items-start gap-4 rounded-lg bg-[#f8f7f3] p-4">
             <span className="grid h-12 w-12 shrink-0 place-items-center rounded-lg bg-[#fff0ea] text-[#ff6a3d]">
               <ClipboardPlus className="h-6 w-6" strokeWidth={1.9} />
@@ -449,7 +449,7 @@ export function ResepForm() {
           </div>
         </section>
 
-        <aside className="h-max rounded-lg bg-white p-5 shadow-[0_24px_70px_rgba(25,24,21,.08)] xl:sticky xl:top-24">
+        <aside className="h-max dashboard-surface xl:sticky xl:top-24">
           <h2 className="text-lg font-black text-[#20201d]">Ringkasan</h2>
           <div className="mt-4 space-y-3 rounded-lg bg-[#f8f7f3] p-4 text-sm font-semibold text-stone-600">
             <div className="flex justify-between gap-4">

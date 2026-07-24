@@ -203,7 +203,7 @@ export function SupplierListPage() {
         }
       />
 
-      <section className="rounded-lg bg-white p-5 shadow-[0_24px_70px_rgba(25,24,21,.08)]">
+      <section className="dashboard-surface">
         {/* Stats */}
         <div className="grid gap-3 sm:grid-cols-3">
           <StatCard label="Total distributor" value={total} icon={Building2} />

@@ -73,7 +73,7 @@ export default async function DetailResepPage({
       />
 
       <section className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_340px]">
-        <div className="rounded-lg bg-white p-5 shadow-[0_24px_70px_rgba(25,24,21,.08)]">
+        <div className="dashboard-surface">
           <div className="mb-5 flex items-center gap-3">
             <span className="grid h-11 w-11 place-items-center rounded-lg bg-[#fff0ea] text-[#ff6a3d]">
               <ClipboardList className="h-5 w-5" strokeWidth={1.9} />
@@ -132,7 +132,7 @@ export default async function DetailResepPage({
           </div>
         </div>
 
-        <aside className="h-max rounded-lg bg-white p-5 shadow-[0_24px_70px_rgba(25,24,21,.08)] xl:sticky xl:top-24">
+        <aside className="h-max dashboard-surface xl:sticky xl:top-24">
           <div className="flex items-start justify-between gap-4">
             <div>
               <p className="text-sm font-bold text-stone-400">Status</p>

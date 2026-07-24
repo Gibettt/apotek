@@ -231,7 +231,7 @@ export function PelangganListPage() {
         }
       />
 
-      <section className="rounded-xl bg-white p-5 shadow-[0_24px_70px_rgba(25,24,21,.08)]">
+      <section className="dashboard-surface">
         {/* Stats */}
         <div className="grid gap-3 sm:grid-cols-3">
           <StatCard icon={Users} label="Total pelanggan" value={total} color="teal" />

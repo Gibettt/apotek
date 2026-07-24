@@ -195,7 +195,7 @@ export function JurnalListPage() {
         }
       />
 
-      <section className="rounded-lg bg-white p-5 shadow-[0_24px_70px_rgba(25,24,21,.08)]">
+      <section className="dashboard-surface">
         <div className="grid gap-3 md:grid-cols-4">
           <JurnalStat label="Jumlah Transaksi" value={stats.jumlahTransaksi} icon={BookText} />
           <JurnalStat label="Total Debit" value={formatCurrency(stats.totalDebit)} icon={BadgeCheck} />

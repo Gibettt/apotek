@@ -159,7 +159,7 @@ export function BiayaForm() {
 
       <form
         onSubmit={handleSubmit}
-        className="mx-auto max-w-2xl rounded-lg bg-white p-5 shadow-[0_24px_70px_rgba(25,24,21,.08)]"
+        className="mx-auto max-w-2xl dashboard-surface"
       >
         <div className="mb-6 flex items-start gap-4 rounded-lg bg-[#f8f7f3] p-4">
           <span className="grid h-12 w-12 shrink-0 place-items-center rounded-lg bg-[#e6f4f2] text-[#0f766e]">

@@ -261,7 +261,7 @@ export function ResepListPage() {
         }
       />
 
-      <section className="rounded-lg bg-white p-5 shadow-[0_24px_70px_rgba(25,24,21,.08)]">
+      <section className="dashboard-surface">
         <div className="grid gap-3 md:grid-cols-4">
           <RecipeStat label="Total resep" value={total} icon={ClipboardList} />
           <RecipeStat label="Menunggu" value={stats.waiting} icon={Clock3} />

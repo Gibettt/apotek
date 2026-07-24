@@ -106,7 +106,7 @@ export function BiayaListPage() {
         }
       />
 
-      <section className="rounded-lg bg-white p-5 shadow-[0_24px_70px_rgba(25,24,21,.08)]">
+      <section className="dashboard-surface">
         <div className="grid gap-3 md:grid-cols-3">
           <BiayaStat label="Jumlah Transaksi" value={stats.jumlahTransaksi} icon={Receipt} />
           <BiayaStat label="Total Biaya" value={formatCurrency(stats.totalJumlah)} icon={Banknote} />

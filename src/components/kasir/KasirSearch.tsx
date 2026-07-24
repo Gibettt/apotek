@@ -53,7 +53,7 @@ function getDisabledReason(item: ObatListItem, cartQuantity: number) {
   return null;
 }
 
-export function KasirSearch() {
+export function KasirSearch({ refreshToken }: { refreshToken?: number } = {}) {
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<ObatListItem[]>([]);
   const [total, setTotal] = useState(0);
@@ -117,7 +117,7 @@ export function KasirSearch() {
     return () => {
       active = false;
     };
-  }, [query]);
+  }, [query, refreshToken]);
 
   return (
     <div className="space-y-5">

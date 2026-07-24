@@ -1,0 +1,30 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1800 420" role="img" aria-labelledby="title desc">
+  <title id="title">Logo Apotek Ananda dengan tanda tambah</title>
+  <desc id="desc">Logo horizontal Apotek Ananda dengan simbol tambah medis berwarna hijau.</desc>
+  <defs>
+    <linearGradient id="plusGradient" x1="90" y1="70" x2="390" y2="350" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#19B98D"/>
+      <stop offset="1" stop-color="#08715F"/>
+    </linearGradient>
+    <linearGradient id="nameGradient" x1="960" y1="90" x2="1680" y2="310" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#10A982"/>
+      <stop offset="1" stop-color="#08715F"/>
+    </linearGradient>
+  </defs>
+
+  <g aria-hidden="true">
+    <rect x="80" y="145" width="320" height="130" rx="34" fill="url(#plusGradient)"/>
+    <rect x="175" y="50" width="130" height="320" rx="34" fill="url(#plusGradient)"/>
+    <circle cx="240" cy="210" r="34" fill="#FFFFFF" opacity="0.16"/>
+  </g>
+
+  <text
+    x="480"
+    y="263"
+    font-family="Poppins, Montserrat, Arial, sans-serif"
+    font-size="144"
+    letter-spacing="0">
+    <tspan fill="#24443E" font-weight="500">Apotek</tspan>
+    <tspan dx="34" fill="url(#nameGradient)" font-weight="800">Ananda</tspan>
+  </text>
+</svg>

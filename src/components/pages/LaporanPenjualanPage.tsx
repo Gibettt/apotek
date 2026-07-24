@@ -297,7 +297,7 @@ export function LaporanPenjualanPage() {
       </section>
 
       <section className="space-y-5">
-        <div className="rounded-lg bg-white p-5 shadow-[0_24px_70px_rgba(25,24,21,.08)]">
+        <div className="dashboard-surface">
           <div className="mb-5 flex items-start justify-between gap-4">
             <div>
               <h2 className="text-lg font-black text-[#20201d]">
@@ -382,7 +382,7 @@ export function LaporanPenjualanPage() {
           </div>
         </div>
 
-        <div className="rounded-lg bg-white p-5 shadow-[0_24px_70px_rgba(25,24,21,.08)]">
+        <div className="dashboard-surface">
           <div className="mb-5 flex items-start justify-between gap-4">
             <div>
               <h2 className="text-lg font-black text-[#20201d]">
@@ -443,7 +443,7 @@ export function LaporanPenjualanPage() {
           </div>
         </div>
 
-        <div className="overflow-hidden rounded-lg bg-white shadow-[0_24px_70px_rgba(25,24,21,.08)]">
+        <div className="dashboard-table-section overflow-hidden">
           <div className="flex flex-wrap items-center justify-between gap-3 border-b border-stone-100 px-5 py-4">
             <div>
               <h2 className="text-lg font-black text-[#20201d]">

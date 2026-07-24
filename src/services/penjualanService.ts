@@ -58,6 +58,22 @@ interface CheckoutPayload {
 
 const localPenjualan: Penjualan[] = [...initialPenjualan];
 
+async function resolvePenggunaId(): Promise<string | null> {
+  const current = getCurrentUserId();
+
+  if (!isSupabaseConfigured || !supabase || !current) {
+    return null;
+  }
+
+  const { data } = await supabase
+    .from("pengguna")
+    .select("id")
+    .eq("id", current)
+    .maybeSingle();
+
+  return data?.id ? (data.id as string) : null;
+}
+
 async function resolveCabangId(cabangId?: string) {
   if (!supabase) {
     return cabangId || defaultCabangId;
@@ -314,6 +330,38 @@ function localCheckout(payload: CheckoutPayload): Penjualan {
   return created;
 }
 
+async function assertStockAvailability(cabangId: string, items: CartItem[]) {
+  if (!supabase || !items.length) {
+    return;
+  }
+
+  const barangIds = items.map((item) => item.barangId);
+  const { data, error } = await supabase
+    .from("saldo_stok")
+    .select("barang_id,qty")
+    .eq("cabang_id", cabangId)
+    .in("barang_id", barangIds);
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  const availableByBarang = (data ?? []).reduce<Record<string, number>>((acc, row) => {
+    const id = row.barang_id as string;
+    acc[id] = (acc[id] ?? 0) + Number(row.qty ?? 0);
+    return acc;
+  }, {});
+
+  for (const item of items) {
+    const available = availableByBarang[item.barangId] ?? 0;
+    if (item.quantity > available) {
+      throw new Error(
+        `Stok ${item.nama} tidak mencukupi. Tersedia ${available}, diminta ${item.quantity}.`
+      );
+    }
+  }
+}
+
 async function decrementStock(
   cabangId: string,
   barangId: string,
@@ -479,6 +527,7 @@ export const penjualanService = {
     }
 
     const cabangId = await resolveCabangId(payload.cabangId);
+    await assertStockAvailability(cabangId, payload.items);
     const barangIds = payload.items.map((item) => item.barangId);
     const hargaByBarang = await resolveActivePrices(barangIds, cabangId);
 
@@ -493,7 +542,7 @@ export const penjualanService = {
     );
     const now = new Date().toISOString();
     const nomorInvoice = generateNomorInvoice(new Date(now));
-    const dibuatOleh = getCurrentUserId();
+    const dibuatOleh = await resolvePenggunaId();
 
     const { data, error } = await supabase
       .from("penjualan")

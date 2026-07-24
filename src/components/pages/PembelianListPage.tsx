@@ -240,7 +240,7 @@ export function PembelianListPage() {
         }
       />
 
-      <section className="rounded-lg bg-white p-5 shadow-[0_24px_70px_rgba(25,24,21,.08)]">
+      <section className="dashboard-surface">
         <div className="grid gap-3 md:grid-cols-4">
           <PurchaseStat label="Total PO" value={total} icon={FilePlus2} />
           <PurchaseStat label="Diterima" value={stats.received} icon={PackageCheck} />
