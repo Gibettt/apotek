@@ -2,7 +2,13 @@ import { format } from "date-fns";
 import { id } from "date-fns/locale";
 
 export function formatDate(value: string | Date, pattern = "dd MMM yyyy") {
-  return format(new Date(value), pattern, { locale: id });
+  const date = value instanceof Date ? value : new Date(value);
+
+  if (Number.isNaN(date.getTime())) {
+    return "-";
+  }
+
+  return format(date, pattern, { locale: id });
 }
 
 export function formatDateTime(value: string | Date) {

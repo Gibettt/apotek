@@ -2,7 +2,7 @@
 
 import { Save } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useMemo } from "react";
+import { useEffect, useMemo } from "react";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
 import { Header } from "@/components/layout/Header";
@@ -11,6 +11,7 @@ import { Card, CardContent } from "@/components/ui/Card";
 import { Input } from "@/components/ui/Input";
 import { Select } from "@/components/ui/Select";
 import type { FieldConfig, ModuleConfig, ModuleRecord } from "@/constants/modules";
+import { generateAutoKode } from "@/utils/autoKode";
 import { cn } from "@/utils/cn";
 
 function defaultValues(fields: FieldConfig[], record?: ModuleRecord) {
@@ -90,12 +91,37 @@ export function ModuleFormPage({
   title?: string;
 }) {
   const router = useRouter();
-  const values = useMemo(() => defaultValues(config.fields, record), [config.fields, record]);
+  const visibleFields = useMemo(
+    () => config.fields.filter((field) => !(mode === "create" && field.hiddenOnCreate)),
+    [config.fields, mode]
+  );
+  const values = useMemo(() => defaultValues(visibleFields, record), [visibleFields, record]);
   const {
     register,
     handleSubmit,
+    watch,
+    setValue,
     formState: { isSubmitting }
   } = useForm({ values });
+  const watchedValues = watch();
+
+  useEffect(() => {
+    if (mode !== "create") {
+      return;
+    }
+
+    visibleFields.forEach((field) => {
+      if (!field.autoFillFrom) {
+        return;
+      }
+
+      const sourceValue = String(watchedValues[field.autoFillFrom] ?? "");
+      const nextValue = generateAutoKode(sourceValue, { prefix: "KAT" });
+      if (String(watchedValues[field.name] ?? "") !== nextValue) {
+        setValue(field.name, nextValue);
+      }
+    });
+  }, [mode, setValue, visibleFields, watchedValues]);
 
   async function onSubmit(values: Record<string, string | number | boolean>) {
     try {
@@ -132,7 +158,7 @@ export function ModuleFormPage({
         <CardContent>
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
             <div className="grid gap-4 md:grid-cols-2">
-              {config.fields.map((field) => (
+              {visibleFields.map((field) => (
                 <div
                   key={field.name}
                   className={cn(field.type === "textarea" && "md:col-span-2")}

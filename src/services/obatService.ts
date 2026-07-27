@@ -40,6 +40,44 @@ export interface ObatInput {
 
 export type ObatListItem = Obat;
 
+/**
+ * obatService.update() replaces every column, it doesn't merge - so a partial edit (e.g. price-only)
+ * must carry every existing field forward or it silently nulls out kategori/satuan/etc. Build the full
+ * payload from the current record and layer overrides on top.
+ */
+export function toObatUpdatePayload(
+  record: ObatListItem,
+  overrides: Partial<ObatInput> = {}
+): ObatInput {
+  return {
+    kode: record.kode,
+    barcodeDefault: record.barcodeDefault,
+    nama: record.nama,
+    namaGenerik: record.namaGenerik,
+    kategoriId: record.kategoriId,
+    jenisId: record.jenisId,
+    golonganId: record.golonganId,
+    pabrikId: record.pabrikId,
+    principalId: record.principalId,
+    satuanDefaultId: record.satuanDefaultId,
+    satuanBeliId: record.satuanBeliId,
+    satuanJualId: record.satuanJualId,
+    lokasiDefaultId: record.lokasiDefaultId,
+    hargaBeli: record.hargaAktif?.hargaBeli ?? 0,
+    hargaJual: record.hargaAktif?.hargaJual ?? 0,
+    stokMinimum: record.stokMinimum,
+    stokMaksimum: record.stokMaksimum,
+    gambarUrl: record.gambarUrl,
+    komposisi: record.komposisi,
+    indikasi: record.indikasi,
+    aturanPakai: record.aturanPakai,
+    perluBatch: record.perluBatch,
+    perluExpired: record.perluExpired,
+    status: record.status,
+    ...overrides
+  };
+}
+
 export interface MasterOption {
   id: string;
   label: string;

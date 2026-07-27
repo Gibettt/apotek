@@ -1,6 +1,7 @@
 import { defaultCabangId } from "@/lib/mock-data";
 import { isSupabaseConfigured, supabase } from "@/lib/supabase";
 import type { Pembelian, PembelianDetail, StatusPembelian } from "@/types";
+import { jurnalService, resolveAkunIdByKode } from "./jurnalService";
 import { getCurrentUserId, matchSearch, paginate, type ListParams } from "./serviceUtils";
 
 export interface PembelianItemInput {
@@ -410,6 +411,64 @@ async function receiveStock(pembelian: Pembelian) {
       throw new Error(kartuError.message);
     }
   }
+
+  await postPembelianJurnal(pembelian, cabangId);
+}
+
+/** Balanced jurnal_umum_detail rows for a purchase receipt: inventory in, payable to the supplier out. */
+export function buildPembelianJurnalDetails(input: {
+  grandTotal: number;
+  nomorInternal: string;
+  namaSupplier: string;
+  akunIds: { persediaan: string; utang: string };
+}) {
+  return [
+    {
+      akunId: input.akunIds.persediaan,
+      debit: input.grandTotal,
+      kredit: 0,
+      keterangan: `Penerimaan barang ${input.nomorInternal}`
+    },
+    {
+      akunId: input.akunIds.utang,
+      debit: 0,
+      kredit: input.grandTotal,
+      keterangan: `Utang ke ${input.namaSupplier || "supplier"}`
+    }
+  ];
+}
+
+/** Books the receipt into the ledger: inventory in, payable to the supplier out. */
+async function postPembelianJurnal(pembelian: Pembelian, cabangId: string) {
+  if (!isSupabaseConfigured || !supabase || pembelian.grandTotal <= 0) {
+    return;
+  }
+
+  const [persediaanId, utangId] = await Promise.all([
+    resolveAkunIdByKode("1-200", "Persediaan Obat", "Aset"),
+    resolveAkunIdByKode("2-100", "Utang Supplier", "Kewajiban")
+  ]);
+
+  if (!persediaanId || !utangId) {
+    return;
+  }
+
+  await jurnalService.create({
+    tanggal: pembelian.tanggalFaktur || new Date().toISOString().slice(0, 10),
+    nomorReferensi: pembelian.nomorInternal,
+    deskripsi: `Pembelian ${pembelian.nomorInternal}`,
+    cabangId,
+    status: "diposting",
+    sumber: "pembelian",
+    sumberTabel: "faktur_pembelian",
+    sumberId: pembelian.id,
+    details: buildPembelianJurnalDetails({
+      grandTotal: pembelian.grandTotal,
+      nomorInternal: pembelian.nomorInternal,
+      namaSupplier: pembelian.namaSupplier,
+      akunIds: { persediaan: persediaanId, utang: utangId }
+    })
+  });
 }
 
 export const pembelianService = {

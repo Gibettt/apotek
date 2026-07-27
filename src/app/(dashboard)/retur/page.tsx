@@ -1,8 +1,5 @@
-"use client";
-
-import { ModuleListPage } from "@/components/pages/ModuleListPage";
-import { moduleConfigs } from "@/constants/modules";
+import { ReturListPage } from "@/components/pages/ReturListPage";
 
 export default function ReturPage() {
-  return <ModuleListPage config={moduleConfigs.retur} />;
+  return <ReturListPage />;
 }

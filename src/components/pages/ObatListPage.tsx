@@ -5,21 +5,30 @@ import type { LucideIcon } from "lucide-react";
 import {
   AlertTriangle,
   Boxes,
+  Check,
   Eye,
+  PackagePlus,
   Pencil,
   Pill,
-  Plus,
   Search,
-  Trash2
+  Tag,
+  Trash2,
+  X
 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { Header } from "@/components/layout/Header";
 import { Badge } from "@/components/ui/Badge";
+import { Button } from "@/components/ui/Button";
+import { Input } from "@/components/ui/Input";
+import { Modal } from "@/components/ui/Modal";
 import { Pagination } from "@/components/ui/Pagination";
-import { obatService } from "@/services/obatService";
+import { obatService, toObatUpdatePayload } from "@/services/obatService";
+import { stokService } from "@/services/stokService";
 import type { Obat } from "@/types";
 import { formatCurrency } from "@/utils/formatCurrency";
+
+const QUICK_RESTOCK_QTY = 10;
 
 const perPage = 8;
 
@@ -78,10 +87,14 @@ function StockStat({
 
 function ObatRow({
   item,
-  onDelete
+  onDelete,
+  onRestock,
+  onSetPrice
 }: {
   item: Obat;
   onDelete: (item: Obat) => void;
+  onRestock: (item: Obat) => void;
+  onSetPrice: (item: Obat) => void;
 }) {
   const stock = getStockState(item);
   const progress = Math.min(
@@ -133,12 +146,30 @@ function ObatRow({
         </div>
       </td>
       <td className="px-5 py-4">
-        <p className="font-black text-[#20201d]">
-          {formatCurrency(item.hargaAktif?.hargaJual ?? 0)}
-        </p>
-        <p className="mt-1 text-xs font-semibold text-stone-400">
-          Beli {formatCurrency(item.hargaAktif?.hargaBeli ?? 0)}
-        </p>
+        {item.hargaAktif?.hargaJual ? (
+          <>
+            <p className="font-black text-[#20201d]">
+              {formatCurrency(item.hargaAktif.hargaJual)}
+            </p>
+            <p className="mt-1 text-xs font-semibold text-stone-400">
+              Beli {formatCurrency(item.hargaAktif?.hargaBeli ?? 0)}
+            </p>
+          </>
+        ) : (
+          <>
+            <p className="text-xs font-semibold text-stone-400">
+              Beli {formatCurrency(item.hargaAktif?.hargaBeli ?? 0)}
+            </p>
+            <button
+              type="button"
+              onClick={() => onSetPrice(item)}
+              className="mt-1 inline-flex items-center gap-1 rounded-full bg-amber-50 px-2.5 py-1 text-xs font-black text-amber-700 transition hover:bg-amber-100"
+            >
+              <Tag className="h-3 w-3" strokeWidth={2} />
+              Atur harga jual
+            </button>
+          </>
+        )}
       </td>
       <td className="px-5 py-4">
         <div className="flex flex-wrap gap-2">
@@ -152,6 +183,15 @@ function ObatRow({
       </td>
       <td className="px-5 py-4 text-right">
         <div className="flex justify-end gap-2">
+          <button
+            type="button"
+            aria-label={`Tambah stok ${item.nama}`}
+            title="Tambah stok"
+            onClick={() => onRestock(item)}
+            className="grid h-9 w-9 place-items-center rounded-full bg-[#f8f7f3] text-emerald-700 transition hover:bg-white hover:text-emerald-800 hover:shadow-sm"
+          >
+            <PackagePlus className="h-4 w-4" strokeWidth={1.9} />
+          </button>
           <Link
             href={`/obat/${item.id}`}
             aria-label="Detail obat"
@@ -187,7 +227,76 @@ export function ObatListPage() {
   const [rows, setRows] = useState<Obat[]>([]);
   const [total, setTotal] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
+  const [restockTarget, setRestockTarget] = useState<Obat | null>(null);
+  const [isRestocking, setIsRestocking] = useState(false);
+  const [refreshToken, setRefreshToken] = useState(0);
+  const [skipRestockConfirm, setSkipRestockConfirm] = useState(false);
+  const [priceTarget, setPriceTarget] = useState<Obat | null>(null);
+  const [priceValue, setPriceValue] = useState("0");
+  const [isSavingPrice, setIsSavingPrice] = useState(false);
   const totalPages = Math.max(1, Math.ceil(total / perPage));
+
+  function handleSetPriceClick(item: Obat) {
+    setPriceTarget(item);
+    setPriceValue(String(item.hargaAktif?.hargaJual ?? 0));
+  }
+
+  async function handleSavePrice() {
+    if (!priceTarget) return;
+
+    setIsSavingPrice(true);
+
+    try {
+      const payload = toObatUpdatePayload(priceTarget, {
+        hargaJual: Number(priceValue || 0)
+      });
+      await obatService.update(priceTarget.id, payload);
+      toast.success(`Harga jual ${priceTarget.nama} berhasil disimpan`);
+      setPriceTarget(null);
+      setRefreshToken((token) => token + 1);
+    } catch (error) {
+      toast.error(
+        error instanceof Error ? error.message : "Gagal menyimpan harga jual"
+      );
+    } finally {
+      setIsSavingPrice(false);
+    }
+  }
+
+  async function doRestock(item: Obat) {
+    setIsRestocking(true);
+
+    try {
+      await stokService.masuk({
+        barangId: item.id,
+        qty: QUICK_RESTOCK_QTY,
+        keterangan: "Tambah stok cepat dari daftar obat"
+      });
+      toast.success(`Stok ${item.nama} bertambah ${QUICK_RESTOCK_QTY}`);
+      setRestockTarget(null);
+      setRefreshToken((token) => token + 1);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Gagal menambah stok");
+    } finally {
+      setIsRestocking(false);
+    }
+  }
+
+  function handleRestockClick(item: Obat) {
+    if (skipRestockConfirm) {
+      void doRestock(item);
+      return;
+    }
+
+    setRestockTarget(item);
+  }
+
+  async function handleConfirmRestock() {
+    if (!restockTarget) return;
+
+    setSkipRestockConfirm(true);
+    await doRestock(restockTarget);
+  }
 
   async function handleDelete(item: Obat) {
     const confirmed = window.confirm(
@@ -245,7 +354,7 @@ export function ObatListPage() {
     return () => {
       active = false;
     };
-  }, [page, search]);
+  }, [page, search, refreshToken]);
 
   const stats = useMemo(() => {
     const lowItems = rows.filter(
@@ -259,16 +368,7 @@ export function ObatListPage() {
     <>
       <Header
         title="Stok Barang"
-        description="Daftar barang dengan harga, stok, kategori, supplier, dan status resep."
-        action={
-          <Link
-            href="/obat/tambah"
-            className="inline-flex h-10 items-center justify-center gap-2 rounded-lg bg-[#0f766e] px-4 text-sm font-bold text-white shadow-[0_12px_28px_rgba(15,118,110,.18)] transition hover:-translate-y-0.5 hover:bg-[#115e59]"
-          >
-            <Plus className="h-4 w-4" />
-            Tambah
-          </Link>
-        }
+        description="Daftar barang dari Pembelian. Kelola harga jual per barang di sini."
       />
 
       <section className="dashboard-surface">
@@ -306,7 +406,7 @@ export function ObatListPage() {
                   <th className="px-5 py-4">Stok</th>
                   <th className="px-5 py-4">Harga</th>
                   <th className="px-5 py-4">Status</th>
-                  <th className="w-[156px] px-5 py-4 text-right">Aksi</th>
+                  <th className="w-[196px] px-5 py-4 text-right">Aksi</th>
                 </tr>
               </thead>
               <tbody>
@@ -325,6 +425,8 @@ export function ObatListPage() {
                       key={item.id}
                       item={item}
                       onDelete={handleDelete}
+                      onRestock={handleRestockClick}
+                      onSetPrice={handleSetPriceClick}
                     />
                   ))
                 ) : (
@@ -353,6 +455,70 @@ export function ObatListPage() {
           />
         </div>
       </section>
+
+      <Modal
+        open={Boolean(restockTarget)}
+        title="Tambah Stok"
+        onClose={() => setRestockTarget(null)}
+      >
+        <p className="text-sm font-semibold text-stone-600">
+          Yakin ingin menambah stok <strong className="text-stone-950">+{QUICK_RESTOCK_QTY}</strong> untuk{" "}
+          <strong className="text-stone-950">{restockTarget?.nama}</strong>?
+        </p>
+        <div className="mt-5 flex justify-end gap-2">
+          <Button
+            type="button"
+            variant="secondary"
+            disabled={isRestocking}
+            onClick={() => setRestockTarget(null)}
+          >
+            <X className="h-4 w-4" />
+            Batal
+          </Button>
+          <Button type="button" isLoading={isRestocking} onClick={handleConfirmRestock}>
+            <Check className="h-4 w-4" />
+            Ya, Tambah Stok
+          </Button>
+        </div>
+      </Modal>
+
+      <Modal
+        open={Boolean(priceTarget)}
+        title="Atur Harga Jual"
+        onClose={() => setPriceTarget(null)}
+      >
+        <p className="text-sm font-semibold text-stone-600">
+          Barang <strong className="text-stone-950">{priceTarget?.nama}</strong> baru
+          masuk dari pembelian dan belum punya harga jual.
+        </p>
+        <p className="mt-1 text-xs font-semibold text-stone-400">
+          Harga Beli: {formatCurrency(priceTarget?.hargaAktif?.hargaBeli ?? 0)}
+        </p>
+        <div className="mt-4">
+          <Input
+            label="Harga Jual"
+            type="number"
+            min={0}
+            value={priceValue}
+            onChange={(event) => setPriceValue(event.target.value)}
+          />
+        </div>
+        <div className="mt-5 flex justify-end gap-2">
+          <Button
+            type="button"
+            variant="secondary"
+            disabled={isSavingPrice}
+            onClick={() => setPriceTarget(null)}
+          >
+            <X className="h-4 w-4" />
+            Batal
+          </Button>
+          <Button type="button" isLoading={isSavingPrice} onClick={handleSavePrice}>
+            <Check className="h-4 w-4" />
+            Simpan Harga
+          </Button>
+        </div>
+      </Modal>
     </>
   );
 }

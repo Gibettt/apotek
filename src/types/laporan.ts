@@ -1,18 +1,3 @@
-export interface DashboardSummary {
-  totalPenjualanHariIni: number;
-  jumlahTransaksiHariIni: number;
-  stokMenipis: number;
-  obatExpired: number;
-  pembelianTerbaru: number;
-}
-
-export interface ChartPoint {
-  label: string;
-  penjualan: number;
-  pembelian?: number;
-  laba?: number;
-}
-
 export interface ReportRow {
   id: number | string;
   tanggal: string;

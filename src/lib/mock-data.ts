@@ -1,8 +1,6 @@
 import type {
   AuthUser,
   Cabang,
-  ChartPoint,
-  DashboardSummary,
   Dokter,
   GolonganObat,
   KategoriBarang,
@@ -12,7 +10,6 @@ import type {
   Pembelian,
   Pengaturan,
   Penjualan,
-  ReportRow,
   Resep,
   StokBatch,
   StokMutasi,
@@ -545,58 +542,3 @@ export const settings: Pengaturan[] = [
   }
 ];
 
-export const dashboardSummary: DashboardSummary = {
-  totalPenjualanHariIni: 19200,
-  jumlahTransaksiHariIni: 1,
-  stokMenipis: obat.filter((item) => item.stokTersedia < item.stokMinimum)
-    .length,
-  obatExpired: stokBatches.filter(
-    (item) => item.tanggalExpired && new Date(item.tanggalExpired) < new Date("2026-09-07")
-  ).length,
-  pembelianTerbaru: pembelian.length
-};
-
-export const salesChart: ChartPoint[] = [
-  { label: "Sen", penjualan: 125000, pembelian: 0, laba: 52000 },
-  { label: "Sel", penjualan: 19200, pembelian: 255300, laba: 7400 },
-  { label: "Rab", penjualan: 88000, pembelian: 0, laba: 33000 },
-  { label: "Kam", penjualan: 132000, pembelian: 110000, laba: 59000 },
-  { label: "Jum", penjualan: 97500, pembelian: 0, laba: 41000 },
-  { label: "Sab", penjualan: 151000, pembelian: 0, laba: 68000 },
-  { label: "Min", penjualan: 73000, pembelian: 0, laba: 27000 }
-];
-
-export const reportRows: Record<string, ReportRow[]> = {
-  penjualan: penjualan.map((item) => ({
-    id: item.id,
-    tanggal: item.tanggal,
-    referensi: item.nomorInvoice,
-    kategori: item.metodePembayaran ?? "tunai",
-    nilai: item.grandTotal,
-    status: item.status
-  })),
-  pembelian: pembelian.map((item) => ({
-    id: item.id,
-    tanggal: item.tanggalFaktur,
-    referensi: item.nomorInternal,
-    kategori: item.namaSupplier,
-    nilai: item.grandTotal,
-    status: item.status
-  })),
-  stok: stokBatches.map((item) => ({
-    id: item.id,
-    tanggal: item.tanggalExpired ?? "",
-    referensi: item.nomorBatch,
-    kategori: item.namaBarang,
-    nilai: item.qty,
-    status: item.lokasiNama ?? ""
-  })),
-  "laba-rugi": salesChart.map((item, index) => ({
-    id: String(index + 1),
-    tanggal: `2026-07-0${index + 1}`,
-    referensi: item.label,
-    kategori: "Laba kotor",
-    nilai: item.laba ?? 0,
-    status: "selesai"
-  }))
-};

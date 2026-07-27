@@ -1,6 +1,7 @@
 import { penjualan as initialPenjualan, defaultCabangId } from "@/lib/mock-data";
-import { resolveActivePrices } from "@/lib/pricing";
+import { resolveActivePrices, type ActivePrice } from "@/lib/pricing";
 import { isSupabaseConfigured, supabase } from "@/lib/supabase";
+import { jurnalService, resolveAkunIdByKode } from "./jurnalService";
 import type {
   CartItem,
   MetodePembayaran,
@@ -285,6 +286,18 @@ async function loadDetailsForSales(ids: string[]) {
   );
 }
 
+/** Resolves each cart line's real sell price and cost basis so kartu_stok/penjualan_detail never fall back to the selling price as cost. */
+export function resolveCheckoutItems(
+  items: CartItem[],
+  hargaByBarang: Record<string, ActivePrice>
+) {
+  return items.map((item) => ({
+    ...item,
+    hargaJual: hargaByBarang[item.barangId]?.hargaJual ?? item.hargaJual,
+    hargaPokok: hargaByBarang[item.barangId]?.hargaBeli ?? 0
+  }));
+}
+
 function localCheckout(payload: CheckoutPayload): Penjualan {
   const subtotal = payload.items.reduce(
     (sum, item) => sum + item.hargaJual * item.quantity,
@@ -449,6 +462,87 @@ async function decrementStock(
   }
 }
 
+// ponytail: BPJS/accurate settle to bank same as transfer — no separate piutang tracking yet.
+export function resolveKasAkunKode(metodePembayaran: string) {
+  return metodePembayaran === "tunai" ? { kode: "1-100", nama: "Kas" } : { kode: "1-110", nama: "Bank" };
+}
+
+/** Balanced jurnal_umum_detail rows for a sale: cash/bank in, revenue recognized, inventory drawn down at cost. */
+export function buildPenjualanJurnalDetails(input: {
+  grandTotal: number;
+  totalHpp: number;
+  nomorInvoice: string;
+  akunIds: { kas: string; pendapatan: string; persediaan: string; hpp: string };
+}) {
+  const details = [
+    {
+      akunId: input.akunIds.kas,
+      debit: input.grandTotal,
+      kredit: 0,
+      keterangan: `Penerimaan penjualan ${input.nomorInvoice}`
+    },
+    { akunId: input.akunIds.pendapatan, debit: 0, kredit: input.grandTotal, keterangan: `Penjualan ${input.nomorInvoice}` }
+  ];
+
+  if (input.totalHpp > 0) {
+    details.push(
+      { akunId: input.akunIds.hpp, debit: input.totalHpp, kredit: 0, keterangan: `HPP ${input.nomorInvoice}` },
+      {
+        akunId: input.akunIds.persediaan,
+        debit: 0,
+        kredit: input.totalHpp,
+        keterangan: `Pengurangan persediaan ${input.nomorInvoice}`
+      }
+    );
+  }
+
+  return details.filter((detail) => detail.debit > 0 || detail.kredit > 0);
+}
+
+/** Books the sale into the ledger: cash/bank in, revenue recognized, inventory drawn down at cost. */
+async function postPenjualanJurnal(
+  sale: Penjualan,
+  resolvedItems: Array<{ hargaPokok: number; quantity: number }>,
+  cabangId: string
+) {
+  if (!isSupabaseConfigured || !supabase) {
+    return;
+  }
+
+  const totalHpp = resolvedItems.reduce((sum, item) => sum + item.hargaPokok * item.quantity, 0);
+  const kas = resolveKasAkunKode(sale.metodePembayaran ?? "tunai");
+
+  const [kasId, pendapatanId, persediaanId, hppId] = await Promise.all([
+    resolveAkunIdByKode(kas.kode, kas.nama, "Aset"),
+    resolveAkunIdByKode("4-100", "Pendapatan Penjualan", "Pendapatan"),
+    resolveAkunIdByKode("1-200", "Persediaan Obat", "Aset"),
+    resolveAkunIdByKode("5-000", "Beban Pokok Penjualan", "Beban")
+  ]);
+
+  if (!kasId || !pendapatanId || !persediaanId || !hppId) {
+    return;
+  }
+
+  const details = buildPenjualanJurnalDetails({
+    grandTotal: sale.grandTotal,
+    totalHpp,
+    nomorInvoice: sale.nomorInvoice,
+    akunIds: { kas: kasId, pendapatan: pendapatanId, persediaan: persediaanId, hpp: hppId }
+  });
+
+  await jurnalService.create({
+    tanggal: sale.tanggal.slice(0, 10),
+    nomorReferensi: sale.nomorInvoice,
+    deskripsi: `Penjualan ${sale.nomorInvoice}`,
+    cabangId,
+    status: "diposting",
+    sumber: "penjualan",
+    sumberTabel: "penjualan",
+    sumberId: sale.id,
+    details
+  });
+}
+
 export const penjualanService = {
   async list(params: ListParams = {}) {
     if (!isSupabaseConfigured || !supabase) {
@@ -531,10 +625,7 @@ export const penjualanService = {
     const barangIds = payload.items.map((item) => item.barangId);
     const hargaByBarang = await resolveActivePrices(barangIds, cabangId);
 
-    const resolvedItems = payload.items.map((item) => ({
-      ...item,
-      hargaJual: hargaByBarang[item.barangId]?.hargaJual ?? item.hargaJual
-    }));
+    const resolvedItems = resolveCheckoutItems(payload.items, hargaByBarang);
 
     const subtotal = resolvedItems.reduce(
       (sum, item) => sum + item.hargaJual * item.quantity,
@@ -591,7 +682,7 @@ export const penjualanService = {
           diskon_persen: 0,
           diskon_nominal: 0,
           subtotal: item.hargaJual * item.quantity,
-          harga_pokok: 0
+          harga_pokok: item.hargaPokok
         }))
       );
 
@@ -600,7 +691,7 @@ export const penjualanService = {
       }
 
       for (const item of resolvedItems) {
-        await decrementStock(cabangId, item.barangId, item.quantity, data.id, item.hargaJual);
+        await decrementStock(cabangId, item.barangId, item.quantity, data.id, item.hargaPokok);
       }
     }
 
@@ -620,6 +711,8 @@ export const penjualanService = {
     if (!created) {
       throw new Error("Penjualan berhasil dibuat, tetapi data tidak dapat dimuat ulang");
     }
+
+    await postPenjualanJurnal(created, resolvedItems, cabangId);
 
     return created;
   }

@@ -23,7 +23,6 @@ import { userService } from "@/services/userService";
 import {
   auditLogList,
   permissionList,
-  returPembelianList,
   roleList,
   suratPesananList
 } from "@/lib/erp-mock";
@@ -66,6 +65,8 @@ export interface FieldConfig {
   options?: OptionConfig[];
   placeholder?: string;
   defaultValue?: string | number | boolean;
+  hiddenOnCreate?: boolean;
+  autoFillFrom?: string;
 }
 
 export interface ColumnConfig {
@@ -128,7 +129,7 @@ export const moduleConfigs = {
     title: "Obat",
     description: "Daftar obat dengan harga, stok, kategori, golongan, dan status resep.",
     basePath: "/obat",
-    addPath: "/obat/tambah",
+    addPath: undefined,
     load: async () => {
       const result = await obatService.list(LOAD_ALL);
       return result.data.map((item) => ({
@@ -174,8 +175,8 @@ export const moduleConfigs = {
   },
   kategori: {
     key: "kategori",
-    title: "Kategori Obat",
-    description: "Pengelompokan obat untuk pencarian, laporan, dan pengaturan etalase.",
+    title: "Kategori Barang",
+    description: "Pengelompokan barang untuk pencarian, laporan, dan pengaturan etalase.",
     basePath: "/kategori",
     addPath: "/kategori/tambah",
     load: async () => {
@@ -189,6 +190,7 @@ export const moduleConfigs = {
       }));
     },
     columns: [
+      { key: "kode", header: "Kode" },
       { key: "nama", header: "Kategori" },
       { key: "deskripsi", header: "Deskripsi" },
       { key: "updatedAt", header: "Update", type: "date" }
@@ -226,7 +228,7 @@ export const moduleConfigs = {
         : null;
     },
     fields: [
-      { name: "kode", label: "Kode Kategori", type: "text" },
+      { name: "kode", label: "Kode Kategori", type: "text", autoFillFrom: "nama" },
       { name: "nama", label: "Nama Kategori", type: "text" },
       { name: "deskripsi", label: "Deskripsi", type: "textarea" }
     ],
@@ -397,7 +399,7 @@ export const moduleConfigs = {
         id: item.id,
         namaBarang: item.namaBarang,
         nomorBatch: item.nomorBatch,
-        tanggalExpired: item.tanggalExpired ?? "-",
+        tanggalExpired: item.tanggalExpired,
         qty: item.qty,
         lokasiNama: item.lokasiNama ?? "-"
       }));
@@ -864,7 +866,7 @@ export const moduleConfigs = {
     create: (payload) =>
       jenisBarangService
         .create({
-          kode: String(payload.kode ?? ""),
+          kode: String(payload.kode ?? "").trim() || undefined,
           nama: String(payload.nama ?? ""),
           deskripsi: payload.deskripsi ? String(payload.deskripsi) : undefined,
           aktif: true
@@ -886,7 +888,7 @@ export const moduleConfigs = {
       { key: "deskripsi", header: "Deskripsi" }
     ],
     fields: [
-      { name: "kode", label: "Kode Jenis", type: "text" },
+      { name: "kode", label: "Kode Jenis", type: "text", hiddenOnCreate: true },
       { name: "nama", label: "Nama Jenis", type: "text" },
       { name: "deskripsi", label: "Deskripsi", type: "textarea" }
     ],
@@ -1167,23 +1169,6 @@ export const moduleConfigs = {
     detailTitleKey: "nama",
     allowDetail: true,
     allowEdit: true
-  },
-  retur: {
-    key: "retur",
-    title: "Retur Pembelian",
-    description: "Pengembalian barang ke supplier.",
-    basePath: "/retur",
-    load: async () => [...returPembelianList],
-    columns: [
-      { key: "nomor", header: "Nomor" },
-      { key: "tanggal", header: "Tanggal", type: "date" },
-      { key: "namaSupplier", header: "Supplier" },
-      { key: "total", header: "Total", type: "currency" },
-      { key: "status", header: "Status", type: "status" }
-    ],
-    fields: [],
-    detailTitleKey: "nomor",
-    allowDetail: true
   },
   suratPesanan: {
     key: "suratPesanan",

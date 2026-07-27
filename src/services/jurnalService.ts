@@ -70,6 +70,44 @@ async function resolveCabangId(preferred?: string): Promise<string | undefined> 
   return data?.id as string | undefined;
 }
 
+/**
+ * Finds an akun by kode for system-generated journal entries, creating it on first use so
+ * auto-posting (penjualan/pembelian) never fails just because the chart of accounts is incomplete.
+ * Returns undefined in local/offline mode — auto-posting is a no-op there, same as other
+ * cross-service side effects (stock reversal on retur, receiveStock on pembelian).
+ */
+export async function resolveAkunIdByKode(kode: string, nama: string, tipe: string): Promise<string | undefined> {
+  if (!isSupabaseConfigured || !supabase) {
+    return undefined;
+  }
+
+  const { data: existing, error: findError } = await supabase
+    .from("akun")
+    .select("id")
+    .eq("kode", kode)
+    .maybeSingle();
+
+  if (findError) {
+    throw new Error(findError.message);
+  }
+
+  if (existing?.id) {
+    return existing.id as string;
+  }
+
+  const { data: created, error: createError } = await supabase
+    .from("akun")
+    .insert({ kode, nama, tipe, aktif: true })
+    .select("id")
+    .single();
+
+  if (createError) {
+    throw new Error(createError.message);
+  }
+
+  return created.id as string;
+}
+
 async function loadAkunMap(akunIds: string[]) {
   if (!supabase || !akunIds.length) {
     return {} as Record<string, AkunLookup>;
@@ -322,7 +360,9 @@ export const jurnalService = {
         nomor: `JU-${now.slice(0, 7).replace("-", "")}-${String(localJurnal.length + 1).padStart(4, "0")}`,
         tanggal: payload.tanggal,
         nomorReferensi: payload.nomorReferensi,
-        sumber: "manual",
+        sumber: payload.sumber ?? "manual",
+        sumberTabel: payload.sumberTabel,
+        sumberId: payload.sumberId,
         deskripsi: payload.deskripsi,
         status,
         dibuatOleh: getCurrentUserId() ?? undefined,
@@ -345,9 +385,9 @@ export const jurnalService = {
       p_deskripsi: payload.deskripsi,
       p_status: payload.status ?? "draft",
       p_cabang_id: cabangId ?? null,
-      p_sumber: "manual",
-      p_sumber_tabel: null,
-      p_sumber_id: null,
+      p_sumber: payload.sumber ?? "manual",
+      p_sumber_tabel: payload.sumberTabel ?? null,
+      p_sumber_id: payload.sumberId ?? null,
       p_details: toDetailPayload(payload.details)
     });
 

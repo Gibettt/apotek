@@ -191,12 +191,30 @@ export default function DashboardPage() {
   const [resepDiproses, setResepDiproses] = useState<Resep | null>(null);
   const [busyResepId, setBusyResepId] = useState<string | null>(null);
 
-  const view = useMemo(() => buildDashboardView({ period, category }), [category, period]);
+  const [view, setView] = useState<Awaited<ReturnType<typeof buildDashboardView>>>({
+    chart: [],
+    lowStockCount: 0,
+    activeMedicines: []
+  });
 
   useEffect(() => {
     const timer = setInterval(() => setNow(Date.now()), 1000);
     return () => clearInterval(timer);
   }, []);
+
+  useEffect(() => {
+    let active = true;
+
+    buildDashboardView({ period, category }).then((result) => {
+      if (active) {
+        setView(result);
+      }
+    });
+
+    return () => {
+      active = false;
+    };
+  }, [category, period]);
 
   useEffect(() => {
     let active = true;
@@ -392,14 +410,14 @@ export default function DashboardPage() {
         </article>
 
         <article className="dashboard-surface">
-          <SectionHeader title="Grafik penjualan mingguan" icon={ReceiptText} action={<span className="text-xs font-medium text-stone-400">{periodLabel}</span>} />
+          <SectionHeader title="Grafik penjualan" icon={ReceiptText} action={<span className="text-xs font-medium text-stone-400">{periodLabel}</span>} />
           <div className="dashboard-weekly-legend">
             <span><i style={{ background: "#2f9b7f" }} />Pendapatan</span>
             <span><i style={{ background: "#bfe5d6" }} />Laba</span>
           </div>
           <div className="h-[190px] w-full">
             <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={view.chart.slice(0, 7)} margin={{ top: 4, right: 4, bottom: 0, left: -24 }} barGap={3}>
+              <BarChart data={view.chart} margin={{ top: 4, right: 4, bottom: 0, left: -24 }} barGap={3}>
                 <CartesianGrid vertical={false} stroke="#e9ece9" strokeDasharray="2 4" />
                 <XAxis dataKey="label" axisLine={false} tickLine={false} tick={{ fill: "#929892", fontSize: 11 }} dy={8} />
                 <YAxis hide domain={[0, "dataMax + 15000"]} />

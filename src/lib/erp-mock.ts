@@ -63,11 +63,6 @@ export const permissionList = [
   { id: "pm-6", kode: "user.manage", nama: "Kelola User", modul: "Manajemen", deskripsi: "Kelola user & role" }
 ];
 
-export const returPembelianList = [
-  { id: "rp-1", nomor: "RB-2026-0001", tanggal: "2026-07-03", namaSupplier: "PT Sehat Farma", total: 450000, status: "posted", alasan: "Barang rusak" },
-  { id: "rp-2", nomor: "RB-2026-0002", tanggal: "2026-07-06", namaSupplier: "Dexa Medica", total: 1200000, status: "draft", alasan: "Mendekati expired" }
-];
-
 export const suratPesananList = [
   { id: "sp-1", nomor: "SP-2026-0001", jenisSp: "Reguler", tanggal: "2026-07-01", namaSupplier: "PT Sehat Farma", status: "disetujui" },
   { id: "sp-2", nomor: "SP-2026-0002", jenisSp: "Narkotika", tanggal: "2026-07-04", namaSupplier: "Kimia Farma", status: "draft" },

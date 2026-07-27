@@ -47,5 +47,9 @@ export interface JurnalInput {
   deskripsi: string;
   cabangId?: string;
   status?: "draft" | "diposting";
+  /** Defaults to "manual" — set by system integrations (penjualan/pembelian) that auto-post their own entries. */
+  sumber?: string;
+  sumberTabel?: string;
+  sumberId?: string;
   details: JurnalDetailInput[];
 }

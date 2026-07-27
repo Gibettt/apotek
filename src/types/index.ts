@@ -5,6 +5,7 @@ export * from "./dokter";
 export * from "./obat";
 export * from "./stok";
 export * from "./pembelian";
+export * from "./retur";
 export * from "./penjualan";
 export * from "./resep";
 export * from "./laporan";

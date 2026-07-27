@@ -1,4 +1,6 @@
-import { dashboardSummary, penjualan, reportRows, salesChart } from "@/lib/mock-data";
+import { penjualan } from "@/lib/mock-data";
+import { pembelianService } from "./pembelianService";
+import { stokService } from "./stokService";
 import { isSupabaseConfigured, supabase } from "@/lib/supabase";
 import type {
   MetodePembayaran,
@@ -7,7 +9,7 @@ import type {
   SalesReportSummary,
   StatusPenjualan
 } from "@/types";
-import { delay, matchSearch } from "./serviceUtils";
+import { matchSearch } from "./serviceUtils";
 
 interface PenjualanRow {
   id: string;
@@ -27,6 +29,7 @@ interface PenjualanRow {
 interface PenjualanDetailRow {
   penjualan_id: string | null;
   qty: number | null;
+  harga_pokok?: number | string | null;
 }
 
 interface PembayaranRow {
@@ -257,17 +260,85 @@ async function supabaseSalesRows(params: SalesReportParams) {
   ]);
 }
 
+function localLabaRugiRows(): ReportRow[] {
+  return penjualan.map((item) => ({
+    id: item.id,
+    tanggal: item.tanggal,
+    referensi: item.nomorInvoice,
+    kategori: "Laba kotor",
+    nilai: item.details.reduce((sum, detail) => sum + (detail.subtotal - detail.hargaPokok * detail.jumlah), 0),
+    status: item.status
+  }));
+}
+
+async function supabaseLabaRugiRows(): Promise<ReportRow[]> {
+  if (!supabase) {
+    return [];
+  }
+
+  const { data, error } = await supabase.from("penjualan").select("*").order("tanggal", { ascending: false });
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  const rows = (data ?? []) as PenjualanRow[];
+  const ids = rows.map((row) => row.id);
+
+  const detailResult = ids.length
+    ? await supabase.from("penjualan_detail").select("penjualan_id,qty,harga_pokok").in("penjualan_id", ids)
+    : { data: [], error: null };
+
+  if (detailResult.error) {
+    throw new Error(detailResult.error.message);
+  }
+
+  const hppBySale = (detailResult.data ?? []).reduce<Record<string, number>>((acc, row) => {
+    if (!row.penjualan_id) {
+      return acc;
+    }
+
+    acc[row.penjualan_id] = (acc[row.penjualan_id] ?? 0) + Number(row.qty ?? 0) * Number(row.harga_pokok ?? 0);
+    return acc;
+  }, {});
+
+  return rows.map((row) => ({
+    id: row.id,
+    tanggal: row.tanggal ?? row.created_at ?? "",
+    referensi: row.nomor_invoice,
+    kategori: "Laba kotor",
+    nilai: Number(row.grand_total ?? 0) - (hppBySale[row.id] ?? 0),
+    status: row.status ?? "selesai"
+  }));
+}
+
 export const laporanService = {
-  async dashboard() {
-    return delay(dashboardSummary);
+  async labaRugiReport(): Promise<ReportRow[]> {
+    return isSupabaseConfigured ? supabaseLabaRugiRows() : localLabaRugiRows();
   },
 
-  async chart() {
-    return delay(salesChart);
+  async pembelianReport(): Promise<ReportRow[]> {
+    const result = await pembelianService.list({ perPage: 9999 });
+    return result.data.map((item) => ({
+      id: item.id,
+      tanggal: item.tanggalFaktur,
+      referensi: item.nomorInternal,
+      kategori: item.namaSupplier,
+      nilai: item.grandTotal,
+      status: item.status
+    }));
   },
 
-  async report(type: keyof typeof reportRows): Promise<ReportRow[]> {
-    return delay(reportRows[type] ?? []);
+  async stokReport(): Promise<ReportRow[]> {
+    const result = await stokService.list({ perPage: 9999 });
+    return result.data.map((item) => ({
+      id: item.id,
+      tanggal: item.tanggalExpired ?? "",
+      referensi: item.nomorBatch,
+      kategori: item.namaBarang,
+      nilai: item.qty,
+      status: item.lokasiNama ?? "-"
+    }));
   },
 
   async salesReport(params: SalesReportParams = {}) {

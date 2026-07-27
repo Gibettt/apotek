@@ -1,4 +1,5 @@
 import { isSupabaseConfigured, supabase } from "@/lib/supabase";
+import { generateAutoKode } from "@/utils/autoKode";
 import { delay, matchSearch, paginate, type ListParams } from "./serviceUtils";
 
 export interface MasterOption {
@@ -15,7 +16,7 @@ export interface KodeNamaDeskripsi {
 }
 
 export interface KodeNamaDeskripsiInput {
-  kode: string;
+  kode?: string;
   nama: string;
   deskripsi?: string;
   aktif?: boolean;
@@ -49,7 +50,7 @@ function toKodeNamaDeskripsiRow(payload: KodeNamaDeskripsiInput) {
   };
 }
 
-function createKodeNamaDeskripsiService(table: string) {
+function createKodeNamaDeskripsiService(table: string, kodePrefix = "MST") {
   return {
     async list(params: ListParams = {}) {
       if (!isSupabaseConfigured || !supabase) {
@@ -97,19 +98,27 @@ function createKodeNamaDeskripsiService(table: string) {
     },
 
     async create(payload: KodeNamaDeskripsiInput): Promise<KodeNamaDeskripsi> {
+      const normalizedPayload = {
+        ...payload,
+        kode:
+          payload.kode?.trim() ||
+          generateAutoKode(payload.nama ?? "", { prefix: kodePrefix }) ||
+          `${kodePrefix}_${Date.now()}`
+      };
+
       if (!isSupabaseConfigured || !supabase) {
         return delay({
           id: `local-${Date.now()}`,
-          kode: payload.kode,
-          nama: payload.nama,
-          deskripsi: payload.deskripsi,
-          aktif: payload.aktif ?? true
+          kode: normalizedPayload.kode,
+          nama: normalizedPayload.nama,
+          deskripsi: normalizedPayload.deskripsi,
+          aktif: normalizedPayload.aktif ?? true
         });
       }
 
       const { data, error } = await supabase
         .from(table)
-        .insert(toKodeNamaDeskripsiRow(payload))
+        .insert(toKodeNamaDeskripsiRow(normalizedPayload))
         .select("id,kode,nama,deskripsi,aktif")
         .single();
 
@@ -173,7 +182,7 @@ function createKodeNamaDeskripsiService(table: string) {
   };
 }
 
-export const jenisBarangService = createKodeNamaDeskripsiService("jenis_barang");
+export const jenisBarangService = createKodeNamaDeskripsiService("jenis_barang", "JNS");
 export const satuanMasterService = createKodeNamaDeskripsiService("satuan");
 
 export interface PabrikPrincipal {

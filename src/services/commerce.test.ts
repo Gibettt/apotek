@@ -1,9 +1,13 @@
 import { describe, expect, it } from "vitest";
 import { obatService } from "./obatService";
-import { pembelianService } from "./pembelianService";
-import { penjualanService } from "./penjualanService";
+import { buildPembelianJurnalDetails, pembelianService } from "./pembelianService";
+import { buildPenjualanJurnalDetails, penjualanService, resolveCheckoutItems, resolveKasAkunKode } from "./penjualanService";
 import { resepService } from "./resepService";
 import { laporanService } from "./laporanService";
+
+function sumBy<T>(rows: T[], pick: (row: T) => number) {
+  return rows.reduce((sum, row) => sum + pick(row), 0);
+}
 
 describe("commerce services", () => {
   it("starts medicines without dummy data, then creates and deletes a real record shape", async () => {
@@ -144,5 +148,67 @@ describe("commerce services", () => {
     expect(sale.grandTotal).toBe(1300);
     expect(sale.kembalian).toBe(8700);
     expect(sale.details[0].hargaJual).toBe(650);
+  });
+
+  it("resolves checkout cost basis from the active price, not the selling price", () => {
+    const resolved = resolveCheckoutItems(
+      [
+        {
+          barangId: "o-1",
+          kode: "OBT-0001",
+          nama: "Paracetamol 500mg",
+          hargaJual: 650,
+          stokTersedia: 10,
+          membutuhkanResep: false,
+          quantity: 2
+        }
+      ],
+      { "o-1": { hargaBeli: 300, hargaJual: 650 } }
+    );
+
+    expect(resolved[0].hargaPokok).toBe(300);
+    expect(resolved[0].hargaPokok).not.toBe(resolved[0].hargaJual);
+  });
+
+  it("books a balanced jurnal for a cash sale with cost of goods", () => {
+    const details = buildPenjualanJurnalDetails({
+      grandTotal: 19500,
+      totalHpp: 9000,
+      nomorInvoice: "PJL-TEST-0001",
+      akunIds: { kas: "kas-1", pendapatan: "pendapatan-1", persediaan: "persediaan-1", hpp: "hpp-1" }
+    });
+
+    expect(sumBy(details, (row) => row.debit)).toBe(sumBy(details, (row) => row.kredit));
+    expect(details).toHaveLength(4);
+  });
+
+  it("books a balanced jurnal for a sale with zero cost basis (no HPP line)", () => {
+    const details = buildPenjualanJurnalDetails({
+      grandTotal: 19500,
+      totalHpp: 0,
+      nomorInvoice: "PJL-TEST-0002",
+      akunIds: { kas: "kas-1", pendapatan: "pendapatan-1", persediaan: "persediaan-1", hpp: "hpp-1" }
+    });
+
+    expect(sumBy(details, (row) => row.debit)).toBe(sumBy(details, (row) => row.kredit));
+    expect(details).toHaveLength(2);
+  });
+
+  it("routes cash sales to Kas and everything else to Bank", () => {
+    expect(resolveKasAkunKode("tunai").nama).toBe("Kas");
+    expect(resolveKasAkunKode("transfer").nama).toBe("Bank");
+    expect(resolveKasAkunKode("BPJS").nama).toBe("Bank");
+  });
+
+  it("books a balanced jurnal for a purchase receipt (inventory in, payable out)", () => {
+    const details = buildPembelianJurnalDetails({
+      grandTotal: 255300,
+      nomorInternal: "PBL-TEST-0001",
+      namaSupplier: "PT Sehat Farma",
+      akunIds: { persediaan: "persediaan-1", utang: "utang-1" }
+    });
+
+    expect(sumBy(details, (row) => row.debit)).toBe(sumBy(details, (row) => row.kredit));
+    expect(sumBy(details, (row) => row.debit)).toBe(255300);
   });
 });

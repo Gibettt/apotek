@@ -1,4 +1,6 @@
-import { kategoriBarang, obat, salesChart } from "@/lib/mock-data";
+import { kategoriService } from "@/services/kategoriService";
+import { obatService } from "@/services/obatService";
+import { penjualanService } from "@/services/penjualanService";
 
 export type DashboardPeriod = "7" | "30" | "90";
 export type DashboardCategory = "semua" | "analgesik" | "antibiotik" | "vitamin";
@@ -8,67 +10,75 @@ type DashboardSelection = {
   category: DashboardCategory;
 };
 
-const periodMultipliers: Record<DashboardPeriod, number> = {
-  "7": 1,
-  "30": 4.28,
-  "90": 12.86
-};
+const weekDayLabels = ["Sen", "Sel", "Rab", "Kam", "Jum", "Sab", "Min"];
 
-const categoryWeightBySlug: Record<Exclude<DashboardCategory, "semua">, number> = {
-  analgesik: 0.32,
-  antibiotik: 0.36,
-  vitamin: 0.4
-};
-
-const transactionBase = [28, 36, 31, 42, 38, 48, 34];
-
-export function getCategoryId(category: DashboardCategory) {
-  if (category === "semua") return null;
-  return kategoriBarang.find((entry) => entry.kode === category)?.id ?? null;
+function dayLabel(date: Date) {
+  return weekDayLabels[(date.getDay() + 6) % 7];
 }
 
-export function buildDashboardView({ period, category }: DashboardSelection) {
-  const categoryId = getCategoryId(category);
-  const multiplier = periodMultipliers[period];
-  const selectedMedicines = obat.filter(
-    (item) => categoryId === null || item.kategoriId === categoryId
+async function resolveCategoryId(category: DashboardCategory) {
+  if (category === "semua") {
+    return null;
+  }
+
+  const { data } = await kategoriService.list({ perPage: 200 });
+  return data.find((entry) => entry.kode === category)?.id ?? null;
+}
+
+export async function buildDashboardView({ period, category }: DashboardSelection) {
+  const days = Number(period);
+  const categoryId = await resolveCategoryId(category);
+
+  const [obatResult, penjualanResult] = await Promise.all([
+    obatService.list({ perPage: 500 }),
+    penjualanService.list({ perPage: 1000 })
+  ]);
+
+  const activeMedicinesSource = obatResult.data.filter(
+    (item) => item.status && (categoryId === null || item.kategoriId === categoryId)
   );
-  const categoryWeight = category === "semua" ? 1 : categoryWeightBySlug[category];
+  const kategoriIdByBarang = Object.fromEntries(
+    obatResult.data.map((item) => [item.id, item.kategoriId])
+  );
 
-  const chart = salesChart.map((point, index) => {
-    const revenue = Math.round(point.penjualan * multiplier * categoryWeight);
-    const profit = Math.round((point.laba ?? point.penjualan * 0.34) * multiplier * categoryWeight);
+  const since = new Date();
+  since.setHours(0, 0, 0, 0);
+  since.setDate(since.getDate() - (days - 1));
 
-    return {
-      label: point.label,
-      revenue,
-      profit,
-      transactions: Math.max(1, Math.round(transactionBase[index]! * multiplier * categoryWeight))
-    };
+  const buckets = Array.from({ length: days }, (_, index) => {
+    const date = new Date(since);
+    date.setDate(since.getDate() + index);
+    return { key: date.toDateString(), label: dayLabel(date), revenue: 0, profit: 0 };
   });
+  const bucketByKey = new Map(buckets.map((bucket) => [bucket.key, bucket]));
 
-  const revenue = chart.reduce((total, point) => total + point.revenue, 0);
-  const profit = chart.reduce((total, point) => total + point.profit, 0);
-  const transactions = chart.reduce((total, point) => total + point.transactions, 0);
-  const lowStockItems = selectedMedicines.filter(
+  for (const sale of penjualanResult.data) {
+    const bucket = bucketByKey.get(new Date(sale.tanggal).toDateString());
+    if (!bucket) {
+      continue;
+    }
+
+    for (const detail of sale.details ?? []) {
+      if (categoryId !== null && kategoriIdByBarang[detail.barangId] !== categoryId) {
+        continue;
+      }
+
+      bucket.revenue += detail.subtotal;
+      bucket.profit += detail.subtotal - detail.hargaPokok * detail.jumlah;
+    }
+  }
+
+  const lowStockCount = activeMedicinesSource.filter(
     (item) => item.stokTersedia < item.stokMinimum
-  );
-  const totalStock = selectedMedicines.reduce(
-    (total, item) => total + item.stokTersedia,
-    0
-  );
+  ).length;
 
   return {
-    chart,
-    revenue,
-    profit,
-    transactions,
-    lowStockCount: lowStockItems.length,
-    totalStock,
-    activeMedicines: selectedMedicines.map((item) => ({
+    chart: buckets.map(({ label, revenue, profit }) => ({ label, revenue, profit })),
+    lowStockCount,
+    activeMedicines: activeMedicinesSource.map((item) => ({
       id: item.id,
       name: item.nama,
-      category: kategoriBarang.find((entry) => entry.id === item.kategoriId)?.nama ?? "Lainnya",
+      category: item.kategoriNama ?? "Lainnya",
       stock: item.stokTersedia,
       minimumStock: item.stokMinimum,
       price: item.hargaAktif?.hargaJual ?? 0,
