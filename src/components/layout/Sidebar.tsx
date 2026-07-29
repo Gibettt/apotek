@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
+import { useState } from "react";
 import {
   BarChart3,
   Bell,
@@ -34,6 +35,7 @@ import {
   Wallet
 } from "lucide-react";
 import { useAuthStore } from "@/store/authStore";
+import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { cn } from "@/utils/cn";
 
 const menuGroups = [
@@ -106,6 +108,7 @@ export function Sidebar() {
   const pathname = usePathname();
   const router = useRouter();
   const logout = useAuthStore((state) => state.logout);
+  const [logoutOpen, setLogoutOpen] = useState(false);
   const isActive = (href: string) => {
     if (pathname === href) {
       return true;
@@ -118,11 +121,7 @@ export function Sidebar() {
     return !menuItems.some((item) => item.href !== href && item.href.startsWith(`${href}/`) && pathname.startsWith(item.href));
   };
 
-  async function handleLogout() {
-    if (!window.confirm("Anda ingin logout?")) {
-      return;
-    }
-
+  async function handleLogoutConfirm() {
     await logout();
     router.replace("/login");
   }
@@ -161,12 +160,20 @@ export function Sidebar() {
             <CircleHelp className="h-4 w-4 shrink-0" strokeWidth={1.8} />
             <span className="dashboard-sidebar-label">Bantuan</span>
           </Link>
-          <button type="button" title="Keluar" className="dashboard-menu-link w-full" onClick={handleLogout}>
+          <button type="button" title="Keluar" className="dashboard-menu-link w-full" onClick={() => setLogoutOpen(true)}>
             <LogOut className="h-4 w-4 shrink-0" strokeWidth={1.8} />
             <span className="dashboard-sidebar-label">Keluar</span>
           </button>
         </div>
       </div>
+      <ConfirmDialog
+        open={logoutOpen}
+        title="Keluar dari dashboard?"
+        description="Sesi Anda akan diakhiri dan Anda harus login lagi untuk masuk ke dashboard."
+        confirmText="Ya, logout"
+        onConfirm={handleLogoutConfirm}
+        onClose={() => setLogoutOpen(false)}
+      />
     </aside>
   );
 }

@@ -55,16 +55,14 @@ describe("Sidebar", () => {
   });
 
   it("stays on the dashboard when logout is canceled", () => {
-    vi.spyOn(window, "confirm").mockReturnValue(false);
-
     render(<Sidebar />);
     fireEvent.click(screen.getByRole("button", { name: "Keluar" }));
+    fireEvent.click(screen.getByRole("button", { name: "Batal" }));
 
     expect(replace).not.toHaveBeenCalled();
   });
 
   it("logs out and redirects to login when confirmed", async () => {
-    vi.spyOn(window, "confirm").mockReturnValue(true);
     localStorage.setItem("apotek-token", "token");
     useAuthStore.setState({
       user: {
@@ -81,6 +79,7 @@ describe("Sidebar", () => {
 
     render(<Sidebar />);
     fireEvent.click(screen.getByRole("button", { name: "Keluar" }));
+    fireEvent.click(screen.getByRole("button", { name: "Ya, logout" }));
 
     await waitFor(() => expect(replace).toHaveBeenCalledWith("/login"));
     expect(localStorage.getItem("apotek-token")).toBeNull();
