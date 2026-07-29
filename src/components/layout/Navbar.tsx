@@ -19,7 +19,7 @@ import {
 import { useAuth } from "@/hooks/useAuth";
 import { useCabang } from "@/hooks/useCabang";
 import { useNotifikasi } from "@/hooks/useNotifikasi";
-import { roleLabels } from "@/constants/roles";
+import { resolveEffectiveRole, roleLabels } from "@/constants/roles";
 import type { TipeNotifikasi } from "@/types";
 import { cn } from "@/utils/cn";
 import { formatDateTime } from "@/utils/formatDate";
@@ -99,8 +99,9 @@ export function Navbar() {
     })
     .slice(0, 8);
   const currentPage = isDashboard ? "Overview" : resolvePageLabel(pathname);
-  const showAllBranchesOption = user?.role === "owner";
-  const profileLabel = user ? roleLabels[user.role] : "Admin";
+  const effectiveRole = user ? resolveEffectiveRole(user.role, user.email) : "admin";
+  const showAllBranchesOption = effectiveRole === "owner";
+  const profileLabel = roleLabels[effectiveRole];
   const profileInitials = profileLabel
     .split(" ")
     .map((part) => part[0])
@@ -152,10 +153,13 @@ export function Navbar() {
               aria-label="Notifikasi"
               aria-expanded={notifOpen}
               onClick={() => setNotifOpen((open) => !open)}
-              className="dashboard-top-action !rounded-full relative"
+              className={cn(
+                "dashboard-top-action !rounded-full relative",
+                notifications > 0 && "dashboard-top-action-alert"
+              )}
             >
               <Bell className="h-4 w-4" strokeWidth={1.8} />
-              {notifications ? <span className="absolute right-1.5 top-1.5 h-1.5 w-1.5 rounded-full bg-[#2f9b7f]" /> : null}
+              {notifications ? <span className="absolute right-1.5 top-1.5 h-1.5 w-1.5 rounded-full bg-red-600" /> : null}
             </button>
             {notifOpen && (
               <div className="dashboard-notif-dropdown">
@@ -174,10 +178,13 @@ export function Navbar() {
                     previewNotifications.map((item) => {
                       const Icon = notifikasiIcon(item.tipe);
                       return (
-                        <button
+                        <Link
                           key={item.id}
-                          type="button"
-                          onClick={() => markAsRead(item.id)}
+                          href="/notifikasi"
+                          onClick={() => {
+                            markAsRead(item.id);
+                            setNotifOpen(false);
+                          }}
                           className={cn("dashboard-notif-item", !item.isRead && "dashboard-notif-item-unread")}
                         >
                           <span className={cn("dashboard-notif-item-icon", `dashboard-notif-item-icon-${item.tipe}`)}>
@@ -189,7 +196,7 @@ export function Navbar() {
                             <span className="block text-[11px] text-stone-400">{formatDateTime(item.createdAt)}</span>
                           </span>
                           {!item.isRead && <span className="mt-1 h-1.5 w-1.5 shrink-0 rounded-full bg-[#2f9b7f]" />}
-                        </button>
+                        </Link>
                       );
                     })
                   )}

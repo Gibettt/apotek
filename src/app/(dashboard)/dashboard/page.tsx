@@ -11,6 +11,7 @@ import {
   ChevronRight,
   ClipboardList,
   Clock,
+  Lock,
   MoreVertical,
   Package,
   Pause,
@@ -34,6 +35,8 @@ import {
   type DashboardCategory,
   type DashboardPeriod
 } from "@/lib/dashboard-view";
+import { isLowStock } from "@/lib/stockRules";
+import { useAuth } from "@/hooks/useAuth";
 import { obatService } from "@/services/obatService";
 import { pelangganService } from "@/services/pelangganService";
 import { penjualanService } from "@/services/penjualanService";
@@ -158,7 +161,8 @@ function StatCard({
   value,
   label,
   href,
-  badge
+  badge,
+  locked = false
 }: {
   icon: typeof Users;
   iconClass: string;
@@ -166,10 +170,11 @@ function StatCard({
   label: string;
   href: string;
   badge?: React.ReactNode;
+  locked?: boolean;
 }) {
   return (
-    <article className="dashboard-surface dashboard-stat-card">
-      <div className="dashboard-stat-top">
+    <article className="dashboard-surface dashboard-stat-card relative overflow-hidden">
+      <div className={cn("dashboard-stat-top transition", locked && "pointer-events-none select-none blur-[10px] opacity-25")}>
         <span className={cn("dashboard-stat-icon", iconClass)}>
           <Icon className="h-5 w-5" strokeWidth={1.8} />
         </span>
@@ -179,9 +184,25 @@ function StatCard({
         </div>
         {badge}
       </div>
-      <Link href={href} className="dashboard-stat-footer">
-        Lihat detail <ArrowRight className="h-3.5 w-3.5" strokeWidth={2} />
-      </Link>
+      {locked ? (
+        <button type="button" aria-label={`${label} terkunci`} disabled className="dashboard-stat-footer w-full cursor-not-allowed opacity-60">
+          Khusus Owner <Lock className="h-3.5 w-3.5" strokeWidth={2} />
+        </button>
+      ) : (
+        <Link href={href} className="dashboard-stat-footer">
+          Lihat detail <ArrowRight className="h-3.5 w-3.5" strokeWidth={2} />
+        </Link>
+      )}
+      {locked ? (
+        <div className="absolute inset-0 z-10 grid place-items-center bg-white/85 backdrop-blur-md">
+          <div className="grid place-items-center gap-2">
+            <span className="grid h-10 w-10 place-items-center rounded-full bg-[#e8f4ef] text-[#267d6b] shadow-sm">
+              <Lock className="h-5 w-5" strokeWidth={1.8} />
+            </span>
+            <span className="text-xs font-black text-stone-600">Khusus Owner</span>
+          </div>
+        </div>
+      ) : null}
     </article>
   );
 }
@@ -254,10 +275,12 @@ function DashboardFilterSelect<T extends string>({
 }
 
 export default function DashboardPage() {
+  const { user } = useAuth();
+  const canViewOwnerOnly = user?.email.trim().toLowerCase() === "owner@gmail.com";
+  const canViewSalesChart = canViewOwnerOnly;
   const [category, setCategory] = useState<DashboardCategory>("semua");
   const [chartRange, setChartRange] = useState(() => chartRangeForPeriod("7"));
   const [openFilter, setOpenFilter] = useState<"category" | null>(null);
-  const [stockOnly, setStockOnly] = useState(false);
   const [query, setQuery] = useState("");
   const [tablePage, setTablePage] = useState(1);
   const [scheduleTab, setScheduleTab] = useState<"resep" | "kunjungan">("resep");
@@ -266,7 +289,7 @@ export default function DashboardPage() {
 
   const [totalPelanggan, setTotalPelanggan] = useState<number | null>(null);
   const [totalObat, setTotalObat] = useState<number | null>(null);
-  const [transaksiHariIni, setTransaksiHariIni] = useState<number | null>(null);
+  const [totalTransaksi, setTotalTransaksi] = useState<number | null>(null);
   const [resepMenunggu, setResepMenunggu] = useState<Resep[]>([]);
   const [resepDiproses, setResepDiproses] = useState<Resep | null>(null);
   const [busyResepId, setBusyResepId] = useState<string | null>(null);
@@ -289,7 +312,8 @@ export default function DashboardPage() {
       period: "7",
       category,
       startDate: chartRange.start,
-      endDate: chartRange.end
+      endDate: chartRange.end,
+      includeSales: canViewSalesChart
     }).then((result) => {
       if (active) {
         setView(result);
@@ -299,22 +323,21 @@ export default function DashboardPage() {
     return () => {
       active = false;
     };
-  }, [category, chartRange.end, chartRange.start]);
+  }, [canViewSalesChart, category, chartRange.end, chartRange.start]);
 
   useEffect(() => {
     setTablePage(1);
-  }, [query, stockOnly, view.activeMedicines]);
+  }, [query, view.activeMedicines]);
 
   useEffect(() => {
     let active = true;
 
     async function loadStats() {
-      const todayIso = new Date().toISOString().slice(0, 10);
       const [pelangganRes, obatRes, resepRes, penjualanRes] = await Promise.all([
         pelangganService.list({ perPage: 1 }),
         obatService.list({ perPage: 1 }),
         resepService.list({ perPage: 200 }),
-        penjualanService.list({ perPage: 200 })
+        penjualanService.list({ perPage: 1 })
       ]);
 
       if (!active) return;
@@ -323,9 +346,7 @@ export default function DashboardPage() {
       setTotalObat(obatRes.total);
       setResepMenunggu(resepRes.data.filter((item) => item.status === "menunggu"));
       setResepDiproses(resepRes.data.find((item) => item.status === "diproses") ?? null);
-      setTransaksiHariIni(
-        penjualanRes.data.filter((item) => item.tanggal?.slice(0, 10) === todayIso).length
-      );
+      setTotalTransaksi(penjualanRes.total);
     }
 
     void loadStats();
@@ -357,8 +378,7 @@ export default function DashboardPage() {
       : periodLabel;
   const tableRows = view.activeMedicines.filter((item) => {
     const matchesSearch = item.name.toLowerCase().includes(query.toLowerCase());
-    const matchesStock = !stockOnly || item.stock < item.minimumStock;
-    return matchesSearch && matchesStock;
+    return matchesSearch;
   });
   const totalTablePages = Math.max(1, Math.ceil(tableRows.length / medicineRowsPerPage));
   const currentTablePage = Math.min(tablePage, totalTablePages);
@@ -393,10 +413,6 @@ export default function DashboardPage() {
           onOpenChange={(open) => setOpenFilter(open ? "category" : null)}
           onChange={setCategory}
         />
-        <button type="button" onClick={() => setStockOnly((current) => !current)} className={cn("dashboard-filter dashboard-filter-button", stockOnly && "dashboard-filter-active")}>
-          <span className="dashboard-filter-icon"><Package className="h-4 w-4" strokeWidth={1.7} /></span>
-          Perlu restock
-        </button>
       </div>
 
       <section className="dashboard-stat-row">
@@ -418,10 +434,11 @@ export default function DashboardPage() {
           icon={Package}
           iconClass="dashboard-stat-icon-sky"
           value={totalObat ?? "…"}
-          label="Total Obat"
+          label="Total Barang"
           href="/obat"
+          locked={!canViewOwnerOnly}
           badge={
-            view.lowStockCount > 0 ? (
+            canViewOwnerOnly && view.lowStockCount > 0 ? (
               <span className="dashboard-stat-trend dashboard-stat-trend-down">{view.lowStockCount} restock</span>
             ) : null
           }
@@ -429,9 +446,10 @@ export default function DashboardPage() {
         <StatCard
           icon={ReceiptText}
           iconClass="dashboard-stat-icon-coral"
-          value={transaksiHariIni ?? "…"}
-          label="Transaksi Hari Ini"
+          value={totalTransaksi ?? "…"}
+          label="Total Transaksi"
           href="/penjualan"
+          locked={!canViewOwnerOnly}
         />
       </section>
 
@@ -506,14 +524,16 @@ export default function DashboardPage() {
           </Link>
         </article>
 
-        <article className="dashboard-surface">
+        <article className="dashboard-surface relative overflow-hidden">
           <SectionHeader title="Grafik penjualan" icon={ReceiptText} action={<span className="text-xs font-medium text-stone-400">{chartDateLabel}</span>} />
+          <div className={cn("transition", !canViewSalesChart && "pointer-events-none select-none blur-[10px] opacity-25")}>
           <div className="mb-3 grid gap-2 sm:grid-cols-2">
             <label className="grid gap-1 text-[11px] font-semibold uppercase text-stone-400">
               Dari
               <input
                 aria-label="Dari tanggal grafik"
                 type="date"
+                disabled={!canViewSalesChart}
                 value={chartRange.start}
                 max={chartRange.end}
                 onChange={(event) =>
@@ -527,6 +547,7 @@ export default function DashboardPage() {
               <input
                 aria-label="Sampai tanggal grafik"
                 type="date"
+                disabled={!canViewSalesChart}
                 value={chartRange.end}
                 min={chartRange.start}
                 onChange={(event) =>
@@ -562,22 +583,32 @@ export default function DashboardPage() {
               </AreaChart>
             </ResponsiveContainer>
           </div>
+          </div>
+          {!canViewSalesChart && (
+            <div className="absolute inset-0 z-10 grid place-items-center bg-white/85 backdrop-blur-md">
+              <div className="mx-6 grid max-w-64 place-items-center gap-2 text-center">
+                <span className="grid h-10 w-10 place-items-center rounded-full bg-[#e8f4ef] text-[#267d6b] shadow-sm">
+                  <Lock className="h-5 w-5" strokeWidth={1.8} />
+                </span>
+                <p className="text-sm font-semibold text-stone-900">Khusus Owner</p>
+              </div>
+            </div>
+          )}
         </article>
       </section>
 
       <section className="dashboard-bottom-row">
         <article className="dashboard-table-section">
-          <SectionHeader title="Obat aktif hari ini" icon={ClipboardList} action={<span className="text-xs font-medium text-stone-400">{tableRows.length} item</span>} />
+          <SectionHeader title="Barang aktif" icon={ClipboardList} action={<span className="text-xs font-medium text-stone-400">{tableRows.length} item</span>} />
           <div className="dashboard-table-toolbar">
-            <label className="dashboard-search"><Search className="h-4 w-4" strokeWidth={1.8} /><input aria-label="Cari obat aktif" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Cari obat" /></label>
+            <label className="dashboard-search"><Search className="h-4 w-4" strokeWidth={1.8} /><input aria-label="Cari barang aktif" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Cari barang" /></label>
             <span>{periodLabel}</span>
           </div>
           <div className="overflow-x-auto">
             <table className="dashboard-table">
               <thead>
                 <tr>
-                  <th><input aria-label="Pilih semua obat" type="checkbox" /></th>
-                  <th>Obat</th>
+                  <th>Barang</th>
                   <th>Kategori</th>
                   <th>Stok</th>
                   <th>Harga jual</th>
@@ -587,11 +618,10 @@ export default function DashboardPage() {
               </thead>
               <tbody>
                 {pagedTableRows.map((item) => {
-                  const low = item.stock < item.minimumStock;
+                  const low = isLowStock(item.stock);
                   const ratio = Math.min(100, Math.round((item.stock / Math.max(item.minimumStock * 2, 1)) * 100));
                   return (
                     <tr key={item.id}>
-                      <td><input aria-label={`Pilih ${item.name}`} type="checkbox" /></td>
                       <td>
                         <div className="flex items-center gap-2.5">
                           <span className="dashboard-row-avatar"><Pill className="h-4 w-4" strokeWidth={1.8} /></span>
@@ -615,7 +645,7 @@ export default function DashboardPage() {
                 })}
               </tbody>
             </table>
-            {!tableRows.length && <div className="dashboard-empty m-4">Tidak ada obat yang sesuai dengan filter.</div>}
+            {!tableRows.length && <div className="dashboard-empty m-4">Tidak ada barang yang sesuai dengan filter.</div>}
           </div>
           <div className="flex items-center justify-end gap-2 border-t border-stone-100 px-4 py-3">
             <span className="mr-2 text-xs font-semibold text-stone-400">
@@ -623,7 +653,7 @@ export default function DashboardPage() {
             </span>
             <button
               type="button"
-              aria-label="Halaman obat sebelumnya"
+              aria-label="Halaman barang sebelumnya"
               disabled={currentTablePage <= 1}
               onClick={() => setTablePage((current) => Math.max(1, current - 1))}
               className="grid h-9 w-9 place-items-center rounded-full border border-stone-200 bg-white text-stone-500 transition hover:border-[#0f766e] hover:text-[#0f766e] disabled:cursor-not-allowed disabled:opacity-40"
@@ -632,7 +662,7 @@ export default function DashboardPage() {
             </button>
             <button
               type="button"
-              aria-label="Halaman obat berikutnya"
+              aria-label="Halaman barang berikutnya"
               disabled={currentTablePage >= totalTablePages}
               onClick={() => setTablePage((current) => Math.min(totalTablePages, current + 1))}
               className="grid h-9 w-9 place-items-center rounded-full border border-stone-200 bg-white text-stone-500 transition hover:border-[#0f766e] hover:text-[#0f766e] disabled:cursor-not-allowed disabled:opacity-40"

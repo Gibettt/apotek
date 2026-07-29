@@ -30,12 +30,6 @@ export const pabrikList = [
   { id: "pb-4", kode: "SANBE", nama: "Sanbe Farma", telepon: "022-6032222", alamat: "Bandung", aktif: true }
 ];
 
-export const principalList = [
-  { id: "pr-1", kode: "APL", nama: "PT Anugrah Pharmindo Lestari", telepon: "021-29578000", alamat: "Jakarta", aktif: true },
-  { id: "pr-2", kode: "EPMT", nama: "PT Enseval Putera Megatrading", telepon: "021-4682111", alamat: "Jakarta", aktif: true },
-  { id: "pr-3", kode: "AAM", nama: "PT Anak Agung Medika", telepon: "0361-234567", alamat: "Denpasar", aktif: true }
-];
-
 export const akunList = [
   { id: "ak-1", kode: "1-100", nama: "Kas", tipe: "Aset", aktif: true },
   { id: "ak-2", kode: "1-110", nama: "Bank", tipe: "Aset", aktif: true },

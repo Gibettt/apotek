@@ -21,7 +21,11 @@ export interface PaginatedResult<T> {
   perPage: number;
 }
 
-export function delay<T>(value: T, ms = 120) {
+export function delay<T>(value: T, ms = 0) {
+  if (ms <= 0) {
+    return Promise.resolve(value);
+  }
+
   return new Promise<T>((resolve) => {
     setTimeout(() => resolve(value), ms);
   });

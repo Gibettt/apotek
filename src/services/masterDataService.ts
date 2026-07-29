@@ -359,7 +359,6 @@ function createPabrikPrincipalService(table: string) {
 }
 
 export const pabrikService = createPabrikPrincipalService("pabrik");
-export const principalService = createPabrikPrincipalService("principal");
 
 export interface LokasiSimpan {
   id: string;

@@ -102,6 +102,16 @@ textarea {
   color: #267d6b;
 }
 
+.dashboard-top-action-alert {
+  background: #fef2f2;
+  color: #dc2626;
+}
+
+.dashboard-top-action-alert:hover {
+  background: #fee2e2;
+  color: #b91c1c;
+}
+
 .dashboard-notif-dropdown {
   position: absolute;
   right: 0;

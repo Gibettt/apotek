@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   BarChart3,
   Bell,
@@ -16,6 +16,7 @@ import {
   FileText,
   Key,
   LayoutDashboard,
+  Lock,
   LogOut,
   MapPin,
   Package,
@@ -67,7 +68,6 @@ const menuGroups = [
       { label: "Satuan", href: "/satuan", icon: Ruler },
       { label: "Lokasi Simpan", href: "/lokasi-simpan", icon: MapPin },
       { label: "Pabrik", href: "/pabrik", icon: Factory },
-      { label: "Principal", href: "/principal", icon: Building2 },
       { label: "Supplier", href: "/supplier", icon: Truck },
       { label: "Pelanggan", href: "/pelanggan", icon: Users },
       { label: "Dokter", href: "/dokter", icon: Stethoscope },
@@ -103,12 +103,36 @@ const menuGroups = [
 ];
 
 const menuItems = menuGroups.flatMap((group) => group.items);
+const ownerOnlyHrefs = new Set([
+  "/pembelian",
+  "/surat-pesanan",
+  "/retur",
+  "/akun",
+  "/jurnal",
+  "/biaya",
+  "/stok",
+  "/laporan/penjualan",
+  "/laporan/stok",
+  "/users",
+  "/role",
+  "/permission",
+  "/audit-log",
+  "/pengaturan/profil"
+]);
 
 export function Sidebar() {
   const pathname = usePathname();
   const router = useRouter();
   const logout = useAuthStore((state) => state.logout);
+  const user = useAuthStore((state) => state.user);
   const [logoutOpen, setLogoutOpen] = useState(false);
+  const [pendingHref, setPendingHref] = useState<string | null>(null);
+  const canViewOwnerOnly = user?.email.trim().toLowerCase() === "owner@gmail.com";
+
+  useEffect(() => {
+    setPendingHref(null);
+  }, [pathname]);
+
   const isActive = (href: string) => {
     if (pathname === href) {
       return true;
@@ -133,9 +157,15 @@ export function Sidebar() {
     >
       <div className="dashboard-menu-panel w-full min-w-0">
         <nav id="dashboard-navigation" className="dashboard-menu-scroll" aria-label="Navigasi utama">
-          <Link href="/dashboard" title="Overview" className={cn("dashboard-menu-link", isActive("/dashboard") && "dashboard-menu-link-active")}>
+          <Link
+            href="/dashboard"
+            title="Overview"
+            onClick={() => setPendingHref("/dashboard")}
+            className={cn("dashboard-menu-link", isActive("/dashboard") && "dashboard-menu-link-active", pendingHref === "/dashboard" && "pointer-events-none opacity-70")}
+          >
             <LayoutDashboard className="h-4 w-4 shrink-0" strokeWidth={1.8} />
             <span className="dashboard-sidebar-label">Overview</span>
+            {pendingHref === "/dashboard" ? <span className="ml-auto h-3 w-3 animate-spin rounded-full border-2 border-[#b9d8cf] border-t-[#0f766e]" /> : null}
           </Link>
           {menuGroups.map((group) => (
             <div key={group.label} className="dashboard-menu-group">
@@ -143,11 +173,35 @@ export function Sidebar() {
               {group.items.map((item) => {
                 const Icon = item.icon;
                 const active = isActive(item.href);
+                const locked = ownerOnlyHrefs.has(item.href) && !canViewOwnerOnly;
+
+                if (locked) {
+                  return (
+                    <button
+                      key={item.href}
+                      type="button"
+                      aria-label={`${item.label} terkunci`}
+                      title="Khusus Owner"
+                      className="dashboard-menu-link w-full cursor-not-allowed opacity-55"
+                    >
+                      <Icon className="h-4 w-4 shrink-0" strokeWidth={1.8} />
+                      <span className="dashboard-sidebar-label">{item.label}</span>
+                      <Lock className="ml-auto h-3.5 w-3.5 shrink-0" strokeWidth={1.8} />
+                    </button>
+                  );
+                }
 
                 return (
-                  <Link key={item.href} href={item.href} title={item.label} className={cn("dashboard-menu-link", active && "dashboard-menu-link-active")}>
+                  <Link
+                    key={item.href}
+                    href={item.href}
+                    title={item.label}
+                    onClick={() => setPendingHref(item.href)}
+                    className={cn("dashboard-menu-link", active && "dashboard-menu-link-active", pendingHref === item.href && "pointer-events-none opacity-70")}
+                  >
                     <Icon className="h-4 w-4 shrink-0" strokeWidth={1.8} />
                     <span className="dashboard-sidebar-label">{item.label}</span>
+                    {pendingHref === item.href ? <span className="ml-auto h-3 w-3 animate-spin rounded-full border-2 border-[#b9d8cf] border-t-[#0f766e]" /> : null}
                   </Link>
                 );
               })}
@@ -156,10 +210,29 @@ export function Sidebar() {
         </nav>
 
         <div className="border-t border-stone-100 p-2">
-          <Link href="/pengaturan/profil" title="Bantuan" className="dashboard-menu-link">
-            <CircleHelp className="h-4 w-4 shrink-0" strokeWidth={1.8} />
-            <span className="dashboard-sidebar-label">Bantuan</span>
-          </Link>
+          {canViewOwnerOnly ? (
+            <Link
+              href="/pengaturan/profil"
+              title="Bantuan"
+              onClick={() => setPendingHref("/pengaturan/profil")}
+              className={cn("dashboard-menu-link", pendingHref === "/pengaturan/profil" && "pointer-events-none opacity-70")}
+            >
+              <CircleHelp className="h-4 w-4 shrink-0" strokeWidth={1.8} />
+              <span className="dashboard-sidebar-label">Bantuan</span>
+              {pendingHref === "/pengaturan/profil" ? <span className="ml-auto h-3 w-3 animate-spin rounded-full border-2 border-[#b9d8cf] border-t-[#0f766e]" /> : null}
+            </Link>
+          ) : (
+            <button
+              type="button"
+              aria-label="Bantuan terkunci"
+              title="Khusus Owner"
+              className="dashboard-menu-link w-full cursor-not-allowed opacity-55"
+            >
+              <CircleHelp className="h-4 w-4 shrink-0" strokeWidth={1.8} />
+              <span className="dashboard-sidebar-label">Bantuan</span>
+              <Lock className="ml-auto h-3.5 w-3.5 shrink-0" strokeWidth={1.8} />
+            </button>
+          )}
           <button type="button" title="Keluar" className="dashboard-menu-link w-full" onClick={() => setLogoutOpen(true)}>
             <LogOut className="h-4 w-4 shrink-0" strokeWidth={1.8} />
             <span className="dashboard-sidebar-label">Keluar</span>

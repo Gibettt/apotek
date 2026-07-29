@@ -1,9 +1,10 @@
 "use client";
 
-import { ArrowLeft, Maximize2, Minimize2, PackagePlus, Save, Trash2 } from "lucide-react";
+import { ArrowLeft, Check, ChevronDown, Lock, Maximize2, Minimize2, PackagePlus, Save, Trash2 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { toast } from "sonner";
 import { Header } from "@/components/layout/Header";
 import { Button } from "@/components/ui/Button";
@@ -20,9 +21,11 @@ import {
   type ObatListItem
 } from "@/services/obatService";
 import { supplierService } from "@/services/supplierService";
+import { useAuthStore } from "@/store/authStore";
 import { useCabangStore } from "@/store/cabangStore";
 import type { StatusPembelian, Supplier } from "@/types";
 import { generateAutoKode } from "@/utils/autoKode";
+import { cn } from "@/utils/cn";
 import { formatCurrency } from "@/utils/formatCurrency";
 
 type DiskonMode = "rp" | "persen";
@@ -74,6 +77,154 @@ function generateAutoBatchNumber(rowIndex: number, tanggalPembelian: string) {
 
 const cellFieldClass =
   "h-9 w-full min-w-0 rounded-none border-0 bg-transparent px-2 text-xs shadow-none outline-none focus:relative focus:z-10 focus:bg-white focus:ring-2 focus:ring-inset focus:ring-blue-500";
+
+interface InlineTableSelectProps {
+  ariaLabel: string;
+  row: number;
+  col: number;
+  value: string;
+  disabled?: boolean;
+  options: Array<{ label: string; value: string | number }>;
+  onChange: (value: string) => void;
+  onKeyDown: (event: React.KeyboardEvent) => void;
+}
+
+function InlineTableSelect({
+  ariaLabel,
+  row,
+  col,
+  value,
+  disabled,
+  options,
+  onChange,
+  onKeyDown
+}: InlineTableSelectProps) {
+  const [open, setOpen] = useState(false);
+  const [menuPosition, setMenuPosition] = useState<{ left: number; top: number; width: number } | null>(null);
+  const ref = useRef<HTMLDivElement>(null);
+  const buttonRef = useRef<HTMLButtonElement>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
+  const selected = options.find((option) => String(option.value) === value);
+  const updatePosition = useCallback(() => {
+    const rect = buttonRef.current?.getBoundingClientRect();
+
+    if (rect) {
+      setMenuPosition({
+        left: rect.left,
+        top: rect.bottom + 4,
+        width: Math.max(rect.width, 224)
+      });
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!open) return;
+    updatePosition();
+
+    function closeOnOutsideClick(event: MouseEvent) {
+      const target = event.target as Node;
+      if (!ref.current?.contains(target) && !menuRef.current?.contains(target)) {
+        setOpen(false);
+      }
+    }
+
+    document.addEventListener("mousedown", closeOnOutsideClick);
+    window.addEventListener("resize", updatePosition);
+    window.addEventListener("scroll", updatePosition, true);
+
+    return () => {
+      document.removeEventListener("mousedown", closeOnOutsideClick);
+      window.removeEventListener("resize", updatePosition);
+      window.removeEventListener("scroll", updatePosition, true);
+    };
+  }, [open, updatePosition]);
+
+  function toggleOpen() {
+    if (open) {
+      setOpen(false);
+      return;
+    }
+
+    updatePosition();
+    setOpen(true);
+  }
+
+  return (
+    <div ref={ref} className="relative">
+      <button
+        ref={buttonRef}
+        type="button"
+        aria-label={ariaLabel}
+        aria-expanded={open}
+        data-row={row}
+        data-col={col}
+        disabled={disabled}
+        onClick={toggleOpen}
+        onKeyDown={(event) => {
+          if (event.key === "Enter" || event.key === " ") {
+            event.preventDefault();
+            toggleOpen();
+            return;
+          }
+
+          onKeyDown(event);
+        }}
+        className={cn(
+          cellFieldClass,
+          "flex items-center justify-between gap-2 text-left hover:bg-[#f8f7f3]",
+          disabled && "cursor-not-allowed text-stone-400"
+        )}
+      >
+        <span className={cn("truncate", !value && "text-stone-500")}>
+          {selected?.label ?? options[0]?.label ?? "Pilih"}
+        </span>
+        <ChevronDown
+          className={cn("h-3.5 w-3.5 shrink-0 text-stone-400 transition", open && "rotate-180")}
+          strokeWidth={2}
+        />
+      </button>
+      {open && menuPosition && typeof document !== "undefined" ? createPortal(
+        <div
+          ref={menuRef}
+          role="listbox"
+          aria-label={ariaLabel}
+          style={{
+            left: menuPosition.left,
+            top: menuPosition.top,
+            width: menuPosition.width
+          }}
+          className="fixed z-[100] max-h-64 overflow-auto rounded-lg border border-stone-200 bg-white p-1 text-xs shadow-[0_18px_44px_rgba(25,24,21,.16)]"
+        >
+          {options.map((option) => {
+            const optionValue = String(option.value);
+            const active = optionValue === value;
+
+            return (
+              <button
+                key={optionValue || option.label}
+                type="button"
+                role="option"
+                aria-selected={active}
+                onClick={() => {
+                  onChange(optionValue);
+                  setOpen(false);
+                }}
+                className={cn(
+                  "flex w-full items-center justify-between gap-2 rounded-md px-3 py-2 text-left font-semibold transition",
+                  active ? "bg-[#0f766e] text-white" : "text-stone-600 hover:bg-[#eef7f2] hover:text-[#0f766e]"
+                )}
+              >
+                <span className="truncate">{option.label}</span>
+                {active ? <Check className="h-3.5 w-3.5 shrink-0" strokeWidth={2} /> : null}
+              </button>
+            );
+          })}
+        </div>,
+        document.body
+      ) : null}
+    </div>
+  );
+}
 
 function parseNumberInput(value: string) {
   if (value === "") {
@@ -176,20 +327,19 @@ const PembelianItemRow = memo(function PembelianItemRow({
         <span className="text-xs font-bold text-stone-600">{index + 1}</span>
       </td>
       <td className="border-b border-r border-stone-100 p-0">
-        <Select
-          aria-label="Kategori"
-          data-row={index}
-          data-col={1}
+        <InlineTableSelect
+          ariaLabel="Kategori"
+          row={index}
+          col={1}
           onKeyDown={(event) => onCellKeyDown(event, index, 1, true)}
           value={item.kategoriId}
           disabled={isLoadingOptions}
-          onChange={(event) =>
+          onChange={(value) =>
             onUpdateItem(index, (current) => ({
               ...current,
-              kategoriId: event.target.value
+              kategoriId: value
             }))
           }
-          className={cellFieldClass}
           options={[
             { label: "Pilih kategori", value: "" },
             ...kategoriOptions.map((kategori) => ({
@@ -231,14 +381,13 @@ const PembelianItemRow = memo(function PembelianItemRow({
         </div>
       </td>
       <td className="border-b border-r border-stone-100 p-0">
-        <Select
-          aria-label="Satuan Pembelian"
-          data-row={index}
-          data-col={3}
+        <InlineTableSelect
+          ariaLabel="Satuan Pembelian"
+          row={index}
+          col={3}
           onKeyDown={(event) => onCellKeyDown(event, index, 3, true)}
           value={item.satuanId}
-          onChange={(event) => onSatuanChange(index, event.target.value)}
-          className={cellFieldClass}
+          onChange={(value) => onSatuanChange(index, value)}
           options={[
             { label: "Pilih satuan", value: "" },
             ...satuanOptions.map((satuan) => ({
@@ -420,6 +569,43 @@ const PembelianItemRow = memo(function PembelianItemRow({
 });
 
 export function PembelianForm() {
+  const user = useAuthStore((state) => state.user);
+
+  if (user?.role !== "owner") {
+    return (
+      <>
+        <Header
+          title="Pembelian terkunci"
+          description="Pembelian supplier hanya bisa diakses akun owner."
+          action={
+            <Link
+              href="/dashboard"
+              className="inline-flex h-10 items-center justify-center gap-2 rounded-lg border border-stone-200 bg-white px-4 text-sm font-bold text-stone-700 transition hover:-translate-y-0.5 hover:text-stone-950"
+            >
+              <ArrowLeft className="h-4 w-4" />
+              Kembali
+            </Link>
+          }
+        />
+        <section className="dashboard-surface grid min-h-[360px] place-items-center">
+          <div className="grid max-w-sm place-items-center gap-3 text-center">
+            <span className="grid h-14 w-14 place-items-center rounded-full bg-[#e8f4ef] text-[#267d6b]">
+              <Lock className="h-7 w-7" strokeWidth={1.8} />
+            </span>
+            <h2 className="text-xl font-black text-[#20201d]">Khusus Owner</h2>
+            <p className="text-sm font-semibold leading-6 text-stone-500">
+              Form pembelian hanya bisa dipakai akun owner.
+            </p>
+          </div>
+        </section>
+      </>
+    );
+  }
+
+  return <PembelianFormContent />;
+}
+
+function PembelianFormContent() {
   const router = useRouter();
   const { activeCabangId } = useCabangStore();
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);

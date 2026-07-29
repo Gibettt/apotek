@@ -43,7 +43,7 @@ function filterNotifikasi(rows: Notifikasi[], search?: string) {
 
 export const notifikasiService = {
   // Bikin notifikasi otomatis dari kondisi stok:
-  // - stok menipis (stok tersedia < stok minimum)
+  // - stok menipis (stok tersedia <= 30)
   // - obat akan expired dalam 3 bulan (atau sudah expired)
   async generateAlerts(): Promise<Notifikasi[]> {
     const [lowStock, expiring] = await Promise.all([
@@ -57,7 +57,7 @@ export const notifikasiService = {
       id: `alert-stok-${item.id}`,
       tipe: "stok_menipis",
       judul: `Stok menipis: ${item.nama}`,
-      pesan: `Sisa stok ${item.stokTersedia}, minimum ${item.stokMinimum}. Segera lakukan pembelian.`,
+      pesan: `Sisa stok ${item.stokTersedia}, batas menipis ${item.stokMinimum}. Segera lakukan restock.`,
       referensiTabel: "barang",
       referensiId: item.id,
       isRead: false,

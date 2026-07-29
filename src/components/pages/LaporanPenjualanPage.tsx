@@ -6,6 +6,7 @@ import {
   CalendarDays,
   CreditCard,
   Download,
+  Lock,
   Printer,
   ReceiptText,
   RotateCcw,
@@ -22,6 +23,7 @@ import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Select } from "@/components/ui/Select";
+import { useAuth } from "@/hooks/useAuth";
 import { laporanService, type SalesReportParams } from "@/services/laporanService";
 import type { MetodePembayaran, SalesReportRow, SalesReportSummary, StatusPenjualan } from "@/types";
 import { buildCsv } from "@/utils/exportExcel";
@@ -152,6 +154,8 @@ function PaymentBreakdown({
 }
 
 export function LaporanPenjualanPage() {
+  const { user } = useAuth();
+  const canViewSalesReport = user?.role === "owner";
   const range = useMemo(defaultRange, []);
   const [startDate, setStartDate] = useState(range.startDate);
   const [endDate, setEndDate] = useState(range.endDate);
@@ -167,6 +171,13 @@ export function LaporanPenjualanPage() {
     let active = true;
 
     async function loadReport() {
+      if (!canViewSalesReport) {
+        setRows([]);
+        setSummary(defaultSummary);
+        setIsLoading(false);
+        return;
+      }
+
       setIsLoading(true);
 
       try {
@@ -207,7 +218,7 @@ export function LaporanPenjualanPage() {
     return () => {
       active = false;
     };
-  }, [endDate, metodePembayaran, search, startDate, status]);
+  }, [canViewSalesReport, endDate, metodePembayaran, search, startDate, status]);
 
   const maxPayment = Math.max(
     summary.cashRevenue,
@@ -269,6 +280,21 @@ export function LaporanPenjualanPage() {
           </div>
         }
       />
+
+      {!canViewSalesReport ? (
+        <section className="dashboard-surface grid min-h-[360px] place-items-center">
+          <div className="grid max-w-sm place-items-center gap-3 text-center">
+            <span className="grid h-14 w-14 place-items-center rounded-full bg-[#e8f4ef] text-[#267d6b]">
+              <Lock className="h-7 w-7" strokeWidth={1.8} />
+            </span>
+            <h2 className="text-xl font-black text-[#20201d]">Khusus Owner</h2>
+            <p className="text-sm font-semibold leading-6 text-stone-500">
+              Laporan penjualan hanya bisa dilihat akun owner.
+            </p>
+          </div>
+        </section>
+      ) : (
+        <>
 
       <section className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
         <StatCard
@@ -537,6 +563,8 @@ export function LaporanPenjualanPage() {
           </div>
         </div>
       </section>
+        </>
+      )}
     </>
   );
 }

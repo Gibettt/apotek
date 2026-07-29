@@ -1,14 +1,5 @@
-import { ReportPage } from "@/components/pages/ReportPage";
-import { laporanService } from "@/services/laporanService";
+import { LaporanStokPage } from "@/components/pages/LaporanStokPage";
 
-export default async function LaporanStokPage() {
-  const rows = await laporanService.stokReport();
-
-  return (
-    <ReportPage
-      title="Laporan Stok"
-      description="Rekap batch, expired, lokasi, dan jumlah stok obat."
-      rows={rows}
-    />
-  );
+export default function LaporanStokRoute() {
+  return <LaporanStokPage />;
 }

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { formatDate, formatDateTime } from "./formatDate";
+import { formatDate, formatDateTime, localDateKey } from "./formatDate";
 
 describe("formatDate", () => {
   it("formats a valid date string", () => {
@@ -13,5 +13,10 @@ describe("formatDate", () => {
 
   it("formatDateTime also falls back on invalid input", () => {
     expect(formatDateTime("")).toBe("-");
+  });
+
+  it("builds a local date key for dashboard counters", () => {
+    expect(localDateKey("2026-07-28T14:48:00")).toBe("2026-07-28");
+    expect(localDateKey("bukan tanggal")).toBe("");
   });
 });

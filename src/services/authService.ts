@@ -1,4 +1,5 @@
 import { currentUser } from "@/lib/mock-data";
+import { isOwnerEmail, resolveEffectiveRole } from "@/constants/roles";
 import { isSupabaseConfigured, supabase } from "@/lib/supabase";
 import type {
   AuthSession,
@@ -34,7 +35,7 @@ function firstOf<T>(value: T | T[] | null | undefined): T | undefined {
 
 function mockUserForEmail(email: string): AuthUser {
   const normalizedEmail = email.trim().toLowerCase();
-  const isOwner = normalizedEmail === "owner@gmail.com" || normalizedEmail === currentUser.email;
+  const isOwner = isOwnerEmail(normalizedEmail);
 
   return {
     ...currentUser,
@@ -43,6 +44,25 @@ function mockUserForEmail(email: string): AuthUser {
     email,
     role: isOwner ? "owner" : "admin"
   };
+}
+
+async function ensureDevOwner(email: string, password: string) {
+  if (process.env.NODE_ENV === "production" || !isOwnerEmail(email)) {
+    return false;
+  }
+
+  const response = await fetch("/api/auth/ensure-owner", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ email, password })
+  });
+
+  if (!response.ok) {
+    const result = (await response.json().catch(() => ({}))) as { message?: string };
+    throw new Error(result.message ?? "Owner gagal disiapkan di Supabase.");
+  }
+
+  return true;
 }
 
 async function loadPenggunaAsAuthUser(authUserId: string, fallbackEmail?: string): Promise<AuthUser | null> {
@@ -69,12 +89,15 @@ async function loadPenggunaAsAuthUser(authUserId: string, fallbackEmail?: string
   const cabangRows = row.pengguna_cabang ?? [];
   const defaultCabang = cabangRows.find((item) => item.default_cabang);
 
+  const email = row.email ?? fallbackEmail ?? "";
+  const role = (roleRow?.kode ?? "kasir") as RoleName;
+
   return {
     id: row.id,
     authUserId: row.auth_user_id ?? undefined,
     name: row.nama_lengkap,
-    email: row.email ?? fallbackEmail ?? "",
-    role: (roleRow?.kode ?? "kasir") as RoleName,
+    email,
+    role: resolveEffectiveRole(role, email),
     status: (row.status ?? "aktif") === "aktif",
     cabangIds: cabangRows.map((item) => item.cabang_id),
     activeCabangId: defaultCabang?.cabang_id ?? cabangRows[0]?.cabang_id
@@ -87,13 +110,6 @@ export const authService = {
       throw new Error("Email dan password wajib diisi.");
     }
 
-    if (process.env.NODE_ENV !== "production" && credentials.email.trim().toLowerCase() === "owner@gmail.com") {
-      return {
-        accessToken: "mock-owner-jwt",
-        user: mockUserForEmail(credentials.email)
-      };
-    }
-
     if (!isSupabaseConfigured || !supabase) {
       return {
         accessToken: "mock-supabase-jwt",
@@ -101,13 +117,28 @@ export const authService = {
       };
     }
 
-    const { data, error } = await supabase.auth.signInWithPassword({
+    let { data, error } = await supabase.auth.signInWithPassword({
       email: credentials.email,
       password: credentials.password
     });
 
     if (error) {
-      throw new Error(error.message);
+      const ensured = await ensureDevOwner(credentials.email, credentials.password);
+
+      if (!ensured) {
+        throw new Error(error.message);
+      }
+
+      const retry = await supabase.auth.signInWithPassword({
+        email: credentials.email,
+        password: credentials.password
+      });
+      data = retry.data;
+      error = retry.error;
+
+      if (error) {
+        throw new Error(error.message);
+      }
     }
 
     if (!data.user || !data.session) {
@@ -139,42 +170,19 @@ export const authService = {
       throw new Error("Nama, email, dan password wajib diisi.");
     }
 
-    if (!isSupabaseConfigured || !supabase) {
-      throw new Error("Registrasi tidak tersedia dalam mode demo.");
-    }
-
-    const { data, error } = await supabase.auth.signUp({
-      email: payload.email,
-      password: payload.password,
-      options: {
-        data: { nama_lengkap: payload.namaLengkap }
-      }
+    const response = await fetch("/api/auth/register", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload)
     });
 
-    if (error) {
-      throw new Error(error.message);
+    const result = (await response.json()) as RegisterResult & { message?: string };
+
+    if (!response.ok) {
+      throw new Error(result.message ?? "Registrasi gagal");
     }
 
-    if (!data.user) {
-      throw new Error("Registrasi gagal, akun tidak dapat dibuat.");
-    }
-
-    // Baris `pengguna` (role kasir) dibuat otomatis oleh trigger handle_new_user di database.
-
-    if (!data.session) {
-      return { requiresEmailConfirmation: true, session: null };
-    }
-
-    const user = await loadPenggunaAsAuthUser(data.user.id, payload.email);
-
-    if (!user) {
-      return { requiresEmailConfirmation: true, session: null };
-    }
-
-    return {
-      requiresEmailConfirmation: false,
-      session: { accessToken: data.session.access_token, user }
-    };
+    return result;
   },
 
   async logout() {

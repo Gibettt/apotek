@@ -13,6 +13,7 @@ import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/Badge";
 import { stockLabel, stockQtyForSale, formatMixedStock } from "@/lib/eceran";
+import { isLowStock } from "@/lib/stockRules";
 import { kategoriService, type MasterOption } from "@/services/kategoriService";
 import { obatService, type ObatListItem } from "@/services/obatService";
 import { useCartStore } from "@/store/cartStore";
@@ -29,7 +30,7 @@ function getStockBadge(item: ObatListItem) {
     return { label: "Stok habis", variant: "danger" as const };
   }
 
-  if (item.stokTersedia < item.stokMinimum) {
+  if (isLowStock(item.stokTersedia)) {
     return { label: "Menipis", variant: "warning" as const };
   }
 

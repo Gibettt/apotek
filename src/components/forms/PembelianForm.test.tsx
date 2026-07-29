@@ -1,5 +1,6 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { useAuthStore } from "@/store/authStore";
 import { PembelianForm } from "./PembelianForm";
 
 const mocks = vi.hoisted(() => ({
@@ -44,8 +45,29 @@ vi.mock("@/services/supplierService", () => ({
   }
 }));
 
+function setAuthRole(role: "owner" | "kasir" = "owner") {
+  useAuthStore.setState({
+    user: {
+      id: `${role}-1`,
+      name: role === "owner" ? "Owner Apotek" : "Kasir",
+      email: role === "owner" ? "owner@gmail.com" : "kasir@gmail.com",
+      role,
+      status: true,
+      cabangIds: []
+    },
+    token: "test-token",
+    isLoading: false
+  });
+}
+
+function selectInlineOption(label: string, optionName: string) {
+  fireEvent.click(screen.getAllByLabelText(label)[0]);
+  fireEvent.click(screen.getByRole("option", { name: optionName }));
+}
+
 describe("PembelianForm", () => {
   beforeEach(() => {
+    setAuthRole("owner");
     mocks.push.mockReset();
     mocks.refresh.mockReset();
     mocks.createPembelian.mockReset();
@@ -56,6 +78,17 @@ describe("PembelianForm", () => {
     mocks.listSatuanOptions.mockResolvedValue([]);
     mocks.listKategoriOptions.mockResolvedValue([]);
     mocks.listKonversiSatuan.mockResolvedValue([]);
+  });
+
+  it("blocks purchase entry for non-owner users", () => {
+    setAuthRole("kasir");
+
+    render(<PembelianForm />);
+
+    expect(screen.getByText("Khusus Owner")).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: /simpan pembelian/i })
+    ).not.toBeInTheDocument();
   });
 
   it("allows numeric inputs to be cleared while editing", async () => {
@@ -116,9 +149,7 @@ describe("PembelianForm", () => {
     fireEvent.change(barangInputs[0], {
       target: { value: "Vitamin C Baru" }
     });
-    fireEvent.change(screen.getAllByLabelText("Satuan Pembelian")[0], {
-      target: { value: "sat-1" }
-    });
+    selectInlineOption("Satuan Pembelian", "Kaplet");
 
     fireEvent.click(screen.getByRole("button", { name: /simpan pembelian/i }));
 

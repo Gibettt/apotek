@@ -14,15 +14,39 @@ interface AuthState {
   setUser: (user: AuthUser | null) => void;
 }
 
+function readStoredSession() {
+  if (typeof window === "undefined") {
+    return { user: null, token: null };
+  }
+
+  const token = window.localStorage.getItem("apotek-token");
+  const rawUser = window.localStorage.getItem("apotek-user");
+
+  if (!token || !rawUser) {
+    return { user: null, token: null };
+  }
+
+  try {
+    return { user: JSON.parse(rawUser) as AuthUser, token };
+  } catch {
+    window.localStorage.removeItem("apotek-token");
+    window.localStorage.removeItem("apotek-user");
+    return { user: null, token: null };
+  }
+}
+
+const storedSession = readStoredSession();
+
 export const useAuthStore = create<AuthState>((set) => ({
-  user: null,
-  token: null,
+  user: storedSession.user,
+  token: storedSession.token,
   isLoading: false,
   async login(credentials) {
     set({ isLoading: true });
     try {
       const session = await authService.login(credentials);
       window.localStorage.setItem("apotek-token", session.accessToken);
+      window.localStorage.setItem("apotek-user", JSON.stringify(session.user));
       set({
         user: session.user,
         token: session.accessToken,
@@ -41,6 +65,7 @@ export const useAuthStore = create<AuthState>((set) => ({
 
       if (result.session) {
         window.localStorage.setItem("apotek-token", result.session.accessToken);
+        window.localStorage.setItem("apotek-user", JSON.stringify(result.session.user));
         set({ user: result.session.user, token: result.session.accessToken, isLoading: false });
       } else {
         set({ isLoading: false });
@@ -55,9 +80,15 @@ export const useAuthStore = create<AuthState>((set) => ({
   async logout() {
     await authService.logout();
     window.localStorage.removeItem("apotek-token");
+    window.localStorage.removeItem("apotek-user");
     set({ user: null, token: null });
   },
   setUser(user) {
+    if (user) {
+      window.localStorage.setItem("apotek-user", JSON.stringify(user));
+    } else {
+      window.localStorage.removeItem("apotek-user");
+    }
     set({ user });
   }
 }));

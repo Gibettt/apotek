@@ -1,18 +1,23 @@
 "use client";
 
-import { type ReactNode, useEffect } from "react";
+import { type ReactNode, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/hooks/useAuth";
 
 export function DashboardAuthGate({ children }: { children: ReactNode }) {
   const router = useRouter();
   const { user } = useAuth();
+  const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
-    if (!user) {
+    setMounted(true);
+  }, []);
+
+  useEffect(() => {
+    if (mounted && !user) {
       router.replace("/login");
     }
-  }, [router, user]);
+  }, [mounted, router, user]);
 
-  return user ? <>{children}</> : null;
+  return mounted && user ? <>{children}</> : null;
 }

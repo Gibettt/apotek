@@ -2,6 +2,7 @@ import Link from "next/link";
 import { AlertTriangle } from "lucide-react";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
+import { LOW_STOCK_THRESHOLD } from "@/lib/stockRules";
 import type { Obat } from "@/types";
 
 export function LowStockAlert({ items }: { items: Obat[] }) {
@@ -19,7 +20,7 @@ export function LowStockAlert({ items }: { items: Obat[] }) {
                 {item.nama}
               </p>
               <p className="text-xs text-amber-800">
-                Sisa {item.stokTersedia}, minimum {item.stokMinimum}
+                Sisa {item.stokTersedia}, batas menipis {LOW_STOCK_THRESHOLD}
               </p>
             </div>
           </div>

@@ -84,7 +84,7 @@ begin
     'biaya_operasional','jurnal_umum','jurnal_umum_detail','golongan_obat',
     'kategori_barang','penjualan','penjualan_detail','pelanggan','pembayaran',
     'lokasi_simpan','barang','kartu_stok','saldo_stok','harga_barang',
-    'batch_barang','satuan','jenis_barang','pabrik','principal',
+    'batch_barang','satuan','jenis_barang','pabrik',
     'konversi_satuan','notifikasi','pengaturan','resep','resep_detail',
     'retur_penjualan','retur_penjualan_detail','retur_pembelian',
     'retur_pembelian_detail','faktur_pembelian','faktur_pembelian_detail',
@@ -154,7 +154,7 @@ begin
   foreach t in array array[
     'cabang', 'akun', 'dokter', 'dokter_spesialis', 'golongan_obat',
     'kategori_barang', 'lokasi_simpan', 'satuan', 'jenis_barang',
-    'pabrik', 'principal', 'supplier', 'role', 'pengaturan'
+    'pabrik', 'supplier', 'role', 'pengaturan'
   ]
   loop
     execute format('drop policy if exists %I_staff_select on public.%I;', t, t);

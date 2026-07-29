@@ -7,6 +7,7 @@ import {
   Clock3,
   Eye,
   FilePlus2,
+  Lock,
   PackageCheck,
   Plus,
   ReceiptText,
@@ -19,6 +20,7 @@ import { Header } from "@/components/layout/Header";
 import { Badge } from "@/components/ui/Badge";
 import { Pagination } from "@/components/ui/Pagination";
 import { pembelianService } from "@/services/pembelianService";
+import { useAuthStore } from "@/store/authStore";
 import type { Pembelian, StatusPembelian } from "@/types";
 import { formatCurrency } from "@/utils/formatCurrency";
 import { formatDate } from "@/utils/formatDate";
@@ -139,6 +141,34 @@ function PembelianRow({
 }
 
 export function PembelianListPage() {
+  const user = useAuthStore((state) => state.user);
+
+  if (user?.role !== "owner") {
+    return (
+      <>
+        <Header
+          title="Pembelian terkunci"
+          description="Purchase order supplier hanya bisa diakses akun owner."
+        />
+        <section className="dashboard-surface grid min-h-[360px] place-items-center">
+          <div className="grid max-w-sm place-items-center gap-3 text-center">
+            <span className="grid h-14 w-14 place-items-center rounded-full bg-[#e8f4ef] text-[#267d6b]">
+              <Lock className="h-7 w-7" strokeWidth={1.8} />
+            </span>
+            <h2 className="text-xl font-black text-[#20201d]">Khusus Owner</h2>
+            <p className="text-sm font-semibold leading-6 text-stone-500">
+              Data pembelian hanya bisa dilihat akun owner.
+            </p>
+          </div>
+        </section>
+      </>
+    );
+  }
+
+  return <PembelianListContent />;
+}
+
+function PembelianListContent() {
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
   const [rows, setRows] = useState<Pembelian[]>([]);

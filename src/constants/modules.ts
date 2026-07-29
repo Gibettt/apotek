@@ -30,7 +30,6 @@ import {
   jenisBarangService,
   lokasiSimpanService,
   pabrikService,
-  principalService,
   satuanMasterService
 } from "@/services/masterDataService";
 import type { PengaturanGroup } from "@/types";
@@ -1005,62 +1004,6 @@ export const moduleConfigs = {
     allowDetail: true,
     allowEdit: true,
     allowDelete: true
-  },
-  principal: {
-    key: "principal",
-    title: "Principal / Distributor",
-    description: "Distributor resmi (PBF) sumber pengadaan obat.",
-    basePath: "/principal",
-    addPath: "/principal/tambah",
-    load: async () => {
-      const result = await principalService.list(LOAD_ALL);
-      return result.data.map((item) => ({
-        id: item.id,
-        kode: item.kode,
-        nama: item.nama,
-        telepon: item.telepon,
-        alamat: item.alamat,
-        aktif: item.aktif
-      }));
-    },
-    create: (payload) =>
-      principalService
-        .create({
-          kode: String(payload.kode ?? ""),
-          nama: String(payload.nama ?? ""),
-          telepon: payload.telepon ? String(payload.telepon) : undefined,
-          alamat: payload.alamat ? String(payload.alamat) : undefined,
-          aktif: Boolean(payload.aktif)
-        })
-        .then((item) => ({ ...item })),
-    update: (id, payload) =>
-      principalService
-        .update(id, {
-          kode: String(payload.kode ?? ""),
-          nama: String(payload.nama ?? ""),
-          telepon: payload.telepon ? String(payload.telepon) : undefined,
-          alamat: payload.alamat ? String(payload.alamat) : undefined,
-          aktif: Boolean(payload.aktif)
-        })
-        .then((item) => (item ? { ...item } : null)),
-    columns: [
-      { key: "kode", header: "Kode" },
-      { key: "nama", header: "Distributor" },
-      { key: "telepon", header: "Telepon" },
-      { key: "aktif", header: "Status", type: "boolean" }
-    ],
-    fields: [
-      { name: "kode", label: "Kode", type: "text" },
-      { name: "nama", label: "Nama Distributor", type: "text" },
-      { name: "telepon", label: "Telepon", type: "text" },
-      { name: "alamat", label: "Alamat", type: "textarea" },
-      { name: "aktif", label: "Aktif", type: "checkbox", defaultValue: true }
-    ],
-    detailTitleKey: "nama",
-    allowDetail: true,
-    allowEdit: true,
-    allowDelete: true,
-    remove: (id) => principalService.delete(id)
   },
   akun: {
     key: "akun",

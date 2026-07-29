@@ -63,8 +63,6 @@ export interface Obat {
   golonganNama?: string;
   pabrikId?: string;
   pabrikNama?: string;
-  principalId?: string;
-  principalNama?: string;
   satuanDefaultId?: string;
   satuanNama?: string;
   satuanBeliId?: string;

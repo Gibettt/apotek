@@ -1,6 +1,7 @@
 import { kategoriService } from "@/services/kategoriService";
 import { obatService } from "@/services/obatService";
 import { penjualanService } from "@/services/penjualanService";
+import { isLowStock, LOW_STOCK_THRESHOLD } from "@/lib/stockRules";
 
 export type DashboardPeriod = "7" | "30" | "90";
 export type DashboardCategory = "semua" | "analgesik" | "antibiotik" | "vitamin";
@@ -10,6 +11,7 @@ type DashboardSelection = {
   category: DashboardCategory;
   startDate?: string;
   endDate?: string;
+  includeSales?: boolean;
 };
 
 const weekDayLabels = ["Sen", "Sel", "Rab", "Kam", "Jum", "Sab", "Min"];
@@ -54,14 +56,12 @@ export async function buildDashboardView({
   period,
   category,
   startDate,
-  endDate
+  endDate,
+  includeSales = true
 }: DashboardSelection) {
   const categoryId = await resolveCategoryId(category);
 
-  const [obatResult, penjualanResult] = await Promise.all([
-    obatService.list({ perPage: 500 }),
-    penjualanService.list({ perPage: 1000 })
-  ]);
+  const obatResult = await obatService.list({ perPage: 500 });
 
   const activeMedicinesSource = obatResult.data.filter(
     (item) => item.status && (categoryId === null || item.kategoriId === categoryId)
@@ -81,24 +81,28 @@ export async function buildDashboardView({
   });
   const bucketByKey = new Map(buckets.map((bucket) => [bucket.key, bucket]));
 
-  for (const sale of penjualanResult.data) {
-    const bucket = bucketByKey.get(new Date(sale.tanggal).toDateString());
-    if (!bucket) {
-      continue;
-    }
+  if (includeSales) {
+    const penjualanResult = await penjualanService.list({ perPage: 1000 });
 
-    for (const detail of sale.details ?? []) {
-      if (categoryId !== null && kategoriIdByBarang[detail.barangId] !== categoryId) {
+    for (const sale of penjualanResult.data) {
+      const bucket = bucketByKey.get(new Date(sale.tanggal).toDateString());
+      if (!bucket) {
         continue;
       }
 
-      bucket.revenue += detail.subtotal;
-      bucket.profit += detail.subtotal - detail.hargaPokok * detail.jumlah;
+      for (const detail of sale.details ?? []) {
+        if (categoryId !== null && kategoriIdByBarang[detail.barangId] !== categoryId) {
+          continue;
+        }
+
+        bucket.revenue += detail.subtotal;
+        bucket.profit += detail.subtotal - detail.hargaPokok * detail.jumlah;
+      }
     }
   }
 
   const lowStockCount = activeMedicinesSource.filter(
-    (item) => item.stokTersedia < item.stokMinimum
+    (item) => isLowStock(item.stokTersedia)
   ).length;
 
   return {
@@ -109,9 +113,9 @@ export async function buildDashboardView({
       name: item.nama,
       category: item.kategoriNama ?? "Lainnya",
       stock: item.stokTersedia,
-      minimumStock: item.stokMinimum,
+      minimumStock: LOW_STOCK_THRESHOLD,
       price: item.hargaAktif?.hargaJual ?? 0,
-      status: item.stokTersedia < item.stokMinimum ? "Perlu restock" : "Tersedia"
+      status: isLowStock(item.stokTersedia) ? "Perlu restock" : "Tersedia"
     }))
   };
 }

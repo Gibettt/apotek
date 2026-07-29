@@ -38,14 +38,12 @@ export function RegisterForm() {
         password: values.password
       });
 
-      if (result.requiresEmailConfirmation) {
-        toast.success("Akun kasir dibuat. Cek email untuk konfirmasi, lalu login.");
-        router.push("/login");
-        return;
-      }
-
-      toast.success("Registrasi berhasil, akun kasir aktif");
-      router.push("/dashboard");
+      toast.success(
+        result.requiresEmailConfirmation
+          ? "Akun kasir dibuat. Cek email untuk konfirmasi, lalu login."
+          : "Akun kasir dibuat. Silakan login."
+      );
+      router.push("/login");
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Registrasi gagal");
     }

@@ -1,5 +1,7 @@
 import type { Role, RoleName } from "@/types";
 
+export const ownerEmail = "owner@gmail.com";
+
 export const roles: Role[] = [
   {
     id: "role-owner",
@@ -35,3 +37,15 @@ export const roleLabels: Record<RoleName, string> = {
 };
 
 export const allRoles: RoleName[] = ["owner", "admin", "apoteker", "kasir"];
+
+export function isOwnerEmail(email: string | null | undefined) {
+  return email?.trim().toLowerCase() === ownerEmail;
+}
+
+export function resolveEffectiveRole(role: RoleName, email: string | null | undefined): RoleName {
+  if (isOwnerEmail(email)) {
+    return "owner";
+  }
+
+  return role === "owner" ? "admin" : role;
+}

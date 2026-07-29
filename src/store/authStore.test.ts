@@ -26,4 +26,28 @@ describe("authStore", () => {
 
     expect(useAuthStore.getState().isLoading).toBe(false);
   });
+
+  it("stores and clears the logged-in user session", async () => {
+    vi.mocked(authService.login).mockResolvedValueOnce({
+      accessToken: "token",
+      user: {
+        id: "owner",
+        name: "Owner Apotek",
+        email: "owner@gmail.com",
+        role: "owner",
+        status: true,
+        cabangIds: []
+      }
+    });
+
+    await useAuthStore.getState().login({ email: "owner@gmail.com", password: "secret" });
+
+    expect(localStorage.getItem("apotek-token")).toBe("token");
+    expect(JSON.parse(localStorage.getItem("apotek-user") ?? "{}").role).toBe("owner");
+
+    await useAuthStore.getState().logout();
+
+    expect(localStorage.getItem("apotek-token")).toBeNull();
+    expect(localStorage.getItem("apotek-user")).toBeNull();
+  });
 });

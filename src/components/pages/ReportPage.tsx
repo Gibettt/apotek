@@ -9,11 +9,23 @@ import { formatCurrency } from "@/utils/formatCurrency";
 export function ReportPage({
   title,
   description,
-  rows
+  rows,
+  summaryLabel = "Total nilai",
+  formatSummary = formatCurrency,
+  categoryHeader,
+  valueHeader,
+  formatValue,
+  statusHeader
 }: {
   title: string;
   description: string;
   rows: ReportRow[];
+  summaryLabel?: string;
+  formatSummary?: (value: number) => string;
+  categoryHeader?: string;
+  valueHeader?: string;
+  formatValue?: (value: number) => string;
+  statusHeader?: string;
 }) {
   const total = rows.reduce((sum, row) => sum + row.nilai, 0);
 
@@ -37,14 +49,20 @@ export function ReportPage({
       <Card>
         <CardHeader title="Ringkasan">
           <p className="mt-1 text-sm text-slate-500">
-            Total nilai:{" "}
+            {summaryLabel}:{" "}
             <span className="font-semibold text-slate-950">
-              {formatCurrency(total)}
+              {formatSummary(total)}
             </span>
           </p>
         </CardHeader>
         <CardContent>
-          <LaporanTable rows={rows} />
+          <LaporanTable
+            rows={rows}
+            categoryHeader={categoryHeader}
+            valueHeader={valueHeader}
+            formatValue={formatValue}
+            statusHeader={statusHeader}
+          />
         </CardContent>
       </Card>
     </>

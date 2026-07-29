@@ -20,7 +20,6 @@ export interface ObatInput {
   jenisId?: string;
   golonganId?: string;
   pabrikId?: string;
-  principalId?: string;
   satuanDefaultId?: string;
   satuanBeliId?: string;
   satuanJualId?: string;
@@ -66,7 +65,6 @@ export function toObatUpdatePayload(
     jenisId: record.jenisId,
     golonganId: record.golonganId,
     pabrikId: record.pabrikId,
-    principalId: record.principalId,
     satuanDefaultId: record.satuanDefaultId,
     satuanBeliId: record.satuanBeliId,
     satuanJualId: record.satuanJualId,
@@ -113,7 +111,6 @@ interface BarangRow {
   jenis_id: string | null;
   golongan_id: string | null;
   pabrik_id: string | null;
-  principal_id: string | null;
   satuan_default_id: string | null;
   satuan_beli_id: string | null;
   satuan_jual_id: string | null;
@@ -244,7 +241,6 @@ function toObatRow(payload: ObatInput) {
     jenis_id: payload.jenisId || null,
     golongan_id: payload.golonganId || null,
     pabrik_id: payload.pabrikId || null,
-    principal_id: payload.principalId || null,
     satuan_default_id: payload.satuanDefaultId || null,
     satuan_beli_id: payload.satuanBeliId || null,
     satuan_jual_id: payload.satuanJualId || null,
@@ -283,7 +279,6 @@ function toObat(
   eceranByBarang: EceranLookup = {},
   jenisById: Record<string, string> = {},
   pabrikById: Record<string, string> = {},
-  principalById: Record<string, string> = {},
   lokasiById: Record<string, string> = {}
 ): ObatListItem {
   const kategoriId = row.kategori_id ?? undefined;
@@ -291,7 +286,6 @@ function toObat(
   const satuanId = row.satuan_default_id ?? undefined;
   const jenisId = row.jenis_id ?? undefined;
   const pabrikId = row.pabrik_id ?? undefined;
-  const principalId = row.principal_id ?? undefined;
   const satuanBeliId = row.satuan_beli_id ?? undefined;
   const satuanJualId = row.satuan_jual_id ?? undefined;
   const lokasiDefaultId = row.lokasi_default_id ?? undefined;
@@ -311,8 +305,6 @@ function toObat(
     golonganNama: golongan?.nama,
     pabrikId,
     pabrikNama: pabrikId ? pabrikById[pabrikId] : undefined,
-    principalId,
-    principalNama: principalId ? principalById[principalId] : undefined,
     satuanDefaultId: satuanId,
     satuanNama: satuanId ? satuanById[satuanId] : undefined,
     satuanBeliId,
@@ -365,19 +357,17 @@ async function loadLookupMaps() {
       satuanById: {} as Record<string, string>,
       jenisById: {} as Record<string, string>,
       pabrikById: {} as Record<string, string>,
-      principalById: {} as Record<string, string>,
       lokasiById: {} as Record<string, string>
     };
   }
 
-  const [kategoriResult, golonganResult, satuanResult, jenisResult, pabrikResult, principalResult, lokasiResult] =
+  const [kategoriResult, golonganResult, satuanResult, jenisResult, pabrikResult, lokasiResult] =
     await Promise.all([
       supabase.from("kategori_barang").select("id,nama"),
       supabase.from("golongan_obat").select("id,nama,butuh_resep"),
       supabase.from("satuan").select("id,nama"),
       supabase.from("jenis_barang").select("id,nama"),
       supabase.from("pabrik").select("id,nama"),
-      supabase.from("principal").select("id,nama"),
       supabase.from("lokasi_simpan").select("id,nama")
     ]);
 
@@ -401,10 +391,6 @@ async function loadLookupMaps() {
     throw new Error(pabrikResult.error.message);
   }
 
-  if (principalResult.error) {
-    throw new Error(principalResult.error.message);
-  }
-
   if (lokasiResult.error) {
     throw new Error(lokasiResult.error.message);
   }
@@ -414,9 +400,6 @@ async function loadLookupMaps() {
   );
   const pabrikById = Object.fromEntries(
     (pabrikResult.data ?? []).map((item) => [item.id, item.nama])
-  );
-  const principalById = Object.fromEntries(
-    (principalResult.data ?? []).map((item) => [item.id, item.nama])
   );
   const lokasiById = Object.fromEntries(
     (lokasiResult.data ?? []).map((item) => [item.id, item.nama])
@@ -435,7 +418,7 @@ async function loadLookupMaps() {
     (satuanResult.data ?? []).map((item) => [item.id, item.nama])
   );
 
-  return { kategoriById, golonganById, satuanById, jenisById, pabrikById, principalById, lokasiById };
+  return { kategoriById, golonganById, satuanById, jenisById, pabrikById, lokasiById };
 }
 
 async function loadEceranByBarang(
@@ -724,7 +707,6 @@ export const obatService = {
           eceranByBarang,
           lookupMaps.jenisById,
           lookupMaps.pabrikById,
-          lookupMaps.principalById,
           lookupMaps.lokasiById
         )
       ),
@@ -782,7 +764,6 @@ export const obatService = {
           eceranByBarang,
           lookupMaps.jenisById,
           lookupMaps.pabrikById,
-          lookupMaps.principalById,
           lookupMaps.lokasiById
         )
       : null;
@@ -801,7 +782,6 @@ export const obatService = {
         jenisId: payload.jenisId,
         golonganId: payload.golonganId,
         pabrikId: payload.pabrikId,
-        principalId: payload.principalId,
         satuanDefaultId: payload.satuanDefaultId,
         satuanBeliId: payload.satuanBeliId,
         satuanJualId: payload.satuanJualId,
@@ -958,7 +938,6 @@ export const obatService = {
         jenisId: payload.jenisId,
         golonganId: payload.golonganId,
         pabrikId: payload.pabrikId,
-        principalId: payload.principalId,
         satuanDefaultId: payload.satuanDefaultId,
         satuanBeliId: payload.satuanBeliId,
         satuanJualId: payload.satuanJualId,
@@ -1187,23 +1166,6 @@ export const obatService = {
 
     const { data, error } = await supabase
       .from("pabrik")
-      .select("id,nama")
-      .order("nama", { ascending: true });
-
-    if (error) {
-      throw new Error(error.message);
-    }
-
-    return (data ?? []).map((item) => ({ id: item.id, label: item.nama }));
-  },
-
-  async listPrincipalOptions(): Promise<MasterOption[]> {
-    if (!isSupabaseConfigured || !supabase) {
-      return [];
-    }
-
-    const { data, error } = await supabase
-      .from("principal")
       .select("id,nama")
       .order("nama", { ascending: true });
 

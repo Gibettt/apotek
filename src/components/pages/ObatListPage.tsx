@@ -29,6 +29,7 @@ import { obatService, toObatUpdatePayload } from "@/services/obatService";
 import { stokService } from "@/services/stokService";
 import type { Obat } from "@/types";
 import { stockLabel } from "@/lib/eceran";
+import { isLowStock, LOW_STOCK_THRESHOLD } from "@/lib/stockRules";
 import { formatCurrency } from "@/utils/formatCurrency";
 
 const QUICK_RESTOCK_QTY = 10;
@@ -36,16 +37,16 @@ const QUICK_RESTOCK_QTY = 10;
 const perPage = 8;
 
 function getStockState(item: Obat) {
-  if (item.stokTersedia <= Math.max(1, Math.round(item.stokMinimum * 0.25))) {
+  if (item.stokTersedia <= 0) {
     return {
-      label: "Kritis",
+      label: "Stok habis",
       badge: "danger" as const,
       bar: "bg-red-500",
       bg: "bg-red-50"
     };
   }
 
-  if (item.stokTersedia < item.stokMinimum) {
+  if (isLowStock(item.stokTersedia)) {
     return {
       label: "Menipis",
       badge: "warning" as const,
@@ -102,7 +103,7 @@ function ObatRow({
   const stock = getStockState(item);
   const progress = Math.min(
     100,
-    Math.round((item.stokTersedia / Math.max(item.stokMinimum * 2, 1)) * 100)
+    Math.round((item.stokTersedia / (LOW_STOCK_THRESHOLD * 2)) * 100)
   );
 
   return (
@@ -137,7 +138,7 @@ function ObatRow({
               {stockLabel(item)}
             </span>
             <span className="text-xs font-semibold text-stone-400">
-              Min {item.stokMinimum}
+              Min {LOW_STOCK_THRESHOLD}
             </span>
           </div>
           <div className="h-2 overflow-hidden rounded-full bg-stone-100">
@@ -409,7 +410,7 @@ export function ObatListPage() {
 
   const stats = useMemo(() => {
     const lowItems = rows.filter(
-      (item) => item.stokTersedia < item.stokMinimum
+      (item) => isLowStock(item.stokTersedia)
     ).length;
 
     return { lowItems };

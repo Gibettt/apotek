@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { laporanService } from "./laporanService";
+import { pembelianService } from "./pembelianService";
 
 describe("laporanService", () => {
   it("computes gross profit per sale for the laba-rugi report", async () => {
@@ -22,10 +23,32 @@ describe("laporanService", () => {
     }
   });
 
-  it("reads the stok report from stokService, not mock data", async () => {
+  it("reads stok masuk from received supplier purchases", async () => {
+    const batchNumber = `BATCH-STOK-${Date.now()}`;
+    const created = await pembelianService.create({
+      nomorInternal: `PBL-STOK-REPORT-${Date.now()}`,
+      supplierId: "s-1",
+      tanggalFaktur: "2026-07-08",
+      status: "diterima",
+      items: [
+        {
+          barangId: "o-1",
+          batchNumber,
+          jumlah: 7,
+          hargaBeli: 1000
+        }
+      ]
+    });
+
     const rows = await laporanService.stokReport();
 
-    expect(rows.length).toBeGreaterThan(0);
-    expect(rows.every((row) => typeof row.nilai === "number")).toBe(true);
+    expect(rows).toContainEqual(
+      expect.objectContaining({
+        referensi: batchNumber,
+        kategori: created.details[0].namaBarang,
+        nilai: 7,
+        status: created.namaSupplier
+      })
+    );
   });
 });

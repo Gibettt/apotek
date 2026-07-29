@@ -651,7 +651,6 @@ export const pembelianService = {
     const totals = calculateTotals(payload);
     const status = payload.status ?? "draft";
     const cabangId = await resolveCabangId(payload.cabangId);
-    const dibuatOleh = await resolvePenggunaId();
     const nomorInternal =
       payload.nomorInternal?.trim() ||
       generateNomorInternal(new Date(payload.tanggalFaktur || Date.now()));
@@ -698,6 +697,12 @@ export const pembelianService = {
       localPembelian.unshift(created);
       await upsertKonversiSatuan(payload.items);
       return created;
+    }
+
+    const dibuatOleh = await resolvePenggunaId();
+
+    if (!dibuatOleh) {
+      throw new Error("Sesi owner belum tersambung ke database. Silakan logout lalu login ulang.");
     }
 
     const { data, error } = await supabase

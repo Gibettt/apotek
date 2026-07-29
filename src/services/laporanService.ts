@@ -1,6 +1,5 @@
 import { penjualan } from "@/lib/mock-data";
 import { pembelianService } from "./pembelianService";
-import { stokService } from "./stokService";
 import { isSupabaseConfigured, supabase } from "@/lib/supabase";
 import type {
   MetodePembayaran,
@@ -330,15 +329,19 @@ export const laporanService = {
   },
 
   async stokReport(): Promise<ReportRow[]> {
-    const result = await stokService.list({ perPage: 9999 });
-    return result.data.map((item) => ({
-      id: item.id,
-      tanggal: item.tanggalExpired ?? "",
-      referensi: item.nomorBatch,
-      kategori: item.namaBarang,
-      nilai: item.qty,
-      status: item.lokasiNama ?? "-"
-    }));
+    const result = await pembelianService.list({ perPage: 9999 });
+    return result.data
+      .filter((item) => item.status === "diterima")
+      .flatMap((item) =>
+        item.details.map((detail) => ({
+          id: detail.id,
+          tanggal: item.tanggalFaktur,
+          referensi: detail.batchNumber || item.nomorInternal,
+          kategori: detail.namaBarang,
+          nilai: detail.jumlah,
+          status: item.namaSupplier
+        }))
+      );
   },
 
   async salesReport(params: SalesReportParams = {}) {

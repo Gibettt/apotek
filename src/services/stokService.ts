@@ -1,4 +1,5 @@
 import { defaultCabangId, obat as localObat, stokBatches as localStokBatches, stokMutasi as localStokMutasi } from "@/lib/mock-data";
+import { isLowStock, LOW_STOCK_THRESHOLD } from "@/lib/stockRules";
 import { isSupabaseConfigured, supabase } from "@/lib/supabase";
 import type { StokBatch, StokMutasi, TipeMutasi } from "@/types";
 import { delay, getCurrentUserId, matchSearch, paginate, type ListParams } from "./serviceUtils";
@@ -276,11 +277,11 @@ export const stokService = {
     if (!isSupabaseConfigured || !supabase) {
       return delay(
         localObat
-          .filter((item) => item.stokTersedia < item.stokMinimum)
+          .filter((item) => isLowStock(item.stokTersedia))
           .map((item) => ({
             id: item.id,
             nama: item.nama,
-            stokMinimum: item.stokMinimum,
+            stokMinimum: LOW_STOCK_THRESHOLD,
             stokTersedia: item.stokTersedia
           }))
       );
@@ -312,10 +313,10 @@ export const stokService = {
       .map((item) => ({
         id: item.id as string,
         nama: item.nama as string,
-        stokMinimum: Number(item.stok_minimum ?? 0),
+        stokMinimum: LOW_STOCK_THRESHOLD,
         stokTersedia: qtyByBarang[item.id] ?? 0
       }))
-      .filter((item) => item.stokTersedia < item.stokMinimum);
+      .filter((item) => isLowStock(item.stokTersedia));
   },
 
   async expiredSoon(days = 60): Promise<ExpiringBatch[]> {

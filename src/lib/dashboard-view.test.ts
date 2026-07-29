@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { buildDashboardView } from "@/lib/dashboard-view";
 import { kategoriService } from "@/services/kategoriService";
 import { obatService } from "@/services/obatService";
@@ -84,5 +84,20 @@ describe("buildDashboardView", () => {
     });
     expect(daily.chart).toHaveLength(1);
     expect(daily.chart[0].revenue).toBeGreaterThanOrEqual(3000);
+  });
+
+  it("does not load sales data when sales chart access is locked", async () => {
+    const listSpy = vi.spyOn(penjualanService, "list");
+
+    const view = await buildDashboardView({
+      period: "7",
+      category: "semua",
+      includeSales: false
+    });
+
+    expect(listSpy).not.toHaveBeenCalled();
+    expect(view.chart.every((item) => item.revenue === 0 && item.profit === 0)).toBe(true);
+
+    listSpy.mockRestore();
   });
 });
