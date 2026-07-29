@@ -1,17 +1,40 @@
 "use client";
 
 import { Minus, Plus, ReceiptText, Trash2 } from "lucide-react";
+import { KasirPelangganPicker } from "@/components/kasir/KasirPelangganPicker";
 import { Button } from "@/components/ui/Button";
 import { useCartStore } from "@/store/cartStore";
+import type { Pelanggan } from "@/types";
 import { formatCurrency } from "@/utils/formatCurrency";
 
-export function KasirCart({ onPay }: { onPay: () => void }) {
+export function KasirCart({
+  pelangganId,
+  pelangganNama,
+  onPelangganNameChange,
+  onPelangganChange,
+  onPay
+}: {
+  pelangganId?: string;
+  pelangganNama?: string;
+  onPelangganNameChange?: (nama: string) => void;
+  onPelangganChange?: (pelanggan: Pelanggan | null) => void;
+  onPay: () => void;
+}) {
   const { items, removeItem, updateQuantity, subtotal } = useCartStore();
   const total = subtotal();
   const totalItems = items.reduce((sum, item) => sum + item.quantity, 0);
 
   return (
     <div className="space-y-4">
+      {onPelangganChange ? (
+        <KasirPelangganPicker
+          pelangganId={pelangganId}
+          pelangganNama={pelangganNama}
+          onNameChange={onPelangganNameChange}
+          onChange={onPelangganChange}
+        />
+      ) : null}
+
       <div className="flex items-center justify-between rounded-lg bg-[#f8f7f3] px-4 py-3">
         <div>
           <p className="text-xs font-bold uppercase text-stone-400">
@@ -30,7 +53,7 @@ export function KasirCart({ onPay }: { onPay: () => void }) {
         {items.length ? (
           items.map((item) => (
             <div
-              key={item.barangId}
+              key={item.cartKey ?? item.barangId}
               className="rounded-lg border border-stone-200 bg-white p-4 transition hover:border-stone-300 hover:shadow-[0_16px_34px_rgba(25,24,21,.08)]"
             >
               <div className="flex items-start justify-between gap-3">
@@ -39,13 +62,14 @@ export function KasirCart({ onPay }: { onPay: () => void }) {
                     {item.nama}
                   </p>
                   <p className="mt-1 text-sm font-semibold text-stone-500">
-                    {formatCurrency(item.hargaJual)} / item
+                    {formatCurrency(item.hargaJual)} /{" "}
+                    {item.satuanNama || "item"}
                   </p>
                 </div>
                 <button
                   type="button"
                   aria-label={`Hapus ${item.nama}`}
-                  onClick={() => removeItem(item.barangId)}
+                  onClick={() => removeItem(item.cartKey ?? item.barangId)}
                   className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-red-50 text-red-600 transition hover:bg-red-100"
                 >
                   <Trash2 className="h-4 w-4" strokeWidth={1.9} />
@@ -58,7 +82,10 @@ export function KasirCart({ onPay }: { onPay: () => void }) {
                     type="button"
                     aria-label={`Kurangi ${item.nama}`}
                     onClick={() =>
-                      updateQuantity(item.barangId, item.quantity - 1)
+                      updateQuantity(
+                        item.cartKey ?? item.barangId,
+                        item.quantity - 1
+                      )
                     }
                     className="grid h-full w-10 place-items-center text-stone-500 transition hover:bg-white hover:text-stone-950"
                   >
@@ -68,10 +95,15 @@ export function KasirCart({ onPay }: { onPay: () => void }) {
                     aria-label={`Qty ${item.nama}`}
                     type="number"
                     min={1}
-                    max={item.stokTersedia}
+                    max={Math.floor(
+                      item.stokTersedia / (item.stockQtyPerUnit ?? 1)
+                    )}
                     value={item.quantity}
                     onChange={(event) =>
-                      updateQuantity(item.barangId, Number(event.target.value))
+                      updateQuantity(
+                        item.cartKey ?? item.barangId,
+                        Number(event.target.value)
+                      )
                     }
                     className="h-full w-14 border-x border-stone-200 bg-white text-center text-sm font-black text-[#20201d] outline-none"
                   />
@@ -79,7 +111,10 @@ export function KasirCart({ onPay }: { onPay: () => void }) {
                     type="button"
                     aria-label={`Tambah qty ${item.nama}`}
                     onClick={() =>
-                      updateQuantity(item.barangId, item.quantity + 1)
+                      updateQuantity(
+                        item.cartKey ?? item.barangId,
+                        item.quantity + 1
+                      )
                     }
                     className="grid h-full w-10 place-items-center text-stone-500 transition hover:bg-white hover:text-stone-950"
                   >

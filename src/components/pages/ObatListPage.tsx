@@ -5,6 +5,7 @@ import type { LucideIcon } from "lucide-react";
 import {
   AlertTriangle,
   Boxes,
+  ChevronDown,
   Check,
   Eye,
   PackagePlus,
@@ -23,9 +24,11 @@ import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Modal } from "@/components/ui/Modal";
 import { Pagination } from "@/components/ui/Pagination";
+import { kategoriService, type MasterOption } from "@/services/kategoriService";
 import { obatService, toObatUpdatePayload } from "@/services/obatService";
 import { stokService } from "@/services/stokService";
 import type { Obat } from "@/types";
+import { stockLabel } from "@/lib/eceran";
 import { formatCurrency } from "@/utils/formatCurrency";
 
 const QUICK_RESTOCK_QTY = 10;
@@ -131,7 +134,7 @@ function ObatRow({
         <div className="min-w-[150px]">
           <div className="mb-2 flex items-center justify-between gap-3">
             <span className="font-black text-[#20201d]">
-              {item.stokTersedia}
+              {stockLabel(item)}
             </span>
             <span className="text-xs font-semibold text-stone-400">
               Min {item.stokMinimum}
@@ -154,6 +157,12 @@ function ObatRow({
             <p className="mt-1 text-xs font-semibold text-stone-400">
               Beli {formatCurrency(item.hargaAktif?.hargaBeli ?? 0)}
             </p>
+            {item.eceran ? (
+              <p className="mt-1 text-xs font-semibold text-emerald-700">
+                Eceran {formatCurrency(item.eceran.hargaJual)} /{" "}
+                {item.eceran.satuanNama ?? "eceran"}
+              </p>
+            ) : null}
           </>
         ) : (
           <>
@@ -223,6 +232,9 @@ function ObatRow({
 
 export function ObatListPage() {
   const [search, setSearch] = useState("");
+  const [kategoriId, setKategoriId] = useState("");
+  const [kategoriOptions, setKategoriOptions] = useState<MasterOption[]>([]);
+  const [isKategoriOpen, setIsKategoriOpen] = useState(false);
   const [page, setPage] = useState(1);
   const [rows, setRows] = useState<Obat[]>([]);
   const [total, setTotal] = useState(0);
@@ -235,6 +247,13 @@ export function ObatListPage() {
   const [priceValue, setPriceValue] = useState("0");
   const [isSavingPrice, setIsSavingPrice] = useState(false);
   const totalPages = Math.max(1, Math.ceil(total / perPage));
+  const categoryMenuOptions = useMemo(
+    () => [{ id: "", label: "Semua kategori" }, ...kategoriOptions],
+    [kategoriOptions]
+  );
+  const selectedKategoriLabel =
+    categoryMenuOptions.find((option) => option.id === kategoriId)?.label ??
+    "Semua kategori";
 
   function handleSetPriceClick(item: Obat) {
     setPriceTarget(item);
@@ -324,11 +343,43 @@ export function ObatListPage() {
   useEffect(() => {
     let active = true;
 
+    async function loadKategori() {
+      try {
+        const options = await kategoriService.listOptions();
+
+        if (active) {
+          setKategoriOptions(options);
+        }
+      } catch (error) {
+        if (active) {
+          toast.error(
+            error instanceof Error ? error.message : "Gagal memuat kategori"
+          );
+          setKategoriOptions([]);
+        }
+      }
+    }
+
+    void loadKategori();
+
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    let active = true;
+
     async function loadObat() {
       setIsLoading(true);
 
       try {
-        const result = await obatService.list({ search, page, perPage });
+        const result = await obatService.list({
+          search,
+          ...(kategoriId ? { kategoriId } : {}),
+          page,
+          perPage
+        });
 
         if (!active) {
           return;
@@ -354,7 +405,7 @@ export function ObatListPage() {
     return () => {
       active = false;
     };
-  }, [page, search, refreshToken]);
+  }, [page, search, kategoriId, refreshToken]);
 
   const stats = useMemo(() => {
     const lowItems = rows.filter(
@@ -377,8 +428,8 @@ export function ObatListPage() {
           <StockStat label="Stok menipis" value={stats.lowItems} icon={AlertTriangle} />
         </div>
 
-        <div className="mt-5 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-          <div className="relative w-full md:max-w-md">
+        <div className="mt-5 grid gap-3 md:grid-cols-[minmax(0,1fr)_220px_auto] md:items-center">
+          <div className="relative w-full">
             <Search className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-stone-400" />
             <input
               value={search}
@@ -391,7 +442,64 @@ export function ObatListPage() {
             />
           </div>
 
-          <p className="text-sm font-semibold text-stone-500">
+          <div
+            className="relative"
+            onBlur={(event) => {
+              if (!event.currentTarget.contains(event.relatedTarget)) {
+                setIsKategoriOpen(false);
+              }
+            }}
+          >
+            <button
+              type="button"
+              aria-label={`Filter kategori: ${selectedKategoriLabel}`}
+              aria-haspopup="listbox"
+              aria-expanded={isKategoriOpen}
+              onClick={() => setIsKategoriOpen((open) => !open)}
+              className="flex h-11 w-full items-center justify-between gap-3 rounded-lg border border-[#ff6a3d]/45 bg-white px-4 text-left text-sm font-black text-[#20201d] shadow-[0_10px_24px_rgba(255,106,61,.12)] outline-none transition hover:-translate-y-0.5 hover:border-[#ff6a3d] focus:border-[#ff6a3d] focus:ring-4 focus:ring-[#ff6a3d]/10"
+            >
+              <span className="min-w-0 truncate">{selectedKategoriLabel}</span>
+              <ChevronDown
+                className={`h-4 w-4 shrink-0 text-[#ff6a3d] transition ${
+                  isKategoriOpen ? "rotate-180" : ""
+                }`}
+                strokeWidth={2.2}
+              />
+            </button>
+            {isKategoriOpen ? (
+              <div
+                role="listbox"
+                className="absolute left-0 right-0 top-[calc(100%+6px)] z-20 overflow-hidden rounded-lg border border-stone-200 bg-white p-1 shadow-[0_18px_44px_rgba(25,24,21,.14)]"
+              >
+                {categoryMenuOptions.map((option) => {
+                  const selected = option.id === kategoriId;
+
+                  return (
+                    <button
+                      key={option.id || "all"}
+                      type="button"
+                      role="option"
+                      aria-selected={selected}
+                      onClick={() => {
+                        setKategoriId(option.id);
+                        setPage(1);
+                        setIsKategoriOpen(false);
+                      }}
+                      className={`flex w-full items-center rounded-md px-3 py-2 text-left text-sm font-bold transition ${
+                        selected
+                          ? "bg-[#20201d] text-white"
+                          : "text-stone-600 hover:bg-[#fff0ea] hover:text-[#20201d]"
+                      }`}
+                    >
+                      {option.label}
+                    </button>
+                  );
+                })}
+              </div>
+            ) : null}
+          </div>
+
+          <p className="text-sm font-semibold text-stone-500 md:text-right">
             {total} item barang ditemukan
           </p>
         </div>

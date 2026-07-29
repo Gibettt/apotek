@@ -13,6 +13,7 @@ export interface PenjualanDetail {
   namaBarang: string;
   batchId?: string;
   satuanId?: string;
+  satuanNama?: string;
   jumlah: number;
   hargaJual: number;
   diskonPersen: number;
@@ -47,9 +48,14 @@ export interface Penjualan {
 }
 
 export interface CartItem {
+  cartKey?: string;
   barangId: string;
   kode: string;
   nama: string;
+  satuanId?: string;
+  satuanNama?: string;
+  tipeHarga?: "jual" | "eceran";
+  stockQtyPerUnit?: number;
   hargaJual: number;
   stokTersedia: number;
   membutuhkanResep: boolean;

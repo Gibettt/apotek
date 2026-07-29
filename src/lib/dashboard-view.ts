@@ -8,12 +8,37 @@ export type DashboardCategory = "semua" | "analgesik" | "antibiotik" | "vitamin"
 type DashboardSelection = {
   period: DashboardPeriod;
   category: DashboardCategory;
+  startDate?: string;
+  endDate?: string;
 };
 
 const weekDayLabels = ["Sen", "Sel", "Rab", "Kam", "Jum", "Sab", "Min"];
 
 function dayLabel(date: Date) {
   return weekDayLabels[(date.getDay() + 6) % 7];
+}
+
+function chartLabel(date: Date, totalDays: number) {
+  return totalDays <= 7 ? dayLabel(date) : `${date.getDate()}/${date.getMonth() + 1}`;
+}
+
+function parseInputDate(value?: string) {
+  if (!value) return null;
+  const date = new Date(`${value}T00:00:00`);
+  return Number.isNaN(date.getTime()) ? null : date;
+}
+
+function chartDateRange(period: DashboardPeriod, startDate?: string, endDate?: string) {
+  const fallbackEnd = new Date();
+  fallbackEnd.setHours(0, 0, 0, 0);
+
+  const fallbackStart = new Date(fallbackEnd);
+  fallbackStart.setDate(fallbackEnd.getDate() - (Number(period) - 1));
+
+  const start = parseInputDate(startDate) ?? fallbackStart;
+  const end = parseInputDate(endDate) ?? fallbackEnd;
+
+  return start <= end ? { start, end } : { start: end, end: start };
 }
 
 async function resolveCategoryId(category: DashboardCategory) {
@@ -25,8 +50,12 @@ async function resolveCategoryId(category: DashboardCategory) {
   return data.find((entry) => entry.kode === category)?.id ?? null;
 }
 
-export async function buildDashboardView({ period, category }: DashboardSelection) {
-  const days = Number(period);
+export async function buildDashboardView({
+  period,
+  category,
+  startDate,
+  endDate
+}: DashboardSelection) {
   const categoryId = await resolveCategoryId(category);
 
   const [obatResult, penjualanResult] = await Promise.all([
@@ -41,14 +70,14 @@ export async function buildDashboardView({ period, category }: DashboardSelectio
     obatResult.data.map((item) => [item.id, item.kategoriId])
   );
 
-  const since = new Date();
-  since.setHours(0, 0, 0, 0);
-  since.setDate(since.getDate() - (days - 1));
+  const { start, end } = chartDateRange(period, startDate, endDate);
+  const days =
+    Math.floor((end.getTime() - start.getTime()) / 86_400_000) + 1;
 
   const buckets = Array.from({ length: days }, (_, index) => {
-    const date = new Date(since);
-    date.setDate(since.getDate() + index);
-    return { key: date.toDateString(), label: dayLabel(date), revenue: 0, profit: 0 };
+    const date = new Date(start);
+    date.setDate(start.getDate() + index);
+    return { key: date.toDateString(), label: chartLabel(date, days), revenue: 0, profit: 0 };
   });
   const bucketByKey = new Map(buckets.map((bucket) => [bucket.key, bucket]));
 

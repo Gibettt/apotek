@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import {
   BarChart3,
   Bell,
@@ -33,6 +33,7 @@ import {
   Users,
   Wallet
 } from "lucide-react";
+import { useAuthStore } from "@/store/authStore";
 import { cn } from "@/utils/cn";
 
 const menuGroups = [
@@ -41,6 +42,7 @@ const menuGroups = [
     items: [
       { label: "Penjualan", href: "/penjualan/kasir", icon: ShoppingCart },
       { label: "Riwayat Transaksi", href: "/penjualan", icon: ReceiptText },
+      { label: "Retur Penjualan", href: "/retur-penjualan", icon: Undo2 },
       { label: "Pembelian", href: "/pembelian", icon: Package },
       { label: "Resep", href: "/resep", icon: ClipboardList },
       { label: "Stok", href: "/stok", icon: Boxes }
@@ -102,6 +104,8 @@ const menuItems = menuGroups.flatMap((group) => group.items);
 
 export function Sidebar() {
   const pathname = usePathname();
+  const router = useRouter();
+  const logout = useAuthStore((state) => state.logout);
   const isActive = (href: string) => {
     if (pathname === href) {
       return true;
@@ -113,6 +117,15 @@ export function Sidebar() {
 
     return !menuItems.some((item) => item.href !== href && item.href.startsWith(`${href}/`) && pathname.startsWith(item.href));
   };
+
+  async function handleLogout() {
+    if (!window.confirm("Anda ingin logout?")) {
+      return;
+    }
+
+    await logout();
+    router.replace("/login");
+  }
 
   return (
     <aside
@@ -148,7 +161,7 @@ export function Sidebar() {
             <CircleHelp className="h-4 w-4 shrink-0" strokeWidth={1.8} />
             <span className="dashboard-sidebar-label">Bantuan</span>
           </Link>
-          <button type="button" title="Keluar" className="dashboard-menu-link w-full">
+          <button type="button" title="Keluar" className="dashboard-menu-link w-full" onClick={handleLogout}>
             <LogOut className="h-4 w-4 shrink-0" strokeWidth={1.8} />
             <span className="dashboard-sidebar-label">Keluar</span>
           </button>

@@ -1,17 +1,24 @@
 "use client";
 
-import { ExternalLink, ShieldCheck } from "lucide-react";
+import {
+  Banknote,
+  CheckCircle2,
+  CreditCard,
+  ExternalLink,
+  Landmark,
+  Wallet
+} from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { Alert } from "@/components/ui/Alert";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Modal } from "@/components/ui/Modal";
-import { Select } from "@/components/ui/Select";
 import {
   accuratePaymentService,
   type AccuratePaymentSession
 } from "@/services/accuratePaymentService";
+import { pelangganService } from "@/services/pelangganService";
 import { penjualanService } from "@/services/penjualanService";
 import { useCabangStore } from "@/store/cabangStore";
 import { useCartStore } from "@/store/cartStore";
@@ -30,12 +37,39 @@ function createIdempotencyKey() {
   });
 }
 
+const paymentMethods = [
+  { value: "tunai", label: "Tunai", icon: Banknote },
+  { value: "transfer", label: "Transfer", icon: Landmark },
+  { value: "accurate", label: "QRIS / e-Wallet", icon: Wallet }
+] satisfies Array<{
+  value: MetodePembayaran;
+  label: string;
+  icon: typeof Banknote;
+}>;
+
+function quickAmounts(total: number) {
+  return Array.from(
+    new Set([
+      total,
+      Math.ceil(total / 10000) * 10000,
+      Math.ceil(total / 50000) * 50000,
+      100000
+    ])
+  )
+    .filter((value) => value >= total && value > 0)
+    .slice(0, 4);
+}
+
 export function KasirPaymentModal({
   open,
+  pelangganId,
+  pelangganNama,
   onClose,
   onSuccess
 }: {
   open: boolean;
+  pelangganId?: string;
+  pelangganNama?: string;
   onClose: () => void;
   onSuccess: (penjualan: Penjualan) => void;
 }) {
@@ -50,7 +84,12 @@ export function KasirPaymentModal({
   const idempotencyKeyRef = useRef(createIdempotencyKey());
   const total = subtotal();
   const bayarValue = bayar === "" ? 0 : Number(bayar);
-  const kembalian = Math.max(0, bayarValue - total);
+  const bayarValid = Number.isFinite(bayarValue);
+  const kembalian = bayarValid ? Math.max(0, bayarValue - total) : 0;
+  const kurang = bayarValid ? Math.max(0, total - bayarValue) : total;
+  const totalItems = items.reduce((sum, item) => sum + item.quantity, 0);
+  const hasEceranItem = items.some((item) => item.tipeHarga === "eceran");
+  const typedPelangganNama = pelangganNama?.trim() ?? "";
 
   useEffect(() => {
     if (open) {
@@ -100,6 +139,16 @@ export function KasirPaymentModal({
   }, [clear, onClose, onSuccess, open, paymentSession]);
 
   async function handleAccurateCheckout() {
+    if (pelangganId || typedPelangganNama) {
+      toast.error("Pembayaran digital belum mendukung pelanggan terpilih");
+      return;
+    }
+
+    if (hasEceranItem) {
+      toast.error("Pembayaran digital belum mendukung item eceran");
+      return;
+    }
+
     setIsSubmitting(true);
     try {
       const result = await accuratePaymentService.create({
@@ -122,6 +171,31 @@ export function KasirPaymentModal({
     }
   }
 
+  async function resolvePelangganId() {
+    if (pelangganId || !typedPelangganNama) {
+      return pelangganId;
+    }
+
+    const existing = await pelangganService.list({
+      search: typedPelangganNama,
+      perPage: 1000
+    });
+    const match = existing.data.find(
+      (item) =>
+        item.nama.trim().toLowerCase() === typedPelangganNama.toLowerCase()
+    );
+
+    if (match) {
+      return match.id;
+    }
+
+    const created = await pelangganService.create({
+      nama: typedPelangganNama,
+      aktif: true
+    });
+    return created.id;
+  }
+
   async function handleCheckout() {
     if (metodePembayaran === "accurate") {
       await handleAccurateCheckout();
@@ -136,10 +210,12 @@ export function KasirPaymentModal({
     setIsSubmitting(true);
 
     try {
+      const resolvedPelangganId = await resolvePelangganId();
       const result = await penjualanService.checkout({
         items,
         metodePembayaran,
         bayar: bayarValue,
+        pelangganId: resolvedPelangganId,
         cabangId: activeCabangId ?? undefined
       });
       clear();
@@ -157,23 +233,61 @@ export function KasirPaymentModal({
 
   return (
     <Modal open={open} title="Pembayaran" onClose={onClose}>
-      <div className="space-y-4">
-        <Select
-          label="Metode Pembayaran"
-          value={metodePembayaran}
-          onChange={(event) =>
-            setMetodePembayaran(event.target.value as MetodePembayaran)
-          }
-          options={[
-            { label: "Tunai", value: "tunai" },
-            { label: "Transfer", value: "transfer" },
-            { label: "BPJS", value: "BPJS" },
-            {
-              label: "Accurate e-Payment (QRIS / e-Wallet)",
-              value: "accurate"
-            }
-          ]}
-        />
+      <div className="space-y-5">
+        <div className="rounded-xl bg-[#080c1c] p-5 text-white shadow-[0_20px_50px_rgba(8,12,28,.20)]">
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <p className="text-xs font-black uppercase tracking-wide text-white/50">
+                Total tagihan
+              </p>
+              <p className="mt-2 text-3xl font-black tracking-normal">
+                {formatCurrency(total)}
+              </p>
+              <p className="mt-1 text-sm font-semibold text-white/60">
+                {totalItems} item dalam keranjang
+              </p>
+            </div>
+            <span className="grid h-12 w-12 shrink-0 place-items-center rounded-xl bg-white/10 text-[#7dd3fc]">
+              <CreditCard className="h-6 w-6" strokeWidth={1.9} />
+            </span>
+          </div>
+        </div>
+
+        <div>
+          <p className="mb-2 text-sm font-black text-[#20201d]">
+            Metode pembayaran
+          </p>
+          <div className="grid grid-cols-2 gap-2">
+            {paymentMethods.map(({ value, label, icon: Icon }) => {
+              const selected = metodePembayaran === value;
+
+              return (
+                <button
+                  key={value}
+                  type="button"
+                  aria-pressed={selected}
+                  disabled={value === "accurate" && hasEceranItem}
+                  onClick={() => setMetodePembayaran(value)}
+                  className={`flex h-14 items-center gap-3 rounded-lg border px-3 text-left text-sm font-black transition ${
+                    selected
+                      ? "border-[#0f766e] bg-emerald-50 text-[#0f766e] shadow-[0_12px_28px_rgba(15,118,110,.12)]"
+                      : "border-stone-200 bg-white text-stone-600 hover:border-stone-300 hover:bg-[#f8f7f3] disabled:pointer-events-none disabled:bg-stone-100 disabled:text-stone-400"
+                  }`}
+                >
+                  <span
+                    className={`grid h-9 w-9 shrink-0 place-items-center rounded-lg ${
+                      selected ? "bg-white" : "bg-[#f8f7f3]"
+                    }`}
+                  >
+                    <Icon className="h-4 w-4" strokeWidth={2} />
+                  </span>
+                  <span className="min-w-0 truncate">{label}</span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
         {metodePembayaran === "accurate" ? (
           <Alert title="Pembayaran digital terverifikasi" variant="info">
             <p>
@@ -183,33 +297,71 @@ export function KasirPaymentModal({
             </p>
           </Alert>
         ) : (
-          <Input
-            label="Nominal Bayar"
-            type="number"
-            min={0}
-            value={bayar}
-            onChange={(event) => setBayar(event.target.value)}
-          />
-        )}
-        <div className="grid gap-2 rounded-lg bg-slate-50 p-4 text-sm">
-          <div className="flex justify-between">
-            <span>Total</span>
-            <strong>{formatCurrency(total)}</strong>
-          </div>
-          {metodePembayaran !== "accurate" ? (
-            <div className="flex justify-between">
-              <span>Kembalian</span>
-              <strong>{formatCurrency(kembalian)}</strong>
+          <div className="space-y-3">
+            <Input
+              label="Nominal Bayar"
+              type="number"
+              min={0}
+              value={bayar}
+              onChange={(event) => setBayar(event.target.value)}
+              className="h-14 text-lg font-black"
+            />
+            <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+              {quickAmounts(total).map((amount) => (
+                <button
+                  key={amount}
+                  type="button"
+                  onClick={() => setBayar(String(amount))}
+                  className="h-10 rounded-lg border border-stone-200 bg-white text-sm font-black text-stone-700 transition hover:border-[#0f766e] hover:bg-emerald-50 hover:text-[#0f766e]"
+                >
+                  {amount === total ? "Uang pas" : formatCurrency(amount)}
+                </button>
+              ))}
             </div>
-          ) : null}
-        </div>
+          </div>
+        )}
+
+        {metodePembayaran !== "accurate" ? (
+          <div
+            className={`rounded-xl border p-4 ${
+              kurang
+                ? "border-red-100 bg-red-50"
+                : "border-emerald-100 bg-emerald-50"
+            }`}
+          >
+            <div className="flex items-center justify-between gap-4">
+              <div>
+                <p
+                  className={`text-xs font-black uppercase ${
+                    kurang ? "text-red-500" : "text-emerald-600"
+                  }`}
+                >
+                  {kurang ? "Nominal kurang" : "Kembalian"}
+                </p>
+                <p
+                  className={`mt-1 text-3xl font-black tracking-normal ${
+                    kurang ? "text-red-700" : "text-emerald-700"
+                  }`}
+                >
+                  {formatCurrency(kurang || kembalian)}
+                </p>
+              </div>
+              {!kurang ? (
+                <span className="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-white text-emerald-700 shadow-sm">
+                  <CheckCircle2 className="h-6 w-6" strokeWidth={2} />
+                </span>
+              ) : null}
+            </div>
+          </div>
+        ) : null}
+
         {paymentSession?.paymentUrl ? (
           <div
             className="space-y-3 rounded-lg border border-emerald-200 bg-emerald-50 p-4"
             aria-live="polite"
           >
             <div className="flex items-start gap-3 text-emerald-800">
-              <ShieldCheck className="mt-0.5 h-5 w-5 shrink-0" />
+              <Wallet className="mt-0.5 h-5 w-5 shrink-0" />
               <div>
                 <p className="text-sm font-semibold">Menunggu pembayaran</p>
                 <p className="mt-1 text-xs">
@@ -231,9 +383,12 @@ export function KasirPaymentModal({
         ) : null}
         <Button
           type="button"
-          className="w-full"
+          className="h-12 w-full rounded-lg bg-[#0f766e] text-base font-black hover:bg-[#115e59]"
           isLoading={isSubmitting}
-          disabled={Boolean(paymentSession?.paymentUrl)}
+          disabled={
+            Boolean(paymentSession?.paymentUrl) ||
+            (metodePembayaran !== "accurate" && kurang > 0)
+          }
           onClick={handleCheckout}
         >
           {metodePembayaran === "accurate"

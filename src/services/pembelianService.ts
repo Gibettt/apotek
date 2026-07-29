@@ -9,6 +9,11 @@ export interface PembelianItemInput {
   batchNumber?: string;
   tanggalExpired?: string;
   satuanId?: string;
+  satuanDasarId?: string;
+  konversi?: number;
+  jumlahDikirim?: number;
+  jumlahDiterima?: number;
+  jumlahDitolak?: number;
   jumlah: number;
   hargaBeli: number;
   diskonPersen?: number;
@@ -69,7 +74,15 @@ interface BatchInfo {
   tanggalExpired?: string;
 }
 
+export interface SatuanKonversi {
+  barangId: string;
+  satuanDariId: string;
+  satuanKeId: string;
+  nilaiKonversi: number;
+}
+
 const localPembelian: Pembelian[] = [];
+const localKonversiSatuan: SatuanKonversi[] = [];
 
 function toNumber(value: number | string | null | undefined) {
   return Number(value ?? 0);
@@ -98,6 +111,34 @@ function calculateTotals(payload: PembelianInput) {
   const grandTotal = Math.max(0, subtotal - diskonTotal + pajakTotal);
 
   return { subtotal, diskonTotal, pajakTotal, grandTotal };
+}
+
+function toKonversiSatuan(row: {
+  barang_id: string | null;
+  satuan_dari_id: string | null;
+  satuan_ke_id: string | null;
+  nilai_konversi: number | string | null;
+}): SatuanKonversi | null {
+  if (!row.barang_id || !row.satuan_dari_id || !row.satuan_ke_id) {
+    return null;
+  }
+
+  return {
+    barangId: row.barang_id,
+    satuanDariId: row.satuan_dari_id,
+    satuanKeId: row.satuan_ke_id,
+    nilaiKonversi: toNumber(row.nilai_konversi)
+  };
+}
+
+function validKonversiItems(items: PembelianItemInput[]) {
+  return items.filter(
+    (item) =>
+      item.barangId &&
+      item.satuanId &&
+      item.satuanDasarId &&
+      (item.konversi ?? 0) > 0
+  );
 }
 
 function toDetail(
@@ -415,6 +456,69 @@ async function receiveStock(pembelian: Pembelian) {
   await postPembelianJurnal(pembelian, cabangId);
 }
 
+async function upsertKonversiSatuan(items: PembelianItemInput[]) {
+  const rows = validKonversiItems(items);
+
+  if (!rows.length) {
+    return;
+  }
+
+  if (!isSupabaseConfigured || !supabase) {
+    for (const item of rows) {
+      const existingIndex = localKonversiSatuan.findIndex(
+        (row) =>
+          row.barangId === item.barangId &&
+          row.satuanDariId === item.satuanId &&
+          row.satuanKeId === item.satuanDasarId
+      );
+      const next = {
+        barangId: item.barangId,
+        satuanDariId: item.satuanId!,
+        satuanKeId: item.satuanDasarId!,
+        nilaiKonversi: item.konversi!
+      };
+
+      if (existingIndex >= 0) {
+        localKonversiSatuan[existingIndex] = next;
+      } else {
+        localKonversiSatuan.push(next);
+      }
+    }
+
+    return;
+  }
+
+  for (const item of rows) {
+    const { data: existing, error: findError } = await supabase
+      .from("konversi_satuan")
+      .select("id")
+      .eq("barang_id", item.barangId)
+      .eq("satuan_dari_id", item.satuanId)
+      .eq("satuan_ke_id", item.satuanDasarId)
+      .maybeSingle();
+
+    if (findError) {
+      throw new Error(findError.message);
+    }
+
+    const payload = {
+      barang_id: item.barangId,
+      satuan_dari_id: item.satuanId,
+      satuan_ke_id: item.satuanDasarId,
+      nilai_konversi: item.konversi,
+      updated_at: new Date().toISOString()
+    };
+
+    const { error } = existing
+      ? await supabase.from("konversi_satuan").update(payload).eq("id", existing.id)
+      : await supabase.from("konversi_satuan").insert(payload);
+
+    if (error) {
+      throw new Error(error.message);
+    }
+  }
+}
+
 /** Balanced jurnal_umum_detail rows for a purchase receipt: inventory in, payable to the supplier out. */
 export function buildPembelianJurnalDetails(input: {
   grandTotal: number;
@@ -472,6 +576,22 @@ async function postPembelianJurnal(pembelian: Pembelian, cabangId: string) {
 }
 
 export const pembelianService = {
+  async listKonversiSatuan(): Promise<SatuanKonversi[]> {
+    if (!isSupabaseConfigured || !supabase) {
+      return [...localKonversiSatuan];
+    }
+
+    const { data, error } = await supabase
+      .from("konversi_satuan")
+      .select("barang_id,satuan_dari_id,satuan_ke_id,nilai_konversi");
+
+    if (error) {
+      throw new Error(error.message);
+    }
+
+    return (data ?? []).map(toKonversiSatuan).filter((item): item is SatuanKonversi => Boolean(item));
+  },
+
   async list(params: ListParams = {}) {
     if (!isSupabaseConfigured || !supabase) {
       return paginate(filterPembelian(localPembelian, params.search), params);
@@ -576,6 +696,7 @@ export const pembelianService = {
       };
 
       localPembelian.unshift(created);
+      await upsertKonversiSatuan(payload.items);
       return created;
     }
 
@@ -642,6 +763,8 @@ export const pembelianService = {
       if (detailError) {
         throw new Error(detailError.message);
       }
+
+      await upsertKonversiSatuan(payload.items);
     }
 
     const created = await this.getById(data.id);

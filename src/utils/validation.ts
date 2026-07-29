@@ -5,6 +5,18 @@ export const loginSchema = z.object({
   password: z.string().min(6, "Password minimal 6 karakter")
 });
 
+export const registerSchema = z
+  .object({
+    namaLengkap: z.string().min(3, "Nama minimal 3 karakter"),
+    email: z.string().email("Email tidak valid"),
+    password: z.string().min(6, "Password minimal 6 karakter"),
+    confirmPassword: z.string().min(6, "Konfirmasi password minimal 6 karakter")
+  })
+  .refine((data) => data.password === data.confirmPassword, {
+    message: "Konfirmasi password tidak sama",
+    path: ["confirmPassword"]
+  });
+
 export const obatSchema = z.object({
   kodeObat: z.string().min(3, "Kode obat wajib diisi"),
   namaObat: z.string().min(3, "Nama obat wajib diisi"),
@@ -40,6 +52,7 @@ export const resepSchema = z.object({
 });
 
 export type LoginFormValues = z.infer<typeof loginSchema>;
+export type RegisterFormValues = z.infer<typeof registerSchema>;
 export type ObatFormValues = z.infer<typeof obatSchema>;
 export type PembelianFormValues = z.infer<typeof pembelianSchema>;
 export type PenjualanFormValues = z.infer<typeof penjualanSchema>;

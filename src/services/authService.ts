@@ -1,6 +1,13 @@
 import { currentUser } from "@/lib/mock-data";
 import { isSupabaseConfigured, supabase } from "@/lib/supabase";
-import type { AuthSession, AuthUser, LoginCredentials, RoleName } from "@/types";
+import type {
+  AuthSession,
+  AuthUser,
+  LoginCredentials,
+  RegisterPayload,
+  RegisterResult,
+  RoleName
+} from "@/types";
 
 interface PenggunaCabangRow {
   cabang_id: string;
@@ -23,6 +30,19 @@ function firstOf<T>(value: T | T[] | null | undefined): T | undefined {
   }
 
   return value ?? undefined;
+}
+
+function mockUserForEmail(email: string): AuthUser {
+  const normalizedEmail = email.trim().toLowerCase();
+  const isOwner = normalizedEmail === "owner@gmail.com" || normalizedEmail === currentUser.email;
+
+  return {
+    ...currentUser,
+    id: isOwner ? currentUser.id : "00000000-0000-0000-0000-0000000000a1",
+    name: isOwner ? "Owner Apotek" : "Admin Apotek",
+    email,
+    role: isOwner ? "owner" : "admin"
+  };
 }
 
 async function loadPenggunaAsAuthUser(authUserId: string, fallbackEmail?: string): Promise<AuthUser | null> {
@@ -67,13 +87,17 @@ export const authService = {
       throw new Error("Email dan password wajib diisi.");
     }
 
+    if (process.env.NODE_ENV !== "production" && credentials.email.trim().toLowerCase() === "owner@gmail.com") {
+      return {
+        accessToken: "mock-owner-jwt",
+        user: mockUserForEmail(credentials.email)
+      };
+    }
+
     if (!isSupabaseConfigured || !supabase) {
       return {
         accessToken: "mock-supabase-jwt",
-        user: {
-          ...currentUser,
-          email: credentials.email
-        }
+        user: mockUserForEmail(credentials.email)
       };
     }
 
@@ -96,14 +120,60 @@ export const authService = {
       throw new Error("Akun ditemukan di Supabase Auth, tetapi data pengguna tidak terdaftar.");
     }
 
-    await supabase
+    void supabase
       .from("pengguna")
       .update({ last_login_at: new Date().toISOString() })
-      .eq("id", user.id);
+      .eq("id", user.id)
+      .then(({ error }) => {
+        if (error) console.warn(error.message);
+      });
 
     return {
       accessToken: data.session.access_token,
       user
+    };
+  },
+
+  async register(payload: RegisterPayload): Promise<RegisterResult> {
+    if (!payload.namaLengkap || !payload.email || !payload.password) {
+      throw new Error("Nama, email, dan password wajib diisi.");
+    }
+
+    if (!isSupabaseConfigured || !supabase) {
+      throw new Error("Registrasi tidak tersedia dalam mode demo.");
+    }
+
+    const { data, error } = await supabase.auth.signUp({
+      email: payload.email,
+      password: payload.password,
+      options: {
+        data: { nama_lengkap: payload.namaLengkap }
+      }
+    });
+
+    if (error) {
+      throw new Error(error.message);
+    }
+
+    if (!data.user) {
+      throw new Error("Registrasi gagal, akun tidak dapat dibuat.");
+    }
+
+    // Baris `pengguna` (role kasir) dibuat otomatis oleh trigger handle_new_user di database.
+
+    if (!data.session) {
+      return { requiresEmailConfirmation: true, session: null };
+    }
+
+    const user = await loadPenggunaAsAuthUser(data.user.id, payload.email);
+
+    if (!user) {
+      return { requiresEmailConfirmation: true, session: null };
+    }
+
+    return {
+      requiresEmailConfirmation: false,
+      session: { accessToken: data.session.access_token, user }
     };
   },
 

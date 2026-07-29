@@ -4,6 +4,11 @@ import { kategoriService } from "@/services/kategoriService";
 import { obatService } from "@/services/obatService";
 import { penjualanService } from "@/services/penjualanService";
 
+function dateInputValue(date: Date) {
+  const local = new Date(date.getTime() - date.getTimezoneOffset() * 60_000);
+  return local.toISOString().slice(0, 10);
+}
+
 describe("buildDashboardView", () => {
   it("pulls the chart and medicine table from real service data, not mock numbers", async () => {
     const kategori = await kategoriService.list({ perPage: 10 });
@@ -69,5 +74,15 @@ describe("buildDashboardView", () => {
     const filtered = await buildDashboardView({ period: "7", category: "antibiotik" });
     expect(filtered.activeMedicines.some((item) => item.id === aktif.id)).toBe(true);
     expect(filtered.activeMedicines.some((item) => item.id === bedaKategori.id)).toBe(false);
+
+    const today = dateInputValue(new Date());
+    const daily = await buildDashboardView({
+      period: "7",
+      category: "semua",
+      startDate: today,
+      endDate: today
+    });
+    expect(daily.chart).toHaveLength(1);
+    expect(daily.chart[0].revenue).toBeGreaterThanOrEqual(3000);
   });
 });

@@ -117,7 +117,7 @@ export const pelangganService = {
   async create(payload: PelangganInput): Promise<Pelanggan> {
     if (!isSupabaseConfigured || !supabase) {
       const now = new Date().toISOString();
-      return delay({
+      const created: Pelanggan = {
         id: `local-${Date.now()}`,
         kode: payload.kode?.trim() || generateKodePelanggan(),
         nama: payload.nama,
@@ -131,7 +131,9 @@ export const pelangganService = {
         aktif: payload.aktif ?? true,
         createdAt: now,
         updatedAt: now
-      });
+      };
+      localPelanggan.unshift(created);
+      return delay(created);
     }
 
     const { data, error } = await supabase
@@ -149,7 +151,27 @@ export const pelangganService = {
 
   async update(id: string, payload: PelangganInput): Promise<Pelanggan | null> {
     if (!isSupabaseConfigured || !supabase) {
-      return delay(null);
+      const index = localPelanggan.findIndex((item) => item.id === id);
+      if (index === -1) {
+        return delay(null);
+      }
+
+      localPelanggan[index] = {
+        ...localPelanggan[index],
+        kode: payload.kode?.trim() || localPelanggan[index].kode,
+        nama: payload.nama,
+        telepon: payload.telepon,
+        email: payload.email,
+        alamat: payload.alamat,
+        tanggalLahir: payload.tanggalLahir,
+        jenisKelamin: payload.jenisKelamin,
+        catatanAlergi: payload.catatanAlergi,
+        member: payload.member ?? false,
+        aktif: payload.aktif ?? true,
+        updatedAt: new Date().toISOString()
+      };
+
+      return delay(localPelanggan[index]);
     }
 
     const { data, error } = await supabase

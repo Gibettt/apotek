@@ -1,8 +1,15 @@
 import { golonganObat as localGolonganObat } from "@/lib/mock-data";
 import { resolveActivePrices, type ActivePrice } from "@/lib/pricing";
 import { isSupabaseConfigured, supabase } from "@/lib/supabase";
-import type { Obat } from "@/types";
+import type { EceranObat, Obat } from "@/types";
 import { paginate, type ListParams } from "./serviceUtils";
+
+interface EceranInput {
+  enabled: boolean;
+  satuanEceranId?: string;
+  isiPerSatuan?: number;
+  hargaJual?: number;
+}
 
 export interface ObatInput {
   kode: string;
@@ -22,6 +29,7 @@ export interface ObatInput {
   supplierId?: string;
   hargaBeli?: number;
   hargaJual?: number;
+  eceran?: EceranInput;
   stokMinimum?: number;
   stokMaksimum?: number;
   gambarUrl?: string;
@@ -65,6 +73,14 @@ export function toObatUpdatePayload(
     lokasiDefaultId: record.lokasiDefaultId,
     hargaBeli: record.hargaAktif?.hargaBeli ?? 0,
     hargaJual: record.hargaAktif?.hargaJual ?? 0,
+    eceran: record.eceran
+      ? {
+          enabled: true,
+          satuanEceranId: record.eceran.satuanId,
+          isiPerSatuan: record.eceran.isiPerSatuan,
+          hargaJual: record.eceran.hargaJual
+        }
+      : undefined,
     stokMinimum: record.stokMinimum,
     stokMaksimum: record.stokMaksimum,
     gambarUrl: record.gambarUrl,
@@ -81,6 +97,10 @@ export function toObatUpdatePayload(
 export interface MasterOption {
   id: string;
   label: string;
+}
+
+interface ObatListParams extends ListParams {
+  kategoriId?: string;
 }
 
 interface BarangRow {
@@ -117,6 +137,7 @@ interface SaldoStokRow {
 }
 
 type GolonganLookup = Record<string, { nama: string; butuhResep: boolean }>;
+type EceranLookup = Record<string, EceranObat>;
 
 const localObat: ObatListItem[] = [];
 
@@ -259,6 +280,7 @@ function toObat(
   golonganById: GolonganLookup = {},
   satuanById: Record<string, string> = {},
   hargaByBarang: Record<string, ActivePrice> = {},
+  eceranByBarang: EceranLookup = {},
   jenisById: Record<string, string> = {},
   pabrikById: Record<string, string> = {},
   principalById: Record<string, string> = {},
@@ -310,20 +332,25 @@ function toObat(
     perluExpired: row.perlu_expired ?? true,
     membutuhkanResep: golongan?.butuhResep ?? false,
     hargaAktif: hargaByBarang[row.id],
+    eceran: eceranByBarang[row.id],
     status: row.aktif ?? true,
     createdAt: row.created_at ?? "",
     updatedAt: row.updated_at ?? ""
   };
 }
 
-function filterObat(rows: ObatListItem[], search?: string) {
-  if (!search) {
-    return rows;
+function filterObat(rows: ObatListItem[], params: ObatListParams = {}) {
+  const filteredByKategori = params.kategoriId
+    ? rows.filter((item) => item.kategoriId === params.kategoriId)
+    : rows;
+
+  if (!params.search) {
+    return filteredByKategori;
   }
 
-  const normalized = search.toLowerCase();
+  const normalized = params.search.toLowerCase();
 
-  return rows.filter((item) =>
+  return filteredByKategori.filter((item) =>
     [item.kode, item.nama, item.satuanNama, item.golonganNama, item.kategoriNama].some(
       (value) => String(value ?? "").toLowerCase().includes(normalized)
     )
@@ -411,6 +438,57 @@ async function loadLookupMaps() {
   return { kategoriById, golonganById, satuanById, jenisById, pabrikById, principalById, lokasiById };
 }
 
+async function loadEceranByBarang(
+  barangIds: string[],
+  satuanById: Record<string, string>,
+  satuanDefaultByBarang: Record<string, string | undefined>,
+  cabangId?: string
+): Promise<EceranLookup> {
+  if (!supabase || !barangIds.length) {
+    return {};
+  }
+
+  const [konversiResult, hargaByBarang] = await Promise.all([
+    supabase
+      .from("konversi_satuan")
+      .select("barang_id,satuan_dari_id,satuan_ke_id,nilai_konversi")
+      .in("barang_id", [...new Set(barangIds)])
+      .gt("nilai_konversi", 1),
+    resolveActivePrices(barangIds, cabangId, "eceran")
+  ]);
+
+  if (konversiResult.error) {
+    throw new Error(konversiResult.error.message);
+  }
+
+  return (konversiResult.data ?? []).reduce<EceranLookup>((acc, row) => {
+    if (
+      !row.barang_id ||
+      !row.satuan_ke_id ||
+      !row.satuan_dari_id ||
+      acc[row.barang_id] ||
+      row.satuan_dari_id !== satuanDefaultByBarang[row.barang_id]
+    ) {
+      return acc;
+    }
+
+    const isiPerSatuan = Number(row.nilai_konversi ?? 0);
+    if (isiPerSatuan <= 1) {
+      return acc;
+    }
+
+    const harga = hargaByBarang[row.barang_id];
+    acc[row.barang_id] = {
+      satuanId: row.satuan_ke_id,
+      satuanNama: satuanById[row.satuan_ke_id],
+      isiPerSatuan,
+      hargaJual: harga?.hargaJual ?? 0,
+      hargaBeli: harga?.hargaBeli ?? 0
+    };
+    return acc;
+  }, {});
+}
+
 async function findOrCreateBatch(
   barangId: string,
   supplierId: string | undefined,
@@ -458,7 +536,8 @@ async function upsertHargaJual(
   barangId: string,
   cabangId: string | undefined,
   hargaBeli: number,
-  hargaJual: number
+  hargaJual: number,
+  tipeHarga = "jual"
 ) {
   if (!supabase) {
     return;
@@ -468,7 +547,7 @@ async function upsertHargaJual(
     .from("harga_barang")
     .select("id")
     .eq("barang_id", barangId)
-    .eq("tipe_harga", "jual")
+    .eq("tipe_harga", tipeHarga)
     .eq("aktif", true);
 
   query = cabangId ? query.eq("cabang_id", cabangId) : query.is("cabang_id", null);
@@ -499,7 +578,7 @@ async function upsertHargaJual(
   const { error: insertError } = await supabase.from("harga_barang").insert({
     barang_id: barangId,
     cabang_id: cabangId || null,
-    tipe_harga: "jual",
+    tipe_harga: tipeHarga,
     harga_beli: hargaBeli,
     harga_jual: hargaJual,
     tanggal_mulai: new Date().toISOString().slice(0, 10),
@@ -511,10 +590,92 @@ async function upsertHargaJual(
   }
 }
 
+async function syncEceranConfig(
+  barangId: string,
+  payload: ObatInput,
+  cabangId?: string
+) {
+  if (payload.eceran === undefined) {
+    return;
+  }
+
+  if (!isSupabaseConfigured || !supabase) {
+    return;
+  }
+
+  if (!payload.eceran.enabled) {
+    const satuanEceranId = payload.eceran.satuanEceranId;
+    if (payload.satuanDefaultId && satuanEceranId) {
+      await supabase
+        .from("konversi_satuan")
+        .delete()
+        .eq("barang_id", barangId)
+        .eq("satuan_dari_id", payload.satuanDefaultId)
+        .eq("satuan_ke_id", satuanEceranId);
+    }
+
+    await supabase
+      .from("harga_barang")
+      .update({ aktif: false, updated_at: new Date().toISOString() })
+      .eq("barang_id", barangId)
+      .eq("tipe_harga", "eceran");
+    return;
+  }
+
+  if (
+    !payload.satuanDefaultId ||
+    !payload.eceran.satuanEceranId ||
+    !payload.eceran.isiPerSatuan ||
+    payload.eceran.isiPerSatuan <= 1
+  ) {
+    throw new Error("Satuan utama, satuan eceran, dan isi per satuan wajib diisi.");
+  }
+
+  if (payload.satuanDefaultId === payload.eceran.satuanEceranId) {
+    throw new Error("Satuan eceran harus berbeda dari satuan utama.");
+  }
+
+  const { data: existing, error: findError } = await supabase
+    .from("konversi_satuan")
+    .select("id")
+    .eq("barang_id", barangId)
+    .eq("satuan_dari_id", payload.satuanDefaultId)
+    .eq("satuan_ke_id", payload.eceran.satuanEceranId)
+    .maybeSingle();
+
+  if (findError) {
+    throw new Error(findError.message);
+  }
+
+  const konversiPayload = {
+    barang_id: barangId,
+    satuan_dari_id: payload.satuanDefaultId,
+    satuan_ke_id: payload.eceran.satuanEceranId,
+    nilai_konversi: payload.eceran.isiPerSatuan,
+    updated_at: new Date().toISOString()
+  };
+
+  const { error } = existing
+    ? await supabase.from("konversi_satuan").update(konversiPayload).eq("id", existing.id)
+    : await supabase.from("konversi_satuan").insert(konversiPayload);
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  await upsertHargaJual(
+    barangId,
+    cabangId,
+    (payload.hargaBeli ?? 0) / payload.eceran.isiPerSatuan,
+    payload.eceran.hargaJual ?? 0,
+    "eceran"
+  );
+}
+
 export const obatService = {
-  async list(params: ListParams = {}, cabangId?: string) {
+  async list(params: ObatListParams = {}, cabangId?: string) {
     if (!isSupabaseConfigured || !supabase) {
-      return paginate(filterObat(localObat, params.search), params);
+      return paginate(filterObat(localObat, params), params);
     }
 
     let saldoQuery = supabase.from("saldo_stok").select("barang_id,qty");
@@ -538,7 +699,18 @@ export const obatService = {
 
     const stockByBarang = stockMapFrom(saldoResult.data ?? []);
     const barangIds = (data ?? []).map((item) => item.id);
-    const hargaByBarang = await resolveActivePrices(barangIds, cabangId);
+    const satuanDefaultByBarang = Object.fromEntries(
+      (data ?? []).map((item) => [item.id, item.satuan_default_id ?? undefined])
+    );
+    const [hargaByBarang, eceranByBarang] = await Promise.all([
+      resolveActivePrices(barangIds, cabangId),
+      loadEceranByBarang(
+        barangIds,
+        lookupMaps.satuanById,
+        satuanDefaultByBarang,
+        cabangId
+      )
+    ]);
 
     const rows = filterObat(
       (data ?? []).map((item) =>
@@ -549,13 +721,14 @@ export const obatService = {
           lookupMaps.golonganById,
           lookupMaps.satuanById,
           hargaByBarang,
+          eceranByBarang,
           lookupMaps.jenisById,
           lookupMaps.pabrikById,
           lookupMaps.principalById,
           lookupMaps.lokasiById
         )
       ),
-      params.search
+      params
     );
 
     return paginate(rows, params);
@@ -591,6 +764,13 @@ export const obatService = {
       throw new Error(saldoResult.error.message);
     }
 
+    const eceranByBarang = await loadEceranByBarang(
+      [id],
+      lookupMaps.satuanById,
+      { [id]: data?.satuan_default_id ?? undefined },
+      cabangId
+    );
+
     return data
       ? toObat(
           data,
@@ -599,6 +779,7 @@ export const obatService = {
           lookupMaps.golonganById,
           lookupMaps.satuanById,
           hargaByBarang,
+          eceranByBarang,
           lookupMaps.jenisById,
           lookupMaps.pabrikById,
           lookupMaps.principalById,
@@ -639,6 +820,16 @@ export const obatService = {
           payload.hargaBeli !== undefined || payload.hargaJual !== undefined
             ? { hargaBeli: payload.hargaBeli ?? 0, hargaJual: payload.hargaJual ?? 0 }
             : undefined,
+        eceran:
+          payload.eceran?.enabled && payload.eceran.satuanEceranId
+            ? {
+                satuanId: payload.eceran.satuanEceranId,
+                isiPerSatuan: payload.eceran.isiPerSatuan ?? 1,
+                hargaJual: payload.eceran.hargaJual ?? 0,
+                hargaBeli:
+                  (payload.hargaBeli ?? 0) / (payload.eceran.isiPerSatuan ?? 1)
+              }
+            : undefined,
         status: payload.status ?? true,
         createdAt: now,
         updatedAt: now
@@ -668,6 +859,7 @@ export const obatService = {
           payload.hargaJual ?? 0
         );
       }
+      await syncEceranConfig(data.id, payload, effectiveCabangId);
 
       const stokAwal = Number(payload.stokAwal ?? 0);
 
@@ -784,6 +976,18 @@ export const obatService = {
           payload.hargaBeli !== undefined || payload.hargaJual !== undefined
             ? { hargaBeli: payload.hargaBeli ?? 0, hargaJual: payload.hargaJual ?? 0 }
             : localObat[index].hargaAktif,
+        eceran:
+          payload.eceran === undefined
+            ? localObat[index].eceran
+            : payload.eceran.enabled && payload.eceran.satuanEceranId
+              ? {
+                  satuanId: payload.eceran.satuanEceranId,
+                  isiPerSatuan: payload.eceran.isiPerSatuan ?? 1,
+                  hargaJual: payload.eceran.hargaJual ?? 0,
+                  hargaBeli:
+                    (payload.hargaBeli ?? 0) / (payload.eceran.isiPerSatuan ?? 1)
+                }
+              : undefined,
         status: payload.status ?? true,
         updatedAt: new Date().toISOString()
       };
@@ -810,6 +1014,7 @@ export const obatService = {
         payload.hargaJual ?? 0
       );
     }
+    await syncEceranConfig(id, payload, payload.cabangId);
 
     return this.getById(data.id, payload.cabangId);
   },

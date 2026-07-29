@@ -4,9 +4,11 @@ import { useCartStore } from "@/store/cartStore";
 import type { Obat } from "@/types";
 import { KasirPaymentModal } from "./KasirPaymentModal";
 
-const { checkoutMock, createAccuratePaymentMock } = vi.hoisted(() => ({
+const { checkoutMock, createAccuratePaymentMock, pelangganListMock, pelangganCreateMock } = vi.hoisted(() => ({
   checkoutMock: vi.fn(),
-  createAccuratePaymentMock: vi.fn()
+  createAccuratePaymentMock: vi.fn(),
+  pelangganListMock: vi.fn(),
+  pelangganCreateMock: vi.fn()
 }));
 
 vi.mock("@/services/penjualanService", () => ({
@@ -20,6 +22,13 @@ vi.mock("@/services/accuratePaymentService", () => ({
   accuratePaymentService: {
     create: createAccuratePaymentMock,
     getStatus: vi.fn()
+  }
+}));
+
+vi.mock("@/services/pelangganService", () => ({
+  pelangganService: {
+    list: pelangganListMock,
+    create: pelangganCreateMock
   }
 }));
 
@@ -44,6 +53,39 @@ describe("KasirPaymentModal", () => {
     vi.clearAllMocks();
     useCartStore.getState().clear();
     useCartStore.getState().addItem(medicine);
+    checkoutMock.mockResolvedValue({
+      id: "sale-1",
+      cabangId: "cab-1",
+      nomorInvoice: "PJL-TEST",
+      namaPelanggan: "Umum",
+      tanggal: "",
+      tipePenjualan: "umum",
+      subtotal: 30000,
+      diskonTotal: 0,
+      pajakTotal: 0,
+      grandTotal: 30000,
+      bayarTotal: 30000,
+      kembalian: 0,
+      statusBayar: "lunas",
+      status: "selesai",
+      createdAt: "",
+      details: []
+    });
+    pelangganListMock.mockResolvedValue({
+      data: [],
+      total: 0,
+      page: 1,
+      perPage: 1000
+    });
+    pelangganCreateMock.mockResolvedValue({
+      id: "pel-new",
+      kode: "PLG-NEW",
+      nama: "Gita",
+      member: false,
+      aktif: true,
+      createdAt: "",
+      updatedAt: ""
+    });
   });
 
   it("allows nominal bayar input to be cleared", () => {
@@ -78,9 +120,7 @@ describe("KasirPaymentModal", () => {
       <KasirPaymentModal open onClose={vi.fn()} onSuccess={vi.fn()} />
     );
 
-    fireEvent.change(screen.getByLabelText("Metode Pembayaran"), {
-      target: { value: "accurate" }
-    });
+    fireEvent.click(screen.getByRole("button", { name: "QRIS / e-Wallet" }));
 
     expect(screen.queryByLabelText("Nominal Bayar")).not.toBeInTheDocument();
     fireEvent.click(
@@ -101,5 +141,51 @@ describe("KasirPaymentModal", () => {
       "https://checkout.example.test/APOTEK-123"
     );
     expect(checkoutMock).not.toHaveBeenCalled();
+  });
+
+  it("sends selected pelanggan to checkout", async () => {
+    render(
+      <KasirPaymentModal
+        open
+        pelangganId="pel-123"
+        onClose={vi.fn()}
+        onSuccess={vi.fn()}
+      />
+    );
+
+    fireEvent.click(
+      screen.getByRole("button", { name: "Selesaikan Transaksi" })
+    );
+
+    await waitFor(() => {
+      expect(checkoutMock).toHaveBeenCalledWith(
+        expect.objectContaining({ pelangganId: "pel-123" })
+      );
+    });
+  });
+
+  it("creates typed pelanggan before checkout", async () => {
+    render(
+      <KasirPaymentModal
+        open
+        pelangganNama="Gita"
+        onClose={vi.fn()}
+        onSuccess={vi.fn()}
+      />
+    );
+
+    fireEvent.click(
+      screen.getByRole("button", { name: "Selesaikan Transaksi" })
+    );
+
+    await waitFor(() => {
+      expect(pelangganCreateMock).toHaveBeenCalledWith({
+        nama: "Gita",
+        aktif: true
+      });
+      expect(checkoutMock).toHaveBeenCalledWith(
+        expect.objectContaining({ pelangganId: "pel-new" })
+      );
+    });
   });
 });

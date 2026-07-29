@@ -1,6 +1,7 @@
 export const routes = {
   home: "/",
   login: "/login",
+  daftar: "/daftar",
   dashboard: "/dashboard",
   obat: "/obat",
   kategori: "/kategori",
@@ -10,6 +11,7 @@ export const routes = {
   pembelian: "/pembelian",
   kasir: "/penjualan/kasir",
   penjualan: "/penjualan",
+  returPenjualan: "/retur-penjualan",
   resep: "/resep",
   laporan: "/laporan/penjualan",
   notifikasi: "/notifikasi",

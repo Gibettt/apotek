@@ -1,4 +1,5 @@
 import { penjualan as initialPenjualan, defaultCabangId } from "@/lib/mock-data";
+import { stockQtyForSale } from "@/lib/eceran";
 import { resolveActivePrices, type ActivePrice } from "@/lib/pricing";
 import { isSupabaseConfigured, supabase } from "@/lib/supabase";
 import { jurnalService, resolveAkunIdByKode } from "./jurnalService";
@@ -134,13 +135,22 @@ async function loadLookupMaps() {
   if (!supabase) {
     return {
       pelangganById: {} as Record<string, string>,
-      obatById: {} as Record<string, string>
+      obatById: {} as Record<string, string>,
+      hargaJualById: {} as Record<string, number>,
+      satuanById: {} as Record<string, string>
     };
   }
 
-  const [pelangganResult, obatResult] = await Promise.all([
+  const [pelangganResult, obatResult, hargaResult, satuanResult] = await Promise.all([
     supabase.from("pelanggan").select("id,nama"),
-    supabase.from("barang").select("id,nama")
+    supabase.from("barang").select("id,nama"),
+    supabase
+      .from("harga_barang")
+      .select("barang_id,harga_jual,tanggal_mulai")
+      .eq("aktif", true)
+      .gt("harga_jual", 0)
+      .order("tanggal_mulai", { ascending: false }),
+    supabase.from("satuan").select("id,nama")
   ]);
 
   if (pelangganResult.error) {
@@ -151,12 +161,32 @@ async function loadLookupMaps() {
     throw new Error(obatResult.error.message);
   }
 
+  if (hargaResult.error) {
+    throw new Error(hargaResult.error.message);
+  }
+
+  if (satuanResult.error) {
+    throw new Error(satuanResult.error.message);
+  }
+
   return {
     pelangganById: Object.fromEntries(
       (pelangganResult.data ?? []).map((item) => [item.id, item.nama])
     ),
     obatById: Object.fromEntries(
       (obatResult.data ?? []).map((item) => [item.id, item.nama])
+    ),
+    hargaJualById: (hargaResult.data ?? []).reduce<Record<string, number>>(
+      (acc, item) => {
+        if (!acc[item.barang_id]) {
+          acc[item.barang_id] = Number(item.harga_jual ?? 0);
+        }
+        return acc;
+      },
+      {}
+    ),
+    satuanById: Object.fromEntries(
+      (satuanResult.data ?? []).map((item) => [item.id, item.nama])
     )
   };
 }
@@ -207,9 +237,16 @@ async function loadMetodeBySale(ids: string[]) {
 
 function toDetail(
   row: PenjualanDetailRow,
-  obatById: Record<string, string> = {}
+  obatById: Record<string, string> = {},
+  hargaJualById: Record<string, number> = {},
+  satuanById: Record<string, string> = {}
 ): PenjualanDetail {
   const barangId = row.barang_id ?? "";
+  const satuanId = row.satuan_id ?? undefined;
+  const { jumlah, hargaJual, subtotal } = resolvePenjualanDetailAmounts(
+    row,
+    hargaJualById[barangId] || 0
+  );
 
   return {
     id: row.id,
@@ -217,14 +254,54 @@ function toDetail(
     barangId,
     namaBarang: obatById[barangId] ?? "-",
     batchId: row.batch_id ?? undefined,
-    satuanId: row.satuan_id ?? undefined,
-    jumlah: Number(row.qty ?? 0),
-    hargaJual: Number(row.harga_jual ?? 0),
+    satuanId,
+    satuanNama: satuanId ? satuanById[satuanId] : undefined,
+    jumlah,
+    hargaJual,
     diskonPersen: Number(row.diskon_persen ?? 0),
     diskonNominal: Number(row.diskon_nominal ?? 0),
-    subtotal: Number(row.subtotal ?? 0),
+    subtotal,
     hargaPokok: Number(row.harga_pokok ?? 0)
   };
+}
+
+function toNumber(value: number | string | null | undefined) {
+  return Number(value ?? 0);
+}
+
+export function resolvePenjualanDetailAmounts(
+  row: Pick<PenjualanDetailRow, "qty" | "harga_jual" | "subtotal">,
+  fallbackHargaJual = 0
+) {
+  const jumlah = Number(row.qty ?? 0);
+  const hargaJual = Number(row.harga_jual ?? 0) || fallbackHargaJual;
+  const subtotal = Number(row.subtotal ?? 0) || hargaJual * jumlah;
+
+  return { jumlah, hargaJual, subtotal };
+}
+
+export function resolvePenjualanGrandTotalForDisplay(
+  row: Pick<
+    PenjualanRow,
+    "grand_total" | "bayar_total" | "kembalian" | "status_bayar"
+  >,
+  details: Array<Pick<PenjualanDetail, "subtotal">>
+) {
+  const grandTotal = toNumber(row.grand_total);
+  if (grandTotal > 0) {
+    return grandTotal;
+  }
+
+  const detailTotal = details.reduce((sum, detail) => sum + detail.subtotal, 0);
+  if (detailTotal > 0) {
+    return detailTotal;
+  }
+
+  const bayarTotal = toNumber(row.bayar_total);
+  const paidNetTotal = bayarTotal - toNumber(row.kembalian);
+  return row.status_bayar === "lunas" && paidNetTotal > 0
+    ? paidNetTotal
+    : grandTotal;
 }
 
 function toPenjualan(
@@ -235,6 +312,8 @@ function toPenjualan(
   resepIdBySale: Record<string, string> = {}
 ): Penjualan {
   const pelangganId = row.pelanggan_id ?? undefined;
+  const subtotal = toNumber(row.subtotal);
+  const grandTotal = resolvePenjualanGrandTotalForDisplay(row, details);
 
   return {
     id: row.id,
@@ -246,12 +325,12 @@ function toPenjualan(
     resepId: resepIdBySale[row.id] ?? undefined,
     tanggal: row.tanggal ?? row.created_at ?? "",
     tipePenjualan: row.tipe_penjualan ?? "umum",
-    subtotal: Number(row.subtotal ?? 0),
-    diskonTotal: Number(row.diskon_total ?? 0),
-    pajakTotal: Number(row.pajak_total ?? 0),
-    grandTotal: Number(row.grand_total ?? 0),
-    bayarTotal: Number(row.bayar_total ?? 0),
-    kembalian: Number(row.kembalian ?? 0),
+    subtotal: subtotal || grandTotal,
+    diskonTotal: toNumber(row.diskon_total),
+    pajakTotal: toNumber(row.pajak_total),
+    grandTotal,
+    bayarTotal: toNumber(row.bayar_total),
+    kembalian: toNumber(row.kembalian),
     statusBayar: row.status_bayar ?? "belum_bayar",
     status: row.status ?? "selesai",
     metodePembayaran: metodeById[row.id],
@@ -278,7 +357,7 @@ async function loadDetailsForSales(ids: string[]) {
 
   return ((data ?? []) as PenjualanDetailRow[]).reduce<Record<string, PenjualanDetail[]>>(
     (acc, row) => {
-      const detail = toDetail(row, lookupMaps.obatById);
+      const detail = toDetail(row, lookupMaps.obatById, lookupMaps.hargaJualById, lookupMaps.satuanById);
       acc[detail.penjualanId] = [...(acc[detail.penjualanId] ?? []), detail];
       return acc;
     },
@@ -293,8 +372,15 @@ export function resolveCheckoutItems(
 ) {
   return items.map((item) => ({
     ...item,
-    hargaJual: hargaByBarang[item.barangId]?.hargaJual ?? item.hargaJual,
-    hargaPokok: hargaByBarang[item.barangId]?.hargaBeli ?? 0
+    stockQuantity: stockQtyForSale(item.quantity, item.stockQtyPerUnit ?? 1),
+    hargaJual:
+      item.tipeHarga !== "eceran" &&
+      (hargaByBarang[item.barangId]?.hargaJual ?? 0) > 0
+        ? hargaByBarang[item.barangId].hargaJual
+        : item.hargaJual,
+    hargaPokok:
+      (hargaByBarang[item.barangId]?.hargaBeli ?? 0) *
+      (item.stockQtyPerUnit ?? 1)
   }));
 }
 
@@ -330,6 +416,8 @@ function localCheckout(payload: CheckoutPayload): Penjualan {
       penjualanId: id,
       barangId: item.barangId,
       namaBarang: item.nama,
+      satuanId: item.satuanId,
+      satuanNama: item.satuanNama,
       jumlah: item.quantity,
       hargaJual: item.hargaJual,
       diskonPersen: 0,
@@ -365,11 +453,19 @@ async function assertStockAvailability(cabangId: string, items: CartItem[]) {
     return acc;
   }, {});
 
+  const requestedByBarang = items.reduce<Record<string, number>>((acc, item) => {
+    acc[item.barangId] =
+      (acc[item.barangId] ?? 0) +
+      stockQtyForSale(item.quantity, item.stockQtyPerUnit ?? 1);
+    return acc;
+  }, {});
+
   for (const item of items) {
     const available = availableByBarang[item.barangId] ?? 0;
-    if (item.quantity > available) {
+    const requested = requestedByBarang[item.barangId] ?? 0;
+    if (requested > available) {
       throw new Error(
-        `Stok ${item.nama} tidak mencukupi. Tersedia ${available}, diminta ${item.quantity}.`
+        `Stok ${item.nama} tidak mencukupi. Tersedia ${available}, diminta ${requested}.`
       );
     }
   }
@@ -677,6 +773,7 @@ export const penjualanService = {
         resolvedItems.map((item) => ({
           penjualan_id: data.id,
           barang_id: item.barangId,
+          satuan_id: item.satuanId ?? null,
           qty: item.quantity,
           harga_jual: item.hargaJual,
           diskon_persen: 0,
@@ -691,7 +788,13 @@ export const penjualanService = {
       }
 
       for (const item of resolvedItems) {
-        await decrementStock(cabangId, item.barangId, item.quantity, data.id, item.hargaPokok);
+        await decrementStock(
+          cabangId,
+          item.barangId,
+          item.stockQuantity,
+          data.id,
+          item.hargaPokok
+        );
       }
     }
 

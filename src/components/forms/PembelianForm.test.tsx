@@ -6,6 +6,7 @@ const mocks = vi.hoisted(() => ({
   push: vi.fn(),
   refresh: vi.fn(),
   createPembelian: vi.fn(),
+  listKonversiSatuan: vi.fn(),
   listObat: vi.fn(),
   listSatuanOptions: vi.fn(),
   listKategoriOptions: vi.fn(),
@@ -23,7 +24,8 @@ vi.mock("next/navigation", () => ({
 
 vi.mock("@/services/pembelianService", () => ({
   pembelianService: {
-    create: mocks.createPembelian
+    create: mocks.createPembelian,
+    listKonversiSatuan: mocks.listKonversiSatuan
   }
 }));
 
@@ -47,11 +49,13 @@ describe("PembelianForm", () => {
     mocks.push.mockReset();
     mocks.refresh.mockReset();
     mocks.createPembelian.mockReset();
+    mocks.listKonversiSatuan.mockReset();
     mocks.createObat.mockReset();
     mocks.listSupplier.mockResolvedValue({ data: [], total: 0 });
     mocks.listObat.mockResolvedValue({ data: [], total: 0 });
     mocks.listSatuanOptions.mockResolvedValue([]);
     mocks.listKategoriOptions.mockResolvedValue([]);
+    mocks.listKonversiSatuan.mockResolvedValue([]);
   });
 
   it("allows numeric inputs to be cleared while editing", async () => {
@@ -96,6 +100,7 @@ describe("PembelianForm", () => {
     });
     mocks.createObat.mockResolvedValue({ id: "obat-new-1" });
     mocks.createPembelian.mockResolvedValue({ id: "pembelian-1" });
+    mocks.listSatuanOptions.mockResolvedValue([{ id: "sat-1", label: "Kaplet" }]);
 
     render(<PembelianForm />);
 
@@ -110,6 +115,9 @@ describe("PembelianForm", () => {
     const barangInputs = screen.getAllByLabelText("Barang");
     fireEvent.change(barangInputs[0], {
       target: { value: "Vitamin C Baru" }
+    });
+    fireEvent.change(screen.getAllByLabelText("Satuan Pembelian")[0], {
+      target: { value: "sat-1" }
     });
 
     fireEvent.click(screen.getByRole("button", { name: /simpan pembelian/i }));
@@ -155,23 +163,80 @@ describe("PembelianForm", () => {
     expect(screen.getAllByText("Rp90").length).toBeGreaterThan(0);
   });
 
-  it("auto-fills the batch number once a barang name is typed, without overwriting a manual one", async () => {
+  it("auto-fills saved unit conversion and submits stock in base units", async () => {
+    mocks.listSupplier.mockResolvedValue({
+      data: [{ id: "sup-1", nama: "Supplier A", aktif: true }],
+      total: 1
+    });
+    mocks.listObat.mockResolvedValue({
+      data: [
+        {
+          id: "obat-1",
+          kode: "OBT-1",
+          nama: "Paracetamol",
+          status: true,
+          satuanDefaultId: "sat-kaplet",
+          satuanBeliId: "sat-strip",
+          kategoriId: "kat-1",
+          hargaAktif: { hargaBeli: 2000, hargaJual: 3000 }
+        }
+      ],
+      total: 1
+    });
+    mocks.listSatuanOptions.mockResolvedValue([
+      { id: "sat-kaplet", label: "Kaplet" },
+      { id: "sat-strip", label: "Strip" }
+    ]);
+    mocks.listKonversiSatuan.mockResolvedValue([
+      {
+        barangId: "obat-1",
+        satuanDariId: "sat-strip",
+        satuanKeId: "sat-kaplet",
+        nilaiKonversi: 10
+      }
+    ]);
+    mocks.createPembelian.mockResolvedValue({ id: "pembelian-1" });
+
+    render(<PembelianForm />);
+
+    await waitFor(() => {
+      expect(mocks.listKonversiSatuan).toHaveBeenCalled();
+    });
+
+    fireEvent.change(screen.getByLabelText("Supplier"), {
+      target: { value: "sup-1" }
+    });
+    fireEvent.change(screen.getAllByLabelText("Barang")[0], {
+      target: { value: "Paracetamol" }
+    });
+
+    const konversi = screen.getAllByLabelText("Konversi")[0] as HTMLInputElement;
+    expect(konversi.value).toBe("10");
+    expect(konversi).toBeDisabled();
+
+    fireEvent.click(screen.getByRole("button", { name: /simpan pembelian/i }));
+
+    await waitFor(() => {
+      expect(mocks.createPembelian).toHaveBeenCalledTimes(1);
+    });
+
+    expect(mocks.createPembelian.mock.calls[0][0].items[0]).toMatchObject({
+      barangId: "obat-1",
+      satuanId: "sat-strip",
+      satuanDasarId: "sat-kaplet",
+      konversi: 10,
+      jumlah: 10,
+      hargaBeli: 200
+    });
+  });
+
+  it("shows an automatic batch number in each purchase row", async () => {
     render(<PembelianForm />);
 
     await waitFor(() => {
       expect(mocks.listSupplier).toHaveBeenCalled();
     });
 
-    const barangInputs = screen.getAllByLabelText("Barang");
-    const batchInputs = screen.getAllByLabelText(
-      "Nomor Batch"
-    ) as HTMLInputElement[];
-
-    fireEvent.change(barangInputs[0], { target: { value: "Obat A" } });
-    expect(batchInputs[0].value).toMatch(/^BATCH-\d{8}-001$/);
-
-    fireEvent.change(batchInputs[1], { target: { value: "CUSTOM-1" } });
-    fireEvent.change(barangInputs[1], { target: { value: "Obat B" } });
-    expect(batchInputs[1].value).toBe("CUSTOM-1");
+    expect(screen.getByText(/^BATCH-\d{8}-001$/)).toBeInTheDocument();
   });
 });

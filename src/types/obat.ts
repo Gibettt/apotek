@@ -41,6 +41,14 @@ export interface HargaAktif {
   hargaJual: number;
 }
 
+export interface EceranObat {
+  satuanId: string;
+  satuanNama?: string;
+  isiPerSatuan: number;
+  hargaJual: number;
+  hargaBeli: number;
+}
+
 export interface Obat {
   id: string;
   kode: string;
@@ -76,6 +84,7 @@ export interface Obat {
   perluExpired: boolean;
   membutuhkanResep: boolean;
   hargaAktif?: HargaAktif;
+  eceran?: EceranObat;
   status: boolean;
   createdAt: string;
   updatedAt: string;

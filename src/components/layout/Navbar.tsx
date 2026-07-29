@@ -19,6 +19,7 @@ import {
 import { useAuth } from "@/hooks/useAuth";
 import { useCabang } from "@/hooks/useCabang";
 import { useNotifikasi } from "@/hooks/useNotifikasi";
+import { roleLabels } from "@/constants/roles";
 import type { TipeNotifikasi } from "@/types";
 import { cn } from "@/utils/cn";
 import { formatDateTime } from "@/utils/formatDate";
@@ -99,14 +100,19 @@ export function Navbar() {
     .slice(0, 8);
   const currentPage = isDashboard ? "Overview" : resolvePageLabel(pathname);
   const showAllBranchesOption = user?.role === "owner";
-  const firstName = (user?.name || "Pemilik Apotek").split(" ")[0];
+  const profileLabel = user ? roleLabels[user.role] : "Admin";
+  const profileInitials = profileLabel
+    .split(" ")
+    .map((part) => part[0])
+    .join("")
+    .slice(0, 2);
 
   return (
     <header className="dashboard-navbar sticky top-0 z-30">
       <div className="flex min-w-0 items-center gap-3 px-4 py-3.5 lg:px-6">
         {isDashboard ? (
           <p className="min-w-0 truncate text-[15px] font-semibold text-stone-900">
-            <span aria-hidden="true">👋</span> {greetingForHour(new Date().getHours())}, {firstName}!
+            <span aria-hidden="true">👋</span> {greetingForHour(new Date().getHours())}, {profileLabel}!
           </p>
         ) : (
           <div className="flex min-w-0 items-center gap-2 text-sm">
@@ -195,7 +201,7 @@ export function Navbar() {
             )}
           </div>
           <Link href="/pengaturan/profil" aria-label="Bantuan" className="hidden items-center gap-1.5 px-2 text-sm font-medium text-stone-500 sm:flex"><HelpCircle className="h-4 w-4" strokeWidth={1.7} /> Bantuan</Link>
-          <Link href="/pengaturan/profil" aria-label="Profil pengguna" className="ml-1 flex items-center gap-2 rounded-full border border-stone-200 bg-white px-2 py-1.5 transition hover:border-stone-300"><span className="grid h-7 w-7 place-items-center rounded-full bg-[#e5f3ed] text-[10px] font-bold text-[#267d6b]">{(user?.name || "Pemilik Apotek").split(" ").map((part) => part[0]).join("").slice(0, 2)}</span><span className="hidden max-w-28 truncate text-xs font-medium text-stone-700 xl:block">{user?.name || "Pemilik Apotek"}</span></Link>
+          <Link href="/pengaturan/profil" aria-label="Profil pengguna" className="ml-1 flex items-center gap-2 rounded-full border border-stone-200 bg-white px-2 py-1.5 transition hover:border-stone-300"><span className="grid h-7 w-7 place-items-center rounded-full bg-[#e5f3ed] text-[10px] font-bold text-[#267d6b]">{profileInitials}</span><span className="hidden max-w-28 truncate text-xs font-medium text-stone-700 xl:block">{profileLabel}</span></Link>
           <Link href="/pengaturan/profil" aria-label="Pengaturan" className="dashboard-top-action !rounded-full sm:hidden"><Settings className="h-4 w-4" strokeWidth={1.8} /></Link>
         </div>
       </div>

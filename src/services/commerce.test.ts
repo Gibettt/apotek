@@ -1,8 +1,9 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { obatService } from "./obatService";
 import { buildPembelianJurnalDetails, pembelianService } from "./pembelianService";
-import { buildPenjualanJurnalDetails, penjualanService, resolveCheckoutItems, resolveKasAkunKode } from "./penjualanService";
+import { buildPenjualanJurnalDetails, penjualanService, resolveCheckoutItems, resolveKasAkunKode, resolvePenjualanDetailAmounts, resolvePenjualanGrandTotalForDisplay } from "./penjualanService";
 import { resepService } from "./resepService";
+import { resolveReturStockQty, returPenjualanService } from "./returPenjualanService";
 import { laporanService } from "./laporanService";
 
 function sumBy<T>(rows: T[], pick: (row: T) => number) {
@@ -94,6 +95,34 @@ describe("commerce services", () => {
     expect(received.status).toBe("diterima");
   });
 
+  it("saves purchase unit conversion for the next purchase", async () => {
+    await pembelianService.create({
+      nomorInternal: "PBL-TEST-KONV-0001",
+      supplierId: "s-1",
+      tanggalFaktur: "2026-07-08",
+      status: "draft",
+      items: [
+        {
+          barangId: "o-1",
+          satuanId: "sat-strip",
+          satuanDasarId: "sat-kaplet",
+          konversi: 10,
+          jumlah: 50,
+          hargaBeli: 200
+        }
+      ]
+    });
+
+    const conversions = await pembelianService.listKonversiSatuan();
+
+    expect(conversions).toContainEqual({
+      barangId: "o-1",
+      satuanDariId: "sat-strip",
+      satuanKeId: "sat-kaplet",
+      nilaiKonversi: 10
+    });
+  });
+
   it("creates a prescription and updates its workflow status", async () => {
     const created = await resepService.create({
       nomorResep: "RSP-TEST-0001",
@@ -170,6 +199,74 @@ describe("commerce services", () => {
     expect(resolved[0].hargaPokok).not.toBe(resolved[0].hargaJual);
   });
 
+  it("keeps the cart sell price when the active sell price is zero", () => {
+    const resolved = resolveCheckoutItems(
+      [
+        {
+          barangId: "o-1",
+          kode: "OBT-0001",
+          nama: "Paracetamol 500mg",
+          hargaJual: 650,
+          stokTersedia: 10,
+          membutuhkanResep: false,
+          quantity: 2
+        }
+      ],
+      { "o-1": { hargaBeli: 300, hargaJual: 0 } }
+    );
+
+    expect(resolved[0].hargaJual).toBe(650);
+    expect(resolved[0].hargaPokok).toBe(300);
+  });
+
+  it("keeps eceran sell price and scales cost basis to the eceran unit", () => {
+    const resolved = resolveCheckoutItems(
+      [
+        {
+          barangId: "o-1",
+          kode: "OBT-0001",
+          nama: "Paracetamol 500mg",
+          satuanId: "sat-tablet",
+          satuanNama: "tablet",
+          tipeHarga: "eceran",
+          stockQtyPerUnit: 0.1,
+          hargaJual: 1000,
+          stokTersedia: 10,
+          membutuhkanResep: false,
+          quantity: 5
+        }
+      ],
+      { "o-1": { hargaBeli: 3000, hargaJual: 6500 } }
+    );
+
+    expect(resolved[0].hargaJual).toBe(1000);
+    expect(resolved[0].hargaPokok).toBe(300);
+    expect(resolved[0].stockQuantity).toBe(0.5);
+  });
+
+  it("uses paid amount minus change when old sales are missing grand total", () => {
+    expect(
+      resolvePenjualanGrandTotalForDisplay(
+        {
+          grand_total: 0,
+          bayar_total: 100000,
+          kembalian: 40000,
+          status_bayar: "lunas"
+        },
+        []
+      )
+    ).toBe(60000);
+  });
+
+  it("uses the non-zero master sell price for old zero-value sale details", () => {
+    expect(
+      resolvePenjualanDetailAmounts(
+        { qty: 3, harga_jual: 0, subtotal: 0 },
+        20000
+      )
+    ).toEqual({ jumlah: 3, hargaJual: 20000, subtotal: 60000 });
+  });
+
   it("books a balanced jurnal for a cash sale with cost of goods", () => {
     const details = buildPenjualanJurnalDetails({
       grandTotal: 19500,
@@ -198,6 +295,87 @@ describe("commerce services", () => {
     expect(resolveKasAkunKode("tunai").nama).toBe("Kas");
     expect(resolveKasAkunKode("transfer").nama).toBe("Bank");
     expect(resolveKasAkunKode("BPJS").nama).toBe("Bank");
+  });
+
+  it("lists customer sales for sales returns and rejects over-returned quantities", async () => {
+    const sales = await returPenjualanService.salesByPelanggan("p-2");
+
+    expect(sales[0].nomorInvoice).toBe("PJL-20260707-0001");
+    expect(sales[0].details[0]).toMatchObject({
+      namaBarang: "Paracetamol 500mg",
+      sisaRetur: 12
+    });
+
+    await expect(
+      returPenjualanService.create({
+        pelangganId: "p-2",
+        penjualanId: "pj-1",
+        tanggal: "2026-07-08",
+        alasan: "Tes retur berlebih",
+        items: [
+          {
+            penjualanDetailId: "pjd-1",
+            penjualanId: "pj-1",
+            barangId: "o-1",
+            jumlah: 99,
+            hargaJual: 650
+          }
+        ]
+      })
+    ).rejects.toThrow("melebihi sisa");
+  });
+
+  it("converts eceran return qty back to stock qty", () => {
+    expect(resolveReturStockQty(5, 5)).toBe(1);
+    expect(resolveReturStockQty(2, 5)).toBe(0.4);
+    expect(resolveReturStockQty(3)).toBe(3);
+  });
+
+  it("moves fully returned sales out of returable sales and into return reports", async () => {
+    const created = await returPenjualanService.create({
+      pelangganId: "p-2",
+      penjualanId: "pj-1",
+      tanggal: "2026-07-08",
+      alasan: "Retur penuh",
+      items: [
+        {
+          penjualanDetailId: "pjd-1",
+          penjualanId: "pj-1",
+          barangId: "o-1",
+          jumlah: 12,
+          hargaJual: 650
+        },
+        {
+          penjualanDetailId: "pjd-2",
+          penjualanId: "pj-1",
+          barangId: "o-4",
+          jumlah: 12,
+          hargaJual: 950
+        }
+      ]
+    });
+
+    const sales = await returPenjualanService.salesByPelanggan("p-2");
+    const reports = await returPenjualanService.list({ perPage: 10 });
+
+    expect(sales).toHaveLength(0);
+    expect(reports.data[0]).toMatchObject({
+      namaPelanggan: "Budi Santoso",
+      nomorInvoice: "PJL-20260707-0001",
+      total: 19200
+    });
+
+    vi.resetModules();
+    const { returPenjualanService: reloadedReturPenjualanService } =
+      await import("./returPenjualanService");
+    const reloadedSales =
+      await reloadedReturPenjualanService.salesByPelanggan("p-2");
+    const reloadedReports = await reloadedReturPenjualanService.list({
+      perPage: 10
+    });
+
+    expect(reloadedSales).toHaveLength(0);
+    expect(reloadedReports.data[0]?.id).toBe(created.id);
   });
 
   it("books a balanced jurnal for a purchase receipt (inventory in, payable out)", () => {

@@ -60,6 +60,23 @@ describe("cart store", () => {
     );
   });
 
+  it("caps mixed main and eceran lines to the same stock", () => {
+    useCartStore.getState().addItem(medicines[1]);
+    useCartStore.getState().addItem(medicines[1], {
+      satuanId: "tablet",
+      satuanNama: "tablet",
+      tipeHarga: "eceran",
+      stockQtyPerUnit: 0.1,
+      hargaJual: 200
+    });
+    useCartStore.getState().updateQuantity("2:tablet", 99);
+
+    expect(useCartStore.getState().items).toMatchObject([
+      { barangId: "2", quantity: 1 },
+      { barangId: "2", quantity: 20 }
+    ]);
+  });
+
   it("removes and clears items", () => {
     useCartStore.getState().addItem(medicines[0]);
     useCartStore.getState().addItem(medicines[1]);

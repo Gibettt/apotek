@@ -7,6 +7,8 @@ import {
   CalendarDays,
   Check,
   ChevronDown,
+  ChevronLeft,
+  ChevronRight,
   ClipboardList,
   Clock,
   MoreVertical,
@@ -19,8 +21,8 @@ import {
   Users
 } from "lucide-react";
 import {
-  Bar,
-  BarChart,
+  Area,
+  AreaChart,
   CartesianGrid,
   ResponsiveContainer,
   Tooltip,
@@ -38,13 +40,8 @@ import { penjualanService } from "@/services/penjualanService";
 import { resepService } from "@/services/resepService";
 import type { Resep } from "@/types";
 import { formatCurrency } from "@/utils/formatCurrency";
+import { formatDate } from "@/utils/formatDate";
 import { cn } from "@/utils/cn";
-
-const periods: Array<{ value: DashboardPeriod; label: string }> = [
-  { value: "7", label: "7 hari terakhir" },
-  { value: "30", label: "30 hari terakhir" },
-  { value: "90", label: "90 hari terakhir" }
-];
 
 const categories: Array<{ value: DashboardCategory; label: string }> = [
   { value: "semua", label: "Semua kategori" },
@@ -60,6 +57,7 @@ const prescriptions = [
 ];
 
 const weekDayLabels = ["Sen", "Sel", "Rab", "Kam", "Jum", "Sab", "Min"];
+const medicineRowsPerPage = 10;
 
 function compactCurrency(value: number) {
   if (value >= 1_000_000) {
@@ -83,6 +81,19 @@ function initials(name?: string) {
 
 function pad(value: number) {
   return String(value).padStart(2, "0");
+}
+
+function dateInputValue(date: Date) {
+  const local = new Date(date.getTime() - date.getTimezoneOffset() * 60_000);
+  return local.toISOString().slice(0, 10);
+}
+
+function chartRangeForPeriod(period: DashboardPeriod) {
+  const end = new Date();
+  end.setHours(0, 0, 0, 0);
+  const start = new Date(end);
+  start.setDate(end.getDate() - (Number(period) - 1));
+  return { start: dateInputValue(start), end: dateInputValue(end) };
 }
 
 function elapsedSince(iso: string, now: number) {
@@ -175,11 +186,80 @@ function StatCard({
   );
 }
 
+function DashboardFilterSelect<T extends string>({
+  id,
+  icon: Icon,
+  label,
+  value,
+  options,
+  open,
+  onOpenChange,
+  onChange
+}: {
+  id: string;
+  icon: typeof CalendarDays;
+  label: string;
+  value: T;
+  options: Array<{ value: T; label: string }>;
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  onChange: (value: T) => void;
+}) {
+  const selected = options.find((item) => item.value === value) ?? options[0];
+
+  return (
+    <div
+      className="dashboard-filter-select"
+      onBlur={(event) => {
+        if (!event.currentTarget.contains(event.relatedTarget)) {
+          onOpenChange(false);
+        }
+      }}
+    >
+      <button
+        type="button"
+        aria-label={label}
+        aria-haspopup="listbox"
+        aria-expanded={open}
+        aria-controls={`${id}-menu`}
+        className={cn("dashboard-filter dashboard-filter-trigger", open && "dashboard-filter-open")}
+        onClick={() => onOpenChange(!open)}
+      >
+        <span className="dashboard-filter-icon"><Icon className="h-4 w-4" strokeWidth={1.7} /></span>
+        <span className="dashboard-filter-value">{selected.label}</span>
+        <ChevronDown className="dashboard-filter-chevron h-3.5 w-3.5" strokeWidth={1.9} />
+      </button>
+
+      {open ? (
+        <div id={`${id}-menu`} role="listbox" aria-label={label} className="dashboard-filter-menu">
+          {options.map((item) => (
+            <button
+              key={item.value}
+              type="button"
+              role="option"
+              aria-selected={item.value === value}
+              className={cn("dashboard-filter-option", item.value === value && "dashboard-filter-option-active")}
+              onClick={() => {
+                onChange(item.value);
+                onOpenChange(false);
+              }}
+            >
+              {item.label}
+            </button>
+          ))}
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
 export default function DashboardPage() {
-  const [period, setPeriod] = useState<DashboardPeriod>("7");
   const [category, setCategory] = useState<DashboardCategory>("semua");
+  const [chartRange, setChartRange] = useState(() => chartRangeForPeriod("7"));
+  const [openFilter, setOpenFilter] = useState<"category" | null>(null);
   const [stockOnly, setStockOnly] = useState(false);
   const [query, setQuery] = useState("");
+  const [tablePage, setTablePage] = useState(1);
   const [scheduleTab, setScheduleTab] = useState<"resep" | "kunjungan">("resep");
   const [now, setNow] = useState(() => Date.now());
   const [heldTimer, setHeldTimer] = useState(false);
@@ -205,7 +285,12 @@ export default function DashboardPage() {
   useEffect(() => {
     let active = true;
 
-    buildDashboardView({ period, category }).then((result) => {
+    buildDashboardView({
+      period: "7",
+      category,
+      startDate: chartRange.start,
+      endDate: chartRange.end
+    }).then((result) => {
       if (active) {
         setView(result);
       }
@@ -214,7 +299,11 @@ export default function DashboardPage() {
     return () => {
       active = false;
     };
-  }, [category, period]);
+  }, [category, chartRange.end, chartRange.start]);
+
+  useEffect(() => {
+    setTablePage(1);
+  }, [query, stockOnly, view.activeMedicines]);
 
   useEffect(() => {
     let active = true;
@@ -259,12 +348,24 @@ export default function DashboardPage() {
     });
   }, []);
 
-  const periodLabel = periods.find((item) => item.value === period)?.label ?? "7 hari terakhir";
+  const periodLabel = "7 hari terakhir";
+  const chartDateLabel =
+    chartRange.start && chartRange.end
+      ? chartRange.start === chartRange.end
+        ? formatDate(`${chartRange.start}T00:00:00`)
+        : `${formatDate(`${chartRange.start}T00:00:00`)} - ${formatDate(`${chartRange.end}T00:00:00`)}`
+      : periodLabel;
   const tableRows = view.activeMedicines.filter((item) => {
     const matchesSearch = item.name.toLowerCase().includes(query.toLowerCase());
     const matchesStock = !stockOnly || item.stock < item.minimumStock;
     return matchesSearch && matchesStock;
   });
+  const totalTablePages = Math.max(1, Math.ceil(tableRows.length / medicineRowsPerPage));
+  const currentTablePage = Math.min(tablePage, totalTablePages);
+  const pagedTableRows = tableRows.slice(
+    (currentTablePage - 1) * medicineRowsPerPage,
+    currentTablePage * medicineRowsPerPage
+  );
 
   async function handleSelesaiResep(id: string) {
     setBusyResepId(id);
@@ -282,22 +383,18 @@ export default function DashboardPage() {
   return (
     <div className="dashboard-page pb-6">
       <div className="dashboard-filter-row">
-        <label className="dashboard-filter">
-          <CalendarDays className="h-4 w-4" strokeWidth={1.7} />
-          <select aria-label="Pilih periode" value={period} onChange={(event) => setPeriod(event.target.value as DashboardPeriod)}>
-            {periods.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}
-          </select>
-          <ChevronDown className="h-3.5 w-3.5" strokeWidth={1.7} />
-        </label>
-        <label className="dashboard-filter">
-          <Pill className="h-4 w-4" strokeWidth={1.7} />
-          <select aria-label="Pilih kategori" value={category} onChange={(event) => setCategory(event.target.value as DashboardCategory)}>
-            {categories.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}
-          </select>
-          <ChevronDown className="h-3.5 w-3.5" strokeWidth={1.7} />
-        </label>
+        <DashboardFilterSelect
+          id="dashboard-category-filter"
+          icon={Pill}
+          label="Pilih kategori"
+          value={category}
+          options={categories}
+          open={openFilter === "category"}
+          onOpenChange={(open) => setOpenFilter(open ? "category" : null)}
+          onChange={setCategory}
+        />
         <button type="button" onClick={() => setStockOnly((current) => !current)} className={cn("dashboard-filter dashboard-filter-button", stockOnly && "dashboard-filter-active")}>
-          <Package className="h-4 w-4" strokeWidth={1.7} />
+          <span className="dashboard-filter-icon"><Package className="h-4 w-4" strokeWidth={1.7} /></span>
           Perlu restock
         </button>
       </div>
@@ -410,21 +507,59 @@ export default function DashboardPage() {
         </article>
 
         <article className="dashboard-surface">
-          <SectionHeader title="Grafik penjualan" icon={ReceiptText} action={<span className="text-xs font-medium text-stone-400">{periodLabel}</span>} />
+          <SectionHeader title="Grafik penjualan" icon={ReceiptText} action={<span className="text-xs font-medium text-stone-400">{chartDateLabel}</span>} />
+          <div className="mb-3 grid gap-2 sm:grid-cols-2">
+            <label className="grid gap-1 text-[11px] font-semibold uppercase text-stone-400">
+              Dari
+              <input
+                aria-label="Dari tanggal grafik"
+                type="date"
+                value={chartRange.start}
+                max={chartRange.end}
+                onChange={(event) =>
+                  setChartRange((current) => ({ ...current, start: event.target.value }))
+                }
+                className="h-9 rounded-lg border border-stone-200 bg-white px-3 text-sm font-bold normal-case text-stone-700 outline-none transition focus:border-[#0f766e] focus:ring-4 focus:ring-[#0f766e]/10"
+              />
+            </label>
+            <label className="grid gap-1 text-[11px] font-semibold uppercase text-stone-400">
+              Sampai
+              <input
+                aria-label="Sampai tanggal grafik"
+                type="date"
+                value={chartRange.end}
+                min={chartRange.start}
+                onChange={(event) =>
+                  setChartRange((current) => ({ ...current, end: event.target.value }))
+                }
+                className="h-9 rounded-lg border border-stone-200 bg-white px-3 text-sm font-bold normal-case text-stone-700 outline-none transition focus:border-[#0f766e] focus:ring-4 focus:ring-[#0f766e]/10"
+              />
+            </label>
+          </div>
           <div className="dashboard-weekly-legend">
             <span><i style={{ background: "#2f9b7f" }} />Pendapatan</span>
             <span><i style={{ background: "#bfe5d6" }} />Laba</span>
           </div>
           <div className="h-[190px] w-full">
             <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={view.chart} margin={{ top: 4, right: 4, bottom: 0, left: -24 }} barGap={3}>
+              <AreaChart data={view.chart} margin={{ top: 8, right: 6, bottom: 0, left: -24 }}>
+                <defs>
+                  <linearGradient id="dashboardRevenue" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="#2f9b7f" stopOpacity={0.28} />
+                    <stop offset="95%" stopColor="#2f9b7f" stopOpacity={0.02} />
+                  </linearGradient>
+                  <linearGradient id="dashboardProfit" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="#bfe5d6" stopOpacity={0.62} />
+                    <stop offset="95%" stopColor="#bfe5d6" stopOpacity={0.08} />
+                  </linearGradient>
+                </defs>
                 <CartesianGrid vertical={false} stroke="#e9ece9" strokeDasharray="2 4" />
                 <XAxis dataKey="label" axisLine={false} tickLine={false} tick={{ fill: "#929892", fontSize: 11 }} dy={8} />
                 <YAxis hide domain={[0, "dataMax + 15000"]} />
-                <Tooltip content={<ChartTooltip />} cursor={{ fill: "rgba(36,121,103,0.06)" }} />
-                <Bar dataKey="revenue" name="Pendapatan" fill="#2f9b7f" radius={[4, 4, 0, 0]} maxBarSize={11} />
-                <Bar dataKey="profit" name="Laba" fill="#bfe5d6" radius={[4, 4, 0, 0]} maxBarSize={11} />
-              </BarChart>
+                <Tooltip content={<ChartTooltip />} cursor={{ stroke: "rgba(36,121,103,0.16)", strokeWidth: 1 }} />
+                <Area type="monotone" dataKey="revenue" name="Pendapatan" stroke="#2f9b7f" strokeWidth={3} fill="url(#dashboardRevenue)" dot={false} activeDot={{ r: 4, strokeWidth: 0, fill: "#2f9b7f" }} />
+                <Area type="monotone" dataKey="profit" name="Laba" stroke="#9ad8c2" strokeWidth={3} fill="url(#dashboardProfit)" dot={false} activeDot={{ r: 4, strokeWidth: 0, fill: "#9ad8c2" }} />
+              </AreaChart>
             </ResponsiveContainer>
           </div>
         </article>
@@ -451,7 +586,7 @@ export default function DashboardPage() {
                 </tr>
               </thead>
               <tbody>
-                {tableRows.map((item) => {
+                {pagedTableRows.map((item) => {
                   const low = item.stock < item.minimumStock;
                   const ratio = Math.min(100, Math.round((item.stock / Math.max(item.minimumStock * 2, 1)) * 100));
                   return (
@@ -482,9 +617,32 @@ export default function DashboardPage() {
             </table>
             {!tableRows.length && <div className="dashboard-empty m-4">Tidak ada obat yang sesuai dengan filter.</div>}
           </div>
+          <div className="flex items-center justify-end gap-2 border-t border-stone-100 px-4 py-3">
+            <span className="mr-2 text-xs font-semibold text-stone-400">
+              Halaman {currentTablePage} dari {totalTablePages}
+            </span>
+            <button
+              type="button"
+              aria-label="Halaman obat sebelumnya"
+              disabled={currentTablePage <= 1}
+              onClick={() => setTablePage((current) => Math.max(1, current - 1))}
+              className="grid h-9 w-9 place-items-center rounded-full border border-stone-200 bg-white text-stone-500 transition hover:border-[#0f766e] hover:text-[#0f766e] disabled:cursor-not-allowed disabled:opacity-40"
+            >
+              <ChevronLeft className="h-4 w-4" strokeWidth={2} />
+            </button>
+            <button
+              type="button"
+              aria-label="Halaman obat berikutnya"
+              disabled={currentTablePage >= totalTablePages}
+              onClick={() => setTablePage((current) => Math.min(totalTablePages, current + 1))}
+              className="grid h-9 w-9 place-items-center rounded-full border border-stone-200 bg-white text-stone-500 transition hover:border-[#0f766e] hover:text-[#0f766e] disabled:cursor-not-allowed disabled:opacity-40"
+            >
+              <ChevronRight className="h-4 w-4" strokeWidth={2} />
+            </button>
+          </div>
         </article>
 
-        <article className="dashboard-surface">
+        <article className="hidden">
           <SectionHeader title="Jadwal resep & kunjungan" icon={CalendarDays} />
           <div className="dashboard-schedule-strip">
             {weekDays.map((day) => (

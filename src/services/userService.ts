@@ -68,7 +68,7 @@ function filterUsers(rows: User[], search?: string) {
   return matchSearch(rows, search, ["namaLengkap", "email", "role"]);
 }
 
-async function resolveRoleId(role: RoleName): Promise<string | null> {
+export async function resolveRoleId(role: RoleName): Promise<string | null> {
   if (!supabase) {
     return null;
   }

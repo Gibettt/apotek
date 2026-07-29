@@ -23,7 +23,18 @@ export interface LoginCredentials {
   password: string;
 }
 
+export interface RegisterPayload {
+  namaLengkap: string;
+  email: string;
+  password: string;
+}
+
 export interface AuthSession {
   accessToken: string;
   user: AuthUser;
+}
+
+export interface RegisterResult {
+  requiresEmailConfirmation: boolean;
+  session: AuthSession | null;
 }

@@ -11,7 +11,8 @@ import { Input } from "@/components/ui/Input";
 import { Select } from "@/components/ui/Select";
 import {
   pembelianService,
-  type PembelianInput
+  type PembelianInput,
+  type SatuanKonversi
 } from "@/services/pembelianService";
 import {
   obatService,
@@ -33,6 +34,7 @@ interface PembelianFormItem {
   autoKode: string;
   satuanId: string;
   konversi: string;
+  konversiLocked: boolean;
   jumlahDikirim: string;
   jumlahDiterima: string;
   jumlahDitolak: string;
@@ -49,7 +51,8 @@ const emptyItem: PembelianFormItem = {
   barangNama: "",
   autoKode: "",
   satuanId: "",
-  konversi: "1",
+  konversi: "",
+  konversiLocked: false,
   jumlahDikirim: "1",
   jumlahDiterima: "1",
   jumlahDitolak: "0",
@@ -86,6 +89,33 @@ function konversiValue(item: PembelianFormItem) {
   return parsed > 0 ? parsed : 1;
 }
 
+function konversiKey(barangId: string, satuanDariId: string, satuanKeId: string) {
+  return `${barangId}:${satuanDariId}:${satuanKeId}`;
+}
+
+function resolveKonversi(
+  barangId: string,
+  satuanId: string,
+  obatById: Record<string, ObatListItem>,
+  konversiByKey: Record<string, SatuanKonversi>
+) {
+  const satuanDasarId = barangId ? obatById[barangId]?.satuanDefaultId : undefined;
+
+  if (!barangId || !satuanId || !satuanDasarId) {
+    return { konversi: "", konversiLocked: false };
+  }
+
+  if (satuanId === satuanDasarId) {
+    return { konversi: "1", konversiLocked: true };
+  }
+
+  const saved = konversiByKey[konversiKey(barangId, satuanId, satuanDasarId)];
+
+  return saved
+    ? { konversi: String(saved.nilaiKonversi), konversiLocked: true }
+    : { konversi: "", konversiLocked: false };
+}
+
 function stokBertambah(item: PembelianFormItem) {
   return parseNumberInput(item.jumlahDiterima) * konversiValue(item);
 }
@@ -116,6 +146,7 @@ interface PembelianItemRowProps {
   obatById: Record<string, ObatListItem>;
   onUpdateItem: (index: number, updater: ItemUpdater) => void;
   onBarangNameChange: (index: number, value: string) => void;
+  onSatuanChange: (index: number, satuanId: string) => void;
   onRemoveItem: (index: number) => void;
   onCellKeyDown: (
     event: React.KeyboardEvent,
@@ -135,6 +166,7 @@ const PembelianItemRow = memo(function PembelianItemRow({
   obatById,
   onUpdateItem,
   onBarangNameChange,
+  onSatuanChange,
   onRemoveItem,
   onCellKeyDown
 }: PembelianItemRowProps) {
@@ -205,12 +237,7 @@ const PembelianItemRow = memo(function PembelianItemRow({
           data-col={3}
           onKeyDown={(event) => onCellKeyDown(event, index, 3, true)}
           value={item.satuanId}
-          onChange={(event) =>
-            onUpdateItem(index, (current) => ({
-              ...current,
-              satuanId: event.target.value
-            }))
-          }
+          onChange={(event) => onSatuanChange(index, event.target.value)}
           className={cellFieldClass}
           options={[
             { label: "Pilih satuan", value: "" },
@@ -230,13 +257,14 @@ const PembelianItemRow = memo(function PembelianItemRow({
           type="number"
           min={1}
           value={item.konversi}
+          disabled={item.konversiLocked}
           onChange={(event) =>
             onUpdateItem(index, (current) => ({
               ...current,
               konversi: event.target.value
             }))
           }
-          className={cellFieldClass}
+          className={`${cellFieldClass} ${item.konversiLocked ? "bg-[#f8f7f3] font-bold text-stone-500" : ""}`}
         />
       </td>
       <td className="border-b border-r border-stone-100 p-0">
@@ -398,6 +426,7 @@ export function PembelianForm() {
   const [obatOptions, setObatOptions] = useState<ObatListItem[]>([]);
   const [satuanOptions, setSatuanOptions] = useState<MasterOption[]>([]);
   const [kategoriOptions, setKategoriOptions] = useState<MasterOption[]>([]);
+  const [konversiSatuan, setKonversiSatuan] = useState<SatuanKonversi[]>([]);
   const [isLoadingOptions, setIsLoadingOptions] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [supplierId, setSupplierId] = useState("");
@@ -418,12 +447,13 @@ export function PembelianForm() {
       setIsLoadingOptions(true);
 
       try {
-        const [supplierResult, obatResult, satuanResult, kategoriResult] =
+        const [supplierResult, obatResult, satuanResult, kategoriResult, konversiResult] =
           await Promise.all([
             supplierService.list({ perPage: 1000 }),
             obatService.list({ perPage: 1000 }),
             obatService.listSatuanOptions(),
-            obatService.listKategoriOptions()
+            obatService.listKategoriOptions(),
+            pembelianService.listKonversiSatuan()
           ]);
 
         if (!active) {
@@ -434,6 +464,7 @@ export function PembelianForm() {
         setObatOptions(obatResult.data.filter((obat) => obat.status));
         setSatuanOptions(satuanResult);
         setKategoriOptions(kategoriResult);
+        setKonversiSatuan(konversiResult);
       } catch (error) {
         if (active) {
           toast.error(
@@ -472,6 +503,17 @@ export function PembelianForm() {
     [obatOptions]
   );
 
+  const konversiByKey = useMemo(
+    () =>
+      Object.fromEntries(
+        konversiSatuan.map((item) => [
+          konversiKey(item.barangId, item.satuanDariId, item.satuanKeId),
+          item
+        ])
+      ) as Record<string, SatuanKonversi>,
+    [konversiSatuan]
+  );
+
   const subtotal = useMemo(
     () => items.reduce((sum, item) => sum + lineSubtotal(item), 0),
     [items]
@@ -503,12 +545,30 @@ export function PembelianForm() {
       // belum ada di data Barang -> siapin preview kode yang bakal beneran dipakai pas disimpan
       autoKode: matchedObat || !trimmed ? "" : generateAutoKode(trimmed, { unique: true }),
       satuanId: matchedObat?.satuanBeliId ?? item.satuanId,
+      ...(matchedObat
+        ? resolveKonversi(
+            matchedObat.id,
+            matchedObat.satuanBeliId ?? item.satuanId,
+            obatById,
+            konversiByKey
+          )
+        : { konversi: item.satuanId ? "1" : item.konversi, konversiLocked: Boolean(item.satuanId) }),
       kategoriId: matchedObat?.kategoriId ?? item.kategoriId,
       hargaBeli: matchedObat
         ? String(matchedObat.hargaAktif?.hargaBeli ?? 0)
         : item.hargaBeli
     }));
-  }, [obatByNama, updateItem]);
+  }, [konversiByKey, obatById, obatByNama, updateItem]);
+
+  const handleSatuanChange = useCallback((index: number, satuanId: string) => {
+    updateItem(index, (item) => ({
+      ...item,
+      satuanId,
+      ...(item.barangId
+        ? resolveKonversi(item.barangId, satuanId, obatById, konversiByKey)
+        : { konversi: satuanId ? "1" : "", konversiLocked: Boolean(satuanId) })
+    }));
+  }, [konversiByKey, obatById, updateItem]);
 
   const removeItem = useCallback((index: number) => {
     setItems((currentItems) =>
@@ -618,14 +678,43 @@ export function PembelianForm() {
     const validItems = [];
 
     for (const item of rowsToSubmit) {
-      const barangId = await resolveBarangId(item, createdIdByNama);
-      const konversi = konversiValue(item);
+      if (!item.satuanId) {
+        toast.error(`Satuan pembelian ${item.barangNama.trim() || "item"} wajib dipilih`);
+        return null;
+      }
+
+      const jumlahDikirim = parseNumberInput(item.jumlahDikirim);
       const jumlahDiterima = parseNumberInput(item.jumlahDiterima);
+      const jumlahDitolak = parseNumberInput(item.jumlahDitolak);
+      const konversi = parseNumberInput(item.konversi);
+
+      if (konversi <= 0) {
+        toast.error(`Konversi ${item.barangNama.trim() || "item"} wajib diisi lebih dari nol`);
+        return null;
+      }
+
+      if (item.barangId && !obatById[item.barangId]?.satuanDefaultId) {
+        toast.error(`Satuan dasar ${item.barangNama.trim() || "item"} belum diatur di master barang`);
+        return null;
+      }
+
+      if (jumlahDikirim > 0 && jumlahDiterima + jumlahDitolak > jumlahDikirim) {
+        toast.error(`Jumlah diterima + ditolak ${item.barangNama.trim() || "item"} melebihi jumlah dikirim`);
+        return null;
+      }
+
+      const barangId = await resolveBarangId(item, createdIdByNama);
+      const satuanDasarId = obatById[barangId]?.satuanDefaultId ?? item.satuanId;
       const hargaBeliInput = parseNumberInput(item.hargaBeli);
 
       validItems.push({
         barangId,
         satuanId: item.satuanId || undefined,
+        satuanDasarId,
+        konversi,
+        jumlahDikirim,
+        jumlahDiterima,
+        jumlahDitolak,
         batchNumber: generateAutoBatchNumber(validItems.length, tanggalPembelian),
         tanggalExpired: item.tanggalExpired,
         // qty diterima dinormalisasi ke satuan stok (base unit) memakai konversi
@@ -911,6 +1000,7 @@ export function PembelianForm() {
                     obatById={obatById}
                     onUpdateItem={updateItem}
                     onBarangNameChange={handleBarangNameChange}
+                    onSatuanChange={handleSatuanChange}
                     onRemoveItem={removeItem}
                     onCellKeyDown={handleCellKeyDown}
                   />

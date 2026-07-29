@@ -87,6 +87,12 @@ export const menuGroups: MenuGroup[] = [
         roles: ["owner", "admin", "kasir"]
       },
       {
+        label: "Retur Penjualan",
+        href: "/retur-penjualan",
+        icon: "RotateCcw",
+        roles: ["owner", "admin", "kasir"]
+      },
+      {
         label: "Resep",
         href: "/resep",
         icon: "ClipboardCheck",
