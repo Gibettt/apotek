@@ -18,16 +18,16 @@ export function Table<T>({
   emptyText?: string;
 }) {
   return (
-    <div className="overflow-hidden rounded-2xl border-none bg-white shadow-[0_20px_60px_rgba(31,41,35,0.06)]">
+    <div className="overflow-hidden rounded-lg border border-stone-200 bg-white">
       <div className="overflow-x-auto">
-        <table className="min-w-full divide-y divide-slate-200 text-sm">
-          <thead className="bg-slate-50">
+        <table className="min-w-full text-sm">
+          <thead className="bg-[#f8f7f3]">
             <tr>
               {columns.map((column) => (
                 <th
                   key={column.key}
                   className={cn(
-                    "px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500",
+                    "px-5 py-3 text-left text-xs font-black uppercase tracking-normal text-stone-500",
                     column.className
                   )}
                 >
@@ -39,11 +39,17 @@ export function Table<T>({
           <tbody className="divide-y divide-slate-100 bg-white">
             {data.length ? (
               data.map((row, rowIndex) => (
-                <tr key={rowIndex} className="hover:bg-slate-50">
+                <tr
+                  key={rowIndex}
+                  className="border-t border-stone-100 transition hover:bg-emerald-50/40"
+                >
                   {columns.map((column) => (
                     <td
                       key={column.key}
-                      className={cn("px-4 py-3 text-slate-700", column.className)}
+                      className={cn(
+                        "px-5 py-4 align-middle text-stone-700",
+                        column.className
+                      )}
                     >
                       {column.cell(row)}
                     </td>
@@ -53,7 +59,7 @@ export function Table<T>({
             ) : (
               <tr>
                 <td
-                  className="px-4 py-8 text-center text-sm text-slate-500"
+                  className="px-5 py-10 text-center text-sm font-bold text-stone-500"
                   colSpan={columns.length}
                 >
                   {emptyText}

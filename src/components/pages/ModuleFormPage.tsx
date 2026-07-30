@@ -1,6 +1,6 @@
 "use client";
 
-import { Save } from "lucide-react";
+import { ArrowLeft, Save } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo } from "react";
 import { useForm } from "react-hook-form";
@@ -11,6 +11,7 @@ import { Card, CardContent } from "@/components/ui/Card";
 import { Input } from "@/components/ui/Input";
 import { Select } from "@/components/ui/Select";
 import type { FieldConfig, ModuleConfig, ModuleRecord } from "@/constants/modules";
+import { auditLogService } from "@/services/auditLogService";
 import { generateAutoKode } from "@/utils/autoKode";
 import { cn } from "@/utils/cn";
 
@@ -44,11 +45,11 @@ function FieldRenderer({
 
   if (field.type === "textarea") {
     return (
-      <label className="grid gap-1.5 text-sm font-medium text-slate-700 md:col-span-2">
+      <label className="grid gap-2 text-sm font-bold text-stone-700 md:col-span-2">
         <span>{field.label}</span>
         <textarea
-          rows={4}
-          className="rounded-md border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 outline-none transition focus:border-brand-600 focus:ring-2 focus:ring-brand-100"
+          rows={5}
+          className="min-h-[132px] rounded-lg border border-stone-200 bg-white px-4 py-3 text-sm font-semibold leading-6 text-stone-800 outline-none transition placeholder:text-stone-400 focus:border-[#0f766e] focus:ring-4 focus:ring-[#0f766e]/10"
           placeholder={field.placeholder}
           {...register(field.name)}
         />
@@ -58,13 +59,13 @@ function FieldRenderer({
 
   if (field.type === "checkbox") {
     return (
-      <label className="flex h-10 items-center gap-3 rounded-md border border-slate-200 bg-white px-3 text-sm font-medium text-slate-700">
+      <label className="group flex min-h-12 cursor-pointer items-center gap-3 rounded-lg border border-stone-200 bg-[#f8f7f3] px-4 text-sm font-bold text-stone-700 transition hover:border-[#0f766e]/40 hover:bg-emerald-50">
         <input
           type="checkbox"
-          className="h-4 w-4 rounded border-slate-300 text-brand-700 focus:ring-brand-600"
+          className="peer h-4 w-4 rounded border-stone-300 text-[#0f766e] focus:ring-[#0f766e]"
           {...register(field.name)}
         />
-        {field.label}
+        <span className="peer-checked:text-[#0f766e]">{field.label}</span>
       </label>
     );
   }
@@ -74,6 +75,7 @@ function FieldRenderer({
       label={field.label}
       type={field.type}
       placeholder={field.placeholder}
+      className="h-11 rounded-lg border-stone-200 px-4 font-semibold focus:border-[#0f766e] focus:ring-4 focus:ring-[#0f766e]/10"
       {...register(field.name)}
     />
   );
@@ -125,11 +127,23 @@ export function ModuleFormPage({
 
   async function onSubmit(values: Record<string, string | number | boolean>) {
     try {
+      let result: ModuleRecord | null | void = undefined;
+
       if (mode === "edit" && record?.id && config.update) {
-        await config.update(String(record.id), values, record);
+        result = await config.update(String(record.id), values, record);
       } else if (mode !== "edit" && config.create) {
-        await config.create(values);
+        result = await config.create(values);
       }
+
+      const changedRecord = (result && typeof result === "object" ? result : record) as
+        | ModuleRecord
+        | undefined;
+      await auditLogService.record({
+        aksi: mode === "edit" ? "UPDATE" : "INSERT",
+        namaTabel: config.key,
+        recordId: changedRecord?.id ? String(changedRecord.id) : undefined,
+        deskripsi: `${mode === "edit" ? "Update" : "Tambah"} ${config.title}`
+      });
 
       toast.success(
         mode === "edit"
@@ -154,10 +168,19 @@ export function ModuleFormPage({
         }
         description={config.description}
       />
-      <Card>
-        <CardContent>
-          <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
-            <div className="grid gap-4 md:grid-cols-2">
+      <Card className="overflow-hidden rounded-lg">
+        <CardContent className="p-0">
+          <form onSubmit={handleSubmit(onSubmit)}>
+            <div className="border-b border-stone-100 bg-[#f8f7f3] px-5 py-4">
+              <h2 className="text-base font-black text-[#20201d]">
+                Data {config.title}
+              </h2>
+              <p className="mt-1 text-sm font-semibold text-stone-500">
+                {mode === "edit" ? "Perbarui informasi utama." : "Masukkan informasi utama."}
+              </p>
+            </div>
+
+            <div className="grid gap-4 p-5 md:grid-cols-2">
               {visibleFields.map((field) => (
                 <div
                   key={field.name}
@@ -167,8 +190,22 @@ export function ModuleFormPage({
                 </div>
               ))}
             </div>
-            <div className="flex justify-end">
-              <Button type="submit" isLoading={isSubmitting}>
+
+            <div className="flex flex-wrap justify-end gap-3 border-t border-stone-100 bg-white px-5 py-4">
+              <Button
+                type="button"
+                variant="secondary"
+                onClick={() => router.push(config.basePath)}
+                className="rounded-lg font-black"
+              >
+                <ArrowLeft className="h-4 w-4" />
+                Kembali
+              </Button>
+              <Button
+                type="submit"
+                isLoading={isSubmitting}
+                className="rounded-lg bg-[#0f766e] px-5 font-black hover:bg-[#115e59]"
+              >
                 <Save className="h-4 w-4" />
                 Simpan
               </Button>

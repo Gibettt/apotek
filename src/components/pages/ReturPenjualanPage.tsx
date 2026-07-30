@@ -25,6 +25,10 @@ function parseNumberInput(value: string) {
   return Number.isFinite(parsed) ? parsed : 0;
 }
 
+function returUnitLabel(satuanNama?: string) {
+  return satuanNama?.trim() || "item";
+}
+
 export function ReturPenjualanPage() {
   const { activeCabangId } = useCabangStore();
   const [pelangganQuery, setPelangganQuery] = useState("");
@@ -370,6 +374,7 @@ export function ReturPenjualanPage() {
                   <thead className="bg-[#f8f7f3] text-xs font-black uppercase text-stone-500">
                     <tr>
                       <th className="px-4 py-3">Barang</th>
+                      <th className="px-4 py-3">Satuan</th>
                       <th className="px-4 py-3">Terjual</th>
                       <th className="px-4 py-3">Sudah Retur</th>
                       <th className="px-4 py-3">Sisa</th>
@@ -386,6 +391,9 @@ export function ReturPenjualanPage() {
                           </p>
                         </td>
                         <td className="px-4 py-3 font-bold text-stone-600">
+                          {returUnitLabel(detail.satuanNama)}
+                        </td>
+                        <td className="px-4 py-3 font-bold text-stone-600">
                           {detail.jumlah}
                         </td>
                         <td className="px-4 py-3 font-bold text-stone-600">
@@ -398,21 +406,26 @@ export function ReturPenjualanPage() {
                           {formatCurrency(detail.hargaJual)}
                         </td>
                         <td className="px-4 py-3">
-                          <input
-                            aria-label={`Qty retur ${detail.namaBarang}`}
-                            type="number"
-                            min={0}
-                            max={detail.sisaRetur}
-                            disabled={detail.sisaRetur <= 0}
-                            value={qtyByDetailId[detail.id] ?? ""}
-                            onChange={(event) =>
-                              setQtyByDetailId((current) => ({
-                                ...current,
-                                [detail.id]: event.target.value
-                              }))
-                            }
-                            className="h-10 w-24 rounded-lg border border-stone-200 bg-white px-3 text-sm font-black text-[#20201d] outline-none transition focus:border-[#0f766e] focus:ring-4 focus:ring-[#0f766e]/10 disabled:bg-stone-100 disabled:text-stone-400"
-                          />
+                          <div className="flex h-10 w-36 overflow-hidden rounded-lg border border-stone-200 bg-white transition focus-within:border-[#0f766e] focus-within:ring-4 focus-within:ring-[#0f766e]/10">
+                            <input
+                              aria-label={`Qty retur ${detail.namaBarang} dalam ${returUnitLabel(detail.satuanNama)}`}
+                              type="number"
+                              min={0}
+                              max={detail.sisaRetur}
+                              disabled={detail.sisaRetur <= 0}
+                              value={qtyByDetailId[detail.id] ?? ""}
+                              onChange={(event) =>
+                                setQtyByDetailId((current) => ({
+                                  ...current,
+                                  [detail.id]: event.target.value
+                                }))
+                              }
+                              className="h-full min-w-0 flex-1 bg-white px-3 text-sm font-black text-[#20201d] outline-none disabled:bg-stone-100 disabled:text-stone-400"
+                            />
+                            <span className="grid max-w-[72px] shrink-0 place-items-center truncate border-l border-stone-200 bg-[#f8f7f3] px-2 text-xs font-black text-stone-500">
+                              {returUnitLabel(detail.satuanNama)}
+                            </span>
+                          </div>
                         </td>
                       </tr>
                     ))}

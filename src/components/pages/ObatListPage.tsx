@@ -4,11 +4,9 @@ import Link from "next/link";
 import type { LucideIcon } from "lucide-react";
 import {
   AlertTriangle,
-  Boxes,
   ChevronDown,
   Check,
   Eye,
-  PackagePlus,
   Pencil,
   Pill,
   Search,
@@ -26,40 +24,21 @@ import { Modal } from "@/components/ui/Modal";
 import { Pagination } from "@/components/ui/Pagination";
 import { kategoriService, type MasterOption } from "@/services/kategoriService";
 import { obatService, toObatUpdatePayload } from "@/services/obatService";
-import { stokService } from "@/services/stokService";
+import { returPenjualanService } from "@/services/returPenjualanService";
 import type { Obat } from "@/types";
-import { stockLabel } from "@/lib/eceran";
 import { isLowStock, LOW_STOCK_THRESHOLD } from "@/lib/stockRules";
 import { formatCurrency } from "@/utils/formatCurrency";
 
-const QUICK_RESTOCK_QTY = 10;
-
 const perPage = 8;
 
-function getStockState(item: Obat) {
-  if (item.stokTersedia <= 0) {
-    return {
-      label: "Stok habis",
-      badge: "danger" as const,
-      bar: "bg-red-500",
-      bg: "bg-red-50"
-    };
-  }
-
-  if (isLowStock(item.stokTersedia)) {
-    return {
-      label: "Menipis",
-      badge: "warning" as const,
-      bar: "bg-amber-500",
-      bg: "bg-amber-50"
-    };
-  }
-
+function getMasterState(item: Obat) {
   return {
-    label: "Stok OK",
-    badge: "success" as const,
-    bar: "bg-emerald-500",
-    bg: "bg-emerald-50"
+    availabilityLabel: item.status ? "Aktif" : "Nonaktif",
+    availabilityBadge: item.status ? ("success" as const) : ("muted" as const),
+    stockLabel:
+      item.stokTersedia <= 0 ? "Stok habis" : isLowStock(item.stokTersedia) ? "Stok menipis" : "Stok aman",
+    stockBadge:
+      item.stokTersedia <= 0 ? ("danger" as const) : isLowStock(item.stokTersedia) ? ("warning" as const) : ("info" as const)
   };
 }
 
@@ -92,31 +71,23 @@ function StockStat({
 function ObatRow({
   item,
   onDelete,
-  onRestock,
   onSetPrice
 }: {
   item: Obat;
   onDelete: (item: Obat) => void;
-  onRestock: (item: Obat) => void;
   onSetPrice: (item: Obat) => void;
 }) {
-  const stock = getStockState(item);
-  const progress = Math.min(
-    100,
-    Math.round((item.stokTersedia / (LOW_STOCK_THRESHOLD * 2)) * 100)
-  );
+  const state = getMasterState(item);
 
   return (
     <tr className="group border-t border-stone-100 transition hover:bg-[#f8f7f3]">
       <td className="px-5 py-4">
         <div className="flex items-center gap-3">
-          <span className={`grid h-11 w-11 shrink-0 place-items-center rounded-lg ${stock.bg} text-[#ff6a3d]`}>
+          <span className="grid h-11 w-11 shrink-0 place-items-center rounded-lg bg-[#fff7ed] text-[#ff6a3d]">
             <Pill className="h-5 w-5" strokeWidth={1.9} />
           </span>
           <div className="min-w-0">
-            <p className="truncate font-black text-[#20201d]">
-              {item.nama}
-            </p>
+            <p className="truncate font-black text-[#20201d]">{item.nama}</p>
             <p className="mt-1 truncate text-xs font-semibold text-stone-400">
               {item.kode} - {item.satuanNama ?? "-"}
             </p>
@@ -132,20 +103,17 @@ function ObatRow({
         </p>
       </td>
       <td className="px-5 py-4">
-        <div className="min-w-[150px]">
-          <div className="mb-2 flex items-center justify-between gap-3">
-            <span className="font-black text-[#20201d]">
-              {stockLabel(item)}
-            </span>
-            <span className="text-xs font-semibold text-stone-400">
-              Min {LOW_STOCK_THRESHOLD}
-            </span>
-          </div>
-          <div className="h-2 overflow-hidden rounded-full bg-stone-100">
-            <div
-              className={`h-full rounded-full ${stock.bar}`}
-              style={{ width: `${progress}%` }}
-            />
+        <div className="space-y-2">
+          <p className="font-black text-[#20201d]">
+            {item.perluBatch ? "Per batch" : "Tanpa batch"}
+          </p>
+          <div className="flex flex-wrap gap-2">
+            <Badge variant={item.perluExpired ? "info" : "muted"}>
+              {item.perluExpired ? "Pakai expired" : "Tanpa expired"}
+            </Badge>
+            <Badge variant={item.membutuhkanResep ? "warning" : "muted"}>
+              {item.membutuhkanResep ? "Butuh resep" : "Bebas"}
+            </Badge>
           </div>
         </div>
       </td>
@@ -183,25 +151,12 @@ function ObatRow({
       </td>
       <td className="px-5 py-4">
         <div className="flex flex-wrap gap-2">
-          <Badge variant={stock.badge}>{stock.label}</Badge>
-          {item.membutuhkanResep ? (
-            <Badge variant="info">Resep</Badge>
-          ) : (
-            <Badge variant="muted">Bebas</Badge>
-          )}
+          <Badge variant={state.availabilityBadge}>{state.availabilityLabel}</Badge>
+          <Badge variant={state.stockBadge}>{state.stockLabel}</Badge>
         </div>
       </td>
       <td className="px-5 py-4 text-right">
         <div className="flex justify-end gap-2">
-          <button
-            type="button"
-            aria-label={`Tambah stok ${item.nama}`}
-            title="Tambah stok"
-            onClick={() => onRestock(item)}
-            className="grid h-9 w-9 place-items-center rounded-full bg-[#f8f7f3] text-emerald-700 transition hover:bg-white hover:text-emerald-800 hover:shadow-sm"
-          >
-            <PackagePlus className="h-4 w-4" strokeWidth={1.9} />
-          </button>
           <Link
             href={`/obat/${item.id}`}
             aria-label="Detail obat"
@@ -240,10 +195,7 @@ export function ObatListPage() {
   const [rows, setRows] = useState<Obat[]>([]);
   const [total, setTotal] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
-  const [restockTarget, setRestockTarget] = useState<Obat | null>(null);
-  const [isRestocking, setIsRestocking] = useState(false);
   const [refreshToken, setRefreshToken] = useState(0);
-  const [skipRestockConfirm, setSkipRestockConfirm] = useState(false);
   const [priceTarget, setPriceTarget] = useState<Obat | null>(null);
   const [priceValue, setPriceValue] = useState("0");
   const [isSavingPrice, setIsSavingPrice] = useState(false);
@@ -281,41 +233,6 @@ export function ObatListPage() {
     } finally {
       setIsSavingPrice(false);
     }
-  }
-
-  async function doRestock(item: Obat) {
-    setIsRestocking(true);
-
-    try {
-      await stokService.masuk({
-        barangId: item.id,
-        qty: QUICK_RESTOCK_QTY,
-        keterangan: "Tambah stok cepat dari daftar obat"
-      });
-      toast.success(`Stok ${item.nama} bertambah ${QUICK_RESTOCK_QTY}`);
-      setRestockTarget(null);
-      setRefreshToken((token) => token + 1);
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Gagal menambah stok");
-    } finally {
-      setIsRestocking(false);
-    }
-  }
-
-  function handleRestockClick(item: Obat) {
-    if (skipRestockConfirm) {
-      void doRestock(item);
-      return;
-    }
-
-    setRestockTarget(item);
-  }
-
-  async function handleConfirmRestock() {
-    if (!restockTarget) return;
-
-    setSkipRestockConfirm(true);
-    await doRestock(restockTarget);
   }
 
   async function handleDelete(item: Obat) {
@@ -375,6 +292,7 @@ export function ObatListPage() {
       setIsLoading(true);
 
       try {
+        await returPenjualanService.list({ page: 1, perPage: 1000 });
         const result = await obatService.list({
           search,
           ...(kategoriId ? { kategoriId } : {}),
@@ -409,24 +327,27 @@ export function ObatListPage() {
   }, [page, search, kategoriId, refreshToken]);
 
   const stats = useMemo(() => {
+    const activeItems = rows.filter((item) => item.status).length;
     const lowItems = rows.filter(
       (item) => isLowStock(item.stokTersedia)
     ).length;
+    const recipeItems = rows.filter((item) => item.membutuhkanResep).length;
 
-    return { lowItems };
+    return { activeItems, lowItems, recipeItems };
   }, [rows]);
 
   return (
     <>
       <Header
-        title="Stok Barang"
-        description="Daftar barang dari Pembelian. Kelola harga jual per barang di sini."
+        title="Master Barang"
+        description="Kelola data induk obat dan barang: nama, kategori, golongan, satuan, aturan batch, dan harga jual."
       />
 
       <section className="dashboard-surface">
-        <div className="grid gap-3 md:grid-cols-2">
-          <StockStat label="Total barang" value={total} icon={Boxes} />
-          <StockStat label="Stok menipis" value={stats.lowItems} icon={AlertTriangle} />
+        <div className="grid gap-3 md:grid-cols-3">
+          <StockStat label="Total barang" value={total} icon={Pill} />
+          <StockStat label="Barang aktif" value={stats.activeItems} icon={Check} />
+          <StockStat label="Perlu resep" value={stats.recipeItems} icon={AlertTriangle} />
         </div>
 
         <div className="mt-5 grid gap-3 md:grid-cols-[minmax(0,1fr)_220px_auto] md:items-center">
@@ -501,7 +422,7 @@ export function ObatListPage() {
           </div>
 
           <p className="text-sm font-semibold text-stone-500 md:text-right">
-            {total} item barang ditemukan
+            {total} master barang ditemukan
           </p>
         </div>
 
@@ -512,10 +433,10 @@ export function ObatListPage() {
                 <tr>
                   <th className="px-5 py-4">Barang</th>
                   <th className="px-5 py-4">Kategori</th>
-                  <th className="px-5 py-4">Stok</th>
+                  <th className="px-5 py-4">Aturan</th>
                   <th className="px-5 py-4">Harga</th>
                   <th className="px-5 py-4">Status</th>
-                  <th className="w-[196px] px-5 py-4 text-right">Aksi</th>
+                  <th className="w-[150px] px-5 py-4 text-right">Aksi</th>
                 </tr>
               </thead>
               <tbody>
@@ -534,7 +455,6 @@ export function ObatListPage() {
                       key={item.id}
                       item={item}
                       onDelete={handleDelete}
-                      onRestock={handleRestockClick}
                       onSetPrice={handleSetPriceClick}
                     />
                   ))
@@ -564,32 +484,6 @@ export function ObatListPage() {
           />
         </div>
       </section>
-
-      <Modal
-        open={Boolean(restockTarget)}
-        title="Tambah Stok"
-        onClose={() => setRestockTarget(null)}
-      >
-        <p className="text-sm font-semibold text-stone-600">
-          Yakin ingin menambah stok <strong className="text-stone-950">+{QUICK_RESTOCK_QTY}</strong> untuk{" "}
-          <strong className="text-stone-950">{restockTarget?.nama}</strong>?
-        </p>
-        <div className="mt-5 flex justify-end gap-2">
-          <Button
-            type="button"
-            variant="secondary"
-            disabled={isRestocking}
-            onClick={() => setRestockTarget(null)}
-          >
-            <X className="h-4 w-4" />
-            Batal
-          </Button>
-          <Button type="button" isLoading={isRestocking} onClick={handleConfirmRestock}>
-            <Check className="h-4 w-4" />
-            Ya, Tambah Stok
-          </Button>
-        </div>
-      </Modal>
 
       <Modal
         open={Boolean(priceTarget)}

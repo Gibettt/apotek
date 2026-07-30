@@ -84,16 +84,29 @@ begin
     'biaya_operasional','jurnal_umum','jurnal_umum_detail','golongan_obat',
     'kategori_barang','penjualan','penjualan_detail','pelanggan','pembayaran',
     'lokasi_simpan','barang','kartu_stok','saldo_stok','harga_barang',
-    'batch_barang','satuan','jenis_barang','pabrik',
+    'batch_barang','satuan','pabrik',
     'konversi_satuan','notifikasi','pengaturan','resep','resep_detail',
     'retur_penjualan','retur_penjualan_detail','retur_pembelian',
     'retur_pembelian_detail','faktur_pembelian','faktur_pembelian_detail',
-    'supplier','role','barcode_barang'
+    'supplier','role','barcode_barang','audit_log'
   ]
   loop
     execute format('alter table public.%I enable row level security;', t);
   end loop;
 end $$;
+
+-- ------------------------------------------------------------
+-- 13. Audit log — staff can append activity, owner/admin can read.
+-- ------------------------------------------------------------
+drop policy if exists audit_log_owner_select on public.audit_log;
+create policy audit_log_owner_select on public.audit_log
+  for select
+  using (public.current_pengguna_role() in ('owner', 'admin'));
+
+drop policy if exists audit_log_staff_insert on public.audit_log;
+create policy audit_log_staff_insert on public.audit_log
+  for insert
+  with check (public.current_pengguna_role() is not null);
 
 -- ------------------------------------------------------------
 -- 4. pengguna — own row, or owner/admin sees all.
@@ -153,7 +166,7 @@ declare
 begin
   foreach t in array array[
     'cabang', 'akun', 'dokter', 'dokter_spesialis', 'golongan_obat',
-    'kategori_barang', 'lokasi_simpan', 'satuan', 'jenis_barang',
+    'kategori_barang', 'lokasi_simpan', 'satuan',
     'pabrik', 'supplier', 'role', 'pengaturan'
   ]
   loop

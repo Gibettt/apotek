@@ -66,9 +66,31 @@ interface ReturDetailRow {
   subtotal: number | string | null;
 }
 
+interface ReturStockMutationRow {
+  id?: string;
+  cabang_id?: string | null;
+  sumber_id: string | null;
+  barang_id: string | null;
+  batch_id?: string | null;
+  qty_masuk: number | string | null;
+  qty_keluar?: number | string | null;
+  tipe_mutasi?: string | null;
+  sumber_tabel?: string | null;
+  saldo_akhir?: number | string | null;
+  harga_pokok?: number | string | null;
+  keterangan?: string | null;
+}
+
+interface SaleStockMutationRow {
+  batch_id: string | null;
+  qty_keluar: number | string | null;
+}
+
 const localReturPenjualan: ReturPenjualan[] = [];
 const localReturStorageKey = "apotek-retur-penjualan";
 let localReturHydrated = false;
+const nullBatchKey = "__tanpa_batch__";
+type ReturStockQtyByBatch = Record<string, Record<string, Record<string, number>>>;
 
 function hydrateLocalReturPenjualan() {
   if (localReturHydrated || typeof window === "undefined") return;
@@ -127,6 +149,28 @@ function generateNomor(date = new Date()) {
 
 function calculateTotal(items: ReturPenjualanItemInput[]) {
   return items.reduce((sum, item) => sum + item.jumlah * item.hargaJual, 0);
+}
+
+function stockQtyFromDetail(detail: Pick<ReturPenjualanDetail, "jumlah" | "stockQty">) {
+  const stockQty = Number(detail.stockQty ?? detail.jumlah);
+  return Number.isFinite(stockQty) ? Math.max(0, stockQty) : 0;
+}
+
+function groupReturStockByBarang(retur: ReturPenjualan) {
+  const grouped = retur.details.reduce<Record<string, number>>((acc, detail) => {
+    if (!detail.barangId) return acc;
+    acc[detail.barangId] =
+      (acc[detail.barangId] ?? 0) + stockQtyFromDetail(detail);
+    return acc;
+  }, {});
+
+  return Object.entries(grouped)
+    .map(([barangId, qty]) => ({ barangId, qty }))
+    .filter((item) => item.qty > 0);
+}
+
+function batchKey(batchId?: string | null) {
+  return batchId ?? nullBatchKey;
 }
 
 export function resolveReturStockQty(
@@ -213,6 +257,7 @@ function toDetail(
 ): ReturPenjualanDetail {
   const barangId = row.barang_id ?? "";
   const satuanId = row.satuan_id ?? undefined;
+  const stockQty = toNumber(row.stock_qty);
 
   return {
     id: row.id,
@@ -224,6 +269,7 @@ function toDetail(
     satuanId,
     satuanNama: satuanId ? lookupMaps.satuanById[satuanId] : undefined,
     jumlah: toNumber(row.qty),
+    stockQty: stockQty > 0 ? stockQty : toNumber(row.qty),
     hargaJual: toNumber(row.harga_jual),
     subtotal: toNumber(row.subtotal)
   };
@@ -412,63 +458,327 @@ async function loadReturConversionByDetail(
   }, {});
 }
 
+async function changeSaldoStok(
+  cabangId: string,
+  barangId: string,
+  batchId: string | null,
+  deltaQty: number
+) {
+  if (!supabase || deltaQty === 0) {
+    return 0;
+  }
+
+  let saldoQuery = supabase
+    .from("saldo_stok")
+    .select("id,qty")
+    .eq("cabang_id", cabangId)
+    .eq("barang_id", barangId);
+  saldoQuery = batchId
+    ? saldoQuery.eq("batch_id", batchId)
+    : saldoQuery.is("batch_id", null);
+
+  const { data: saldoRows, error: findError } = await saldoQuery.limit(1);
+
+  if (findError) throw new Error(findError.message);
+
+  const existingSaldo = saldoRows?.[0];
+  const saldoAkhir = Math.max(0, toNumber(existingSaldo?.qty) + deltaQty);
+
+  if (existingSaldo?.id) {
+    const { error } = await supabase
+      .from("saldo_stok")
+      .update({ qty: saldoAkhir, updated_at: new Date().toISOString() })
+      .eq("id", existingSaldo.id);
+    if (error) throw new Error(error.message);
+    return saldoAkhir;
+  }
+
+  if (deltaQty > 0) {
+    const { error } = await supabase.from("saldo_stok").insert({
+      cabang_id: cabangId,
+      barang_id: barangId,
+      batch_id: batchId,
+      qty: saldoAkhir
+    });
+    if (error) throw new Error(error.message);
+  }
+
+  return saldoAkhir;
+}
+
+async function loadSaleBatchPlan(
+  retur: ReturPenjualan,
+  barangId: string,
+  qty: number
+) {
+  if (!supabase || !retur.penjualanId || qty <= 0) {
+    return [{ batchId: null, qty }];
+  }
+
+  const { data, error } = await supabase
+    .from("kartu_stok")
+    .select("batch_id,qty_keluar")
+    .eq("sumber_tabel", "penjualan")
+    .eq("sumber_id", retur.penjualanId)
+    .eq("barang_id", barangId)
+    .gt("qty_keluar", 0)
+    .order("created_at", { ascending: true });
+
+  if (error) throw new Error(error.message);
+
+  let remaining = qty;
+  const planned = ((data ?? []) as SaleStockMutationRow[]).reduce<
+    Array<{ batchId: string | null; qty: number }>
+  >((acc, row) => {
+    if (remaining <= 0) return acc;
+
+    const take = Math.min(toNumber(row.qty_keluar), remaining);
+    if (take > 0) {
+      acc.push({ batchId: row.batch_id ?? null, qty: take });
+      remaining -= take;
+    }
+    return acc;
+  }, []);
+
+  if (remaining > 0.000001) {
+    planned.push({ batchId: null, qty: remaining });
+  }
+
+  return Object.values(
+    planned.reduce<Record<string, { batchId: string | null; qty: number }>>(
+      (acc, item) => {
+        const key = batchKey(item.batchId);
+        acc[key] = {
+          batchId: item.batchId,
+          qty: (acc[key]?.qty ?? 0) + item.qty
+        };
+        return acc;
+      },
+      {}
+    )
+  );
+}
+
+async function addStockMovementForRetur(
+  retur: ReturPenjualan,
+  barangId: string,
+  stockQty: number,
+  batchId: string | null = null
+) {
+  if (!isSupabaseConfigured || !supabase || stockQty <= 0) {
+    return;
+  }
+
+  const cabangId = retur.cabangId || defaultCabangId;
+  const saldoAkhir = await changeSaldoStok(cabangId, barangId, batchId, stockQty);
+
+  const { error: kartuError } = await supabase.from("kartu_stok").insert({
+    cabang_id: cabangId,
+    barang_id: barangId,
+    batch_id: batchId,
+    tipe_mutasi: "masuk",
+    sumber_tabel: "retur_penjualan",
+    sumber_id: retur.id,
+    qty_masuk: stockQty,
+    qty_keluar: 0,
+    saldo_akhir: saldoAkhir,
+    harga_pokok: 0,
+    keterangan: `Retur penjualan ${retur.nomor}: ${retur.alasan}`
+  });
+
+  if (kartuError) throw new Error(kartuError.message);
+}
+
+async function moveExistingNullBatchReturStock(
+  retur: ReturPenjualan,
+  barangId: string,
+  targetBatchId: string,
+  qty: number
+) {
+  if (!isSupabaseConfigured || !supabase || qty <= 0) {
+    return 0;
+  }
+
+  const cabangId = retur.cabangId || defaultCabangId;
+  const { data, error } = await supabase
+    .from("kartu_stok")
+    .select(
+      "id,cabang_id,barang_id,batch_id,tipe_mutasi,sumber_tabel,sumber_id,qty_masuk,qty_keluar,saldo_akhir,harga_pokok,keterangan"
+    )
+    .eq("sumber_tabel", "retur_penjualan")
+    .eq("sumber_id", retur.id)
+    .eq("barang_id", barangId)
+    .is("batch_id", null)
+    .gt("qty_masuk", 0)
+    .order("created_at", { ascending: true });
+
+  if (error) throw new Error(error.message);
+
+  let remaining = qty;
+  let moved = 0;
+
+  for (const row of (data ?? []) as ReturStockMutationRow[]) {
+    if (remaining <= 0) break;
+
+    const rowQty = toNumber(row.qty_masuk);
+    const take = Math.min(rowQty, remaining);
+    if (!row.id || take <= 0) continue;
+
+    await changeSaldoStok(cabangId, barangId, null, -take);
+    const targetSaldo = await changeSaldoStok(cabangId, barangId, targetBatchId, take);
+
+    if (Math.abs(take - rowQty) <= 0.000001) {
+      const { error: updateError } = await supabase
+        .from("kartu_stok")
+        .update({ batch_id: targetBatchId, saldo_akhir: targetSaldo })
+        .eq("id", row.id);
+      if (updateError) throw new Error(updateError.message);
+    } else {
+      const { error: updateError } = await supabase
+        .from("kartu_stok")
+        .update({ qty_masuk: rowQty - take })
+        .eq("id", row.id);
+      if (updateError) throw new Error(updateError.message);
+
+      const { error: insertError } = await supabase.from("kartu_stok").insert({
+        cabang_id: row.cabang_id ?? cabangId,
+        barang_id: barangId,
+        batch_id: targetBatchId,
+        tipe_mutasi: row.tipe_mutasi ?? "masuk",
+        sumber_tabel: row.sumber_tabel ?? "retur_penjualan",
+        sumber_id: row.sumber_id ?? retur.id,
+        qty_masuk: take,
+        qty_keluar: row.qty_keluar ?? 0,
+        saldo_akhir: targetSaldo,
+        harga_pokok: row.harga_pokok ?? 0,
+        keterangan: row.keterangan ?? `Retur penjualan ${retur.nomor}: ${retur.alasan}`
+      });
+      if (insertError) throw new Error(insertError.message);
+    }
+
+    moved += take;
+    remaining -= take;
+  }
+
+  return moved;
+}
+
 async function addStockForRetur(retur: ReturPenjualan) {
   if (!isSupabaseConfigured || !supabase || !retur.details.length) {
     return;
   }
 
-  const cabangId = retur.cabangId || defaultCabangId;
-
-  for (const detail of retur.details) {
-    const stockQty = detail.stockQty ?? detail.jumlah;
-    const { data: existingSaldo, error: findError } = await supabase
-      .from("saldo_stok")
-      .select("id,qty")
-      .eq("cabang_id", cabangId)
-      .eq("barang_id", detail.barangId)
-      .is("batch_id", null)
-      .maybeSingle();
-
-    if (findError) throw new Error(findError.message);
-
-    const saldoAkhir = toNumber(existingSaldo?.qty) + stockQty;
-
-    if (existingSaldo?.id) {
-      const { error } = await supabase
-        .from("saldo_stok")
-        .update({ qty: saldoAkhir, updated_at: new Date().toISOString() })
-        .eq("id", existingSaldo.id);
-      if (error) throw new Error(error.message);
-    } else {
-      const { error } = await supabase.from("saldo_stok").insert({
-        cabang_id: cabangId,
-        barang_id: detail.barangId,
-        batch_id: null,
-        qty: stockQty
-      });
-      if (error) throw new Error(error.message);
+  for (const item of groupReturStockByBarang(retur)) {
+    const plan = await loadSaleBatchPlan(retur, item.barangId, item.qty);
+    for (const movement of plan) {
+      await addStockMovementForRetur(
+        retur,
+        item.barangId,
+        movement.qty,
+        movement.batchId
+      );
     }
-
-    const { error: kartuError } = await supabase.from("kartu_stok").insert({
-      cabang_id: cabangId,
-      barang_id: detail.barangId,
-      batch_id: null,
-      tipe_mutasi: "masuk",
-      sumber_tabel: "retur_penjualan",
-      sumber_id: retur.id,
-      qty_masuk: stockQty,
-      qty_keluar: 0,
-      saldo_akhir: saldoAkhir,
-      harga_pokok: 0,
-      keterangan: `Retur penjualan ${retur.nomor}: ${retur.alasan}`
-    });
-
-    if (kartuError) throw new Error(kartuError.message);
   }
 }
 
+async function loadStockMutationQtyByRetur(returIds: string[]) {
+  if (!isSupabaseConfigured || !supabase || !returIds.length) {
+    return {} as ReturStockQtyByBatch;
+  }
+
+  const { data, error } = await supabase
+    .from("kartu_stok")
+    .select("sumber_id,barang_id,batch_id,qty_masuk")
+    .eq("sumber_tabel", "retur_penjualan")
+    .in("sumber_id", returIds);
+
+  if (error) throw new Error(error.message);
+
+  return ((data ?? []) as ReturStockMutationRow[]).reduce<ReturStockQtyByBatch>((acc, row) => {
+    const returId = row.sumber_id ?? "";
+    const barangId = row.barang_id ?? "";
+    if (!returId || !barangId) return acc;
+
+    acc[returId] = {
+      ...(acc[returId] ?? {})
+    };
+    acc[returId][barangId] = {
+      ...(acc[returId][barangId] ?? {}),
+      [batchKey(row.batch_id)]:
+        (acc[returId][barangId]?.[batchKey(row.batch_id)] ?? 0) +
+        toNumber(row.qty_masuk)
+    };
+    return acc;
+  }, {});
+}
+
+async function ensureStockForRetur(
+  retur: ReturPenjualan,
+  postedQtyByBarang: Record<string, Record<string, number>> = {}
+) {
+  if (!isSupabaseConfigured || !supabase || retur.status !== "posted") {
+    return;
+  }
+
+  for (const item of groupReturStockByBarang(retur)) {
+    const plan = await loadSaleBatchPlan(retur, item.barangId, item.qty);
+    const postedByBatch = { ...(postedQtyByBarang[item.barangId] ?? {}) };
+
+    for (const movement of plan) {
+      if (!movement.batchId) continue;
+
+      const key = batchKey(movement.batchId);
+      const missingQty = movement.qty - (postedByBatch[key] ?? 0);
+      const nullQty = postedByBatch[nullBatchKey] ?? 0;
+      if (missingQty > 0.000001 && nullQty > 0) {
+        const moved = await moveExistingNullBatchReturStock(
+          retur,
+          item.barangId,
+          movement.batchId,
+          Math.min(missingQty, nullQty)
+        );
+        postedByBatch[key] = (postedByBatch[key] ?? 0) + moved;
+        postedByBatch[nullBatchKey] = Math.max(0, nullQty - moved);
+      }
+    }
+
+    for (const movement of plan) {
+      const key = batchKey(movement.batchId);
+      const missingQty = movement.qty - (postedByBatch[key] ?? 0);
+      if (missingQty > 0.000001) {
+        await addStockMovementForRetur(
+          retur,
+          item.barangId,
+          missingQty,
+          movement.batchId
+        );
+      }
+    }
+  }
+}
+
+async function ensureStockForReturRows(rows: ReturPenjualan[]) {
+  const postedRows = rows.filter(
+    (item) => item.status === "posted" && item.details.length
+  );
+
+  if (!postedRows.length) {
+    return;
+  }
+
+  const postedQtyByRetur = await loadStockMutationQtyByRetur(
+    postedRows.map((item) => item.id)
+  );
+
+  await Promise.all(
+    postedRows.map((item) =>
+      ensureStockForRetur(item, postedQtyByRetur[item.id] ?? {})
+    )
+  );
+}
+
 async function stockOnlyRetur(retur: ReturPenjualan) {
-  // ponytail: fallback sampai tabel retur_penjualan dibuat; audit lengkap butuh database/retur_penjualan.sql.
+  // Fallback sampai tabel retur_penjualan dibuat; audit lengkap butuh database/retur_penjualan.sql.
   const normalized = {
     ...retur,
     details: retur.details.map((detail) => ({ ...detail, returId: retur.id }))
@@ -496,6 +806,7 @@ export const returPenjualanService = {
 
     if (error) {
       if (isMissingReturTable(error)) {
+        await ensureStockForReturRows(localReturPenjualan);
         return paginate(filterRetur(localReturPenjualan, params.search), params);
       }
       throw new Error(error.message);
@@ -507,6 +818,8 @@ export const returPenjualanService = {
     const remoteRows = rows.map((item) =>
       toRetur(item, detailByRetur[item.id] ?? [], lookupMaps)
     );
+    await ensureStockForReturRows(remoteRows);
+
     const result = filterRetur(
       [
         ...localReturPenjualan,

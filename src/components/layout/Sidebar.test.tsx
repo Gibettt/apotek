@@ -83,7 +83,6 @@ describe("Sidebar", () => {
 
     expect(screen.getByRole("button", { name: "Penjualan terkunci" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Pembelian terkunci" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Surat Pesanan terkunci" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Retur Pembelian terkunci" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Akun (CoA) terkunci" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Jurnal Umum terkunci" })).toBeInTheDocument();
@@ -91,13 +90,10 @@ describe("Sidebar", () => {
     expect(screen.getAllByRole("button", { name: "Stok terkunci" })).toHaveLength(2);
     expect(screen.getByRole("button", { name: "Users terkunci" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Role terkunci" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Permission terkunci" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Audit Log terkunci" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Profil apotek terkunci" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Bantuan terkunci" })).toBeInTheDocument();
     expect(screen.getAllByRole("link", { name: "Penjualan" })).toHaveLength(1);
     expect(screen.queryByRole("link", { name: "Pembelian" })).not.toBeInTheDocument();
-    expect(screen.queryByRole("link", { name: "Surat Pesanan" })).not.toBeInTheDocument();
     expect(screen.queryByRole("link", { name: "Retur Pembelian" })).not.toBeInTheDocument();
     expect(screen.queryByRole("link", { name: "Stok" })).not.toBeInTheDocument();
     expect(screen.queryByRole("link", { name: "Users" })).not.toBeInTheDocument();

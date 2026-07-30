@@ -19,7 +19,7 @@ export const roles: Role[] = [
     id: "role-apoteker",
     kode: "apoteker",
     nama: "Apoteker",
-    deskripsi: "Mengelola obat, stok, resep, opname, dan verifikasi"
+    deskripsi: "Mengelola obat, stok, resep, dan verifikasi"
   },
   {
     id: "role-kasir",

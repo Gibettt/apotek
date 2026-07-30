@@ -20,14 +20,9 @@ import { resepService } from "@/services/resepService";
 import { stokService } from "@/services/stokService";
 import { supplierService } from "@/services/supplierService";
 import { userService } from "@/services/userService";
+import { roleList } from "@/lib/erp-mock";
+import { auditLogService } from "@/services/auditLogService";
 import {
-  auditLogList,
-  permissionList,
-  roleList,
-  suratPesananList
-} from "@/lib/erp-mock";
-import {
-  jenisBarangService,
   lokasiSimpanService,
   pabrikService,
   satuanMasterService
@@ -584,8 +579,6 @@ export const moduleConfigs = {
         type: "select",
         options: [
           { label: "Owner", value: "owner" },
-          { label: "Admin", value: "admin" },
-          { label: "Apoteker", value: "apoteker" },
           { label: "Kasir", value: "kasir" }
         ]
       },
@@ -608,8 +601,7 @@ export const moduleConfigs = {
         nama: item.nama,
         butuhResep: item.butuhResep,
         butuhSuratPesanan: item.butuhSuratPesanan,
-        deskripsi: item.deskripsi ?? "-",
-        aktif: item.aktif
+        deskripsi: item.deskripsi ?? "-"
       }));
     },
     create: (payload) =>
@@ -620,7 +612,7 @@ export const moduleConfigs = {
           butuhResep: Boolean(payload.butuhResep),
           butuhSuratPesanan: Boolean(payload.butuhSuratPesanan),
           deskripsi: payload.deskripsi ? String(payload.deskripsi) : undefined,
-          aktif: Boolean(payload.aktif)
+          aktif: true
         })
         .then((item) => ({ ...item })),
     update: (id, payload, record) =>
@@ -631,7 +623,7 @@ export const moduleConfigs = {
           butuhResep: Boolean(payload.butuhResep),
           butuhSuratPesanan: Boolean(payload.butuhSuratPesanan),
           deskripsi: payload.deskripsi ? String(payload.deskripsi) : undefined,
-          aktif: Boolean(payload.aktif)
+          aktif: true
         })
         .then((item) => (item ? { ...item } : null)),
     remove: (id) => golonganService.delete(id),
@@ -639,16 +631,14 @@ export const moduleConfigs = {
       { key: "kode", header: "Kode" },
       { key: "nama", header: "Golongan" },
       { key: "butuhResep", header: "Wajib Resep", type: "boolean" },
-      { key: "butuhSuratPesanan", header: "Wajib SP", type: "boolean" },
-      { key: "aktif", header: "Status", type: "boolean" }
+      { key: "butuhSuratPesanan", header: "Wajib SP", type: "boolean" }
     ],
     fields: [
       { name: "kode", label: "Kode Golongan", type: "text" },
       { name: "nama", label: "Nama Golongan", type: "text" },
       { name: "butuhResep", label: "Membutuhkan Resep", type: "checkbox" },
       { name: "butuhSuratPesanan", label: "Membutuhkan Surat Pesanan", type: "checkbox" },
-      { name: "deskripsi", label: "Deskripsi", type: "textarea" },
-      { name: "aktif", label: "Aktif", type: "checkbox", defaultValue: true }
+      { name: "deskripsi", label: "Deskripsi", type: "textarea" }
     ],
     detailTitleKey: "nama",
     allowDetail: true,
@@ -807,8 +797,7 @@ export const moduleConfigs = {
         id: item.id,
         kode: item.kode,
         nama: item.nama,
-        deskripsi: item.deskripsi,
-        aktif: item.aktif
+        deskripsi: item.deskripsi
       }));
     },
     create: (payload) =>
@@ -817,7 +806,7 @@ export const moduleConfigs = {
           kode: String(payload.kode ?? ""),
           nama: String(payload.nama ?? ""),
           deskripsi: payload.deskripsi ? String(payload.deskripsi) : undefined,
-          aktif: Boolean(payload.aktif)
+          aktif: true
         })
         .then((item) => ({ ...item })),
     update: (id, payload, record) =>
@@ -826,69 +815,18 @@ export const moduleConfigs = {
           kode: String(payload.kode ?? record?.kode ?? ""),
           nama: String(payload.nama ?? record?.nama ?? ""),
           deskripsi: payload.deskripsi ? String(payload.deskripsi) : undefined,
-          aktif: Boolean(payload.aktif)
+          aktif: true
         })
         .then((item) => (item ? { ...item } : null)),
     remove: (id) => satuanMasterService.delete(id),
     columns: [
       { key: "kode", header: "Kode" },
       { key: "nama", header: "Satuan" },
-      { key: "deskripsi", header: "Deskripsi" },
-      { key: "aktif", header: "Status", type: "boolean" }
+      { key: "deskripsi", header: "Deskripsi" }
     ],
     fields: [
       { name: "kode", label: "Kode Satuan", type: "text" },
       { name: "nama", label: "Nama Satuan", type: "text" },
-      { name: "deskripsi", label: "Deskripsi", type: "textarea" },
-      { name: "aktif", label: "Aktif", type: "checkbox", defaultValue: true }
-    ],
-    detailTitleKey: "nama",
-    allowDetail: true,
-    allowEdit: true,
-    allowDelete: true
-  },
-  jenisBarang: {
-    key: "jenisBarang",
-    title: "Jenis Barang",
-    description: "Klasifikasi jenis barang: obat, alkes, BHP, suplemen.",
-    basePath: "/jenis-barang",
-    addPath: "/jenis-barang/tambah",
-    load: async () => {
-      const result = await jenisBarangService.list(LOAD_ALL);
-      return result.data.map((item) => ({
-        id: item.id,
-        kode: item.kode,
-        nama: item.nama,
-        deskripsi: item.deskripsi ?? "-"
-      }));
-    },
-    create: (payload) =>
-      jenisBarangService
-        .create({
-          kode: String(payload.kode ?? "").trim() || undefined,
-          nama: String(payload.nama ?? ""),
-          deskripsi: payload.deskripsi ? String(payload.deskripsi) : undefined,
-          aktif: true
-        })
-        .then((item) => ({ ...item })),
-    update: (id, payload, record) =>
-      jenisBarangService
-        .update(id, {
-          kode: String(payload.kode ?? record?.kode ?? ""),
-          nama: String(payload.nama ?? record?.nama ?? ""),
-          deskripsi: payload.deskripsi ? String(payload.deskripsi) : undefined,
-          aktif: true
-        })
-        .then((item) => (item ? { ...item } : null)),
-    remove: (id) => jenisBarangService.delete(id),
-    columns: [
-      { key: "kode", header: "Kode" },
-      { key: "nama", header: "Jenis" },
-      { key: "deskripsi", header: "Deskripsi" }
-    ],
-    fields: [
-      { name: "kode", label: "Kode Jenis", type: "text", hiddenOnCreate: true },
-      { name: "nama", label: "Nama Jenis", type: "text" },
       { name: "deskripsi", label: "Deskripsi", type: "textarea" }
     ],
     detailTitleKey: "nama",
@@ -1074,7 +1012,6 @@ export const moduleConfigs = {
     title: "Role",
     description: "Peran akses pengguna dalam sistem.",
     basePath: "/role",
-    addPath: "/role/tambah",
     load: async () => [...roleList],
     columns: [
       { key: "kode", header: "Kode" },
@@ -1087,47 +1024,6 @@ export const moduleConfigs = {
       { name: "deskripsi", label: "Deskripsi", type: "textarea" }
     ],
     detailTitleKey: "nama",
-    allowDetail: true,
-    allowEdit: true
-  },
-  permission: {
-    key: "permission",
-    title: "Permission",
-    description: "Hak akses granular per modul.",
-    basePath: "/permission",
-    addPath: "/permission/tambah",
-    load: async () => [...permissionList],
-    columns: [
-      { key: "kode", header: "Kode" },
-      { key: "nama", header: "Permission" },
-      { key: "modul", header: "Modul" },
-      { key: "deskripsi", header: "Deskripsi" }
-    ],
-    fields: [
-      { name: "kode", label: "Kode Permission", type: "text" },
-      { name: "nama", label: "Nama Permission", type: "text" },
-      { name: "modul", label: "Modul", type: "text" },
-      { name: "deskripsi", label: "Deskripsi", type: "textarea" }
-    ],
-    detailTitleKey: "nama",
-    allowDetail: true,
-    allowEdit: true
-  },
-  suratPesanan: {
-    key: "suratPesanan",
-    title: "Surat Pesanan",
-    description: "Surat pesanan (SP) pengadaan ke supplier, termasuk SP khusus narkotika/psikotropika.",
-    basePath: "/surat-pesanan",
-    load: async () => [...suratPesananList],
-    columns: [
-      { key: "nomor", header: "Nomor" },
-      { key: "jenisSp", header: "Jenis SP", type: "status" },
-      { key: "tanggal", header: "Tanggal", type: "date" },
-      { key: "namaSupplier", header: "Supplier" },
-      { key: "status", header: "Status", type: "status" }
-    ],
-    fields: [],
-    detailTitleKey: "nomor",
     allowDetail: true
   },
   auditLog: {
@@ -1135,12 +1031,25 @@ export const moduleConfigs = {
     title: "Audit Log",
     description: "Jejak aktivitas perubahan data di sistem.",
     basePath: "/audit-log",
-    load: async () => [...auditLogList],
+    load: async () => {
+      const result = await auditLogService.list(LOAD_ALL);
+      return result.data.map((item) => ({
+        id: item.id,
+        waktu: item.waktu,
+        aksi: item.aksi,
+        namaTabel: item.namaTabel,
+        deskripsi: item.deskripsi ?? item.recordId ?? "-",
+        pengguna: item.pengguna,
+        penggunaEmail: item.penggunaEmail ?? "-"
+      }));
+    },
     columns: [
       { key: "waktu", header: "Waktu", type: "datetime" },
       { key: "aksi", header: "Aksi", type: "status" },
       { key: "namaTabel", header: "Tabel" },
-      { key: "pengguna", header: "Pengguna" }
+      { key: "deskripsi", header: "Referensi" },
+      { key: "pengguna", header: "Nama Akun" },
+      { key: "penggunaEmail", header: "Email Login" }
     ],
     fields: []
   }

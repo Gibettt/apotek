@@ -182,7 +182,6 @@ function createKodeNamaDeskripsiService(table: string, kodePrefix = "MST") {
   };
 }
 
-export const jenisBarangService = createKodeNamaDeskripsiService("jenis_barang", "JNS");
 export const satuanMasterService = createKodeNamaDeskripsiService("satuan");
 
 export interface PabrikPrincipal {

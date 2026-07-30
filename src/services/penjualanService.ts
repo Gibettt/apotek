@@ -59,6 +59,44 @@ interface CheckoutPayload {
 }
 
 const localPenjualan: Penjualan[] = [...initialPenjualan];
+const localPenjualanStorageKey = "apotek-penjualan";
+let localPenjualanHydrated = false;
+
+function hydrateLocalPenjualan() {
+  if (localPenjualanHydrated || typeof window === "undefined") return;
+  localPenjualanHydrated = true;
+
+  try {
+    const stored = window.localStorage.getItem(localPenjualanStorageKey);
+    const rows = stored ? (JSON.parse(stored) as Penjualan[]) : [];
+    for (const row of [...rows].reverse()) {
+      if (row?.id && !localPenjualan.some((item) => item.id === row.id)) {
+        localPenjualan.unshift(row);
+      }
+    }
+  } catch {
+    window.localStorage.removeItem(localPenjualanStorageKey);
+  }
+}
+
+function persistLocalPenjualan() {
+  if (typeof window === "undefined") return;
+  const customRows = localPenjualan.filter(
+    (item) => !initialPenjualan.some((initial) => initial.id === item.id)
+  );
+  window.localStorage.setItem(
+    localPenjualanStorageKey,
+    JSON.stringify(customRows)
+  );
+}
+
+function addLocalPenjualan(penjualan: Penjualan) {
+  hydrateLocalPenjualan();
+  const index = localPenjualan.findIndex((item) => item.id === penjualan.id);
+  if (index >= 0) localPenjualan.splice(index, 1);
+  localPenjualan.unshift(penjualan);
+  persistLocalPenjualan();
+}
 
 async function resolvePenggunaId(): Promise<string | null> {
   const current = getCurrentUserId();
@@ -385,6 +423,7 @@ export function resolveCheckoutItems(
 }
 
 function localCheckout(payload: CheckoutPayload): Penjualan {
+  hydrateLocalPenjualan();
   const subtotal = payload.items.reduce(
     (sum, item) => sum + item.hargaJual * item.quantity,
     0
@@ -427,7 +466,7 @@ function localCheckout(payload: CheckoutPayload): Penjualan {
     }))
   };
 
-  localPenjualan.unshift(created);
+  addLocalPenjualan(created);
   return created;
 }
 
@@ -641,6 +680,8 @@ async function postPenjualanJurnal(
 
 export const penjualanService = {
   async list(params: ListParams = {}) {
+    hydrateLocalPenjualan();
+
     if (!isSupabaseConfigured || !supabase) {
       return paginate(filterPenjualan(localPenjualan, params.search), params);
     }
@@ -680,6 +721,8 @@ export const penjualanService = {
   },
 
   async getById(id: string) {
+    hydrateLocalPenjualan();
+
     if (!isSupabaseConfigured || !supabase) {
       return localPenjualan.find((item) => item.id === id) ?? null;
     }
@@ -815,7 +858,11 @@ export const penjualanService = {
       throw new Error("Penjualan berhasil dibuat, tetapi data tidak dapat dimuat ulang");
     }
 
-    await postPenjualanJurnal(created, resolvedItems, cabangId);
+    try {
+      await postPenjualanJurnal(created, resolvedItems, cabangId);
+    } catch (error) {
+      console.warn("Jurnal otomatis penjualan gagal dibuat.", error);
+    }
 
     return created;
   }

@@ -9,12 +9,10 @@ import {
   BookText,
   Boxes,
   Building2,
-  CircleHelp,
   ClipboardList,
   Coins,
   Factory,
   FileText,
-  Key,
   LayoutDashboard,
   Lock,
   LogOut,
@@ -23,7 +21,6 @@ import {
   Pill,
   ReceiptText,
   Ruler,
-  ScrollText,
   Settings,
   ShieldCheck,
   ShoppingCart,
@@ -54,7 +51,6 @@ const menuGroups = [
   {
     label: "Pembelian",
     items: [
-      { label: "Surat Pesanan", href: "/surat-pesanan", icon: ScrollText },
       { label: "Retur Pembelian", href: "/retur", icon: Undo2 }
     ]
   },
@@ -64,7 +60,6 @@ const menuGroups = [
       { label: "Barang", href: "/obat", icon: Pill },
       { label: "Kategori", href: "/kategori", icon: Tag },
       { label: "Golongan Obat", href: "/golongan", icon: ShieldCheck },
-      { label: "Jenis Barang", href: "/jenis-barang", icon: Boxes },
       { label: "Satuan", href: "/satuan", icon: Ruler },
       { label: "Lokasi Simpan", href: "/lokasi-simpan", icon: MapPin },
       { label: "Pabrik", href: "/pabrik", icon: Factory },
@@ -95,7 +90,6 @@ const menuGroups = [
     items: [
       { label: "Users", href: "/users", icon: UserCog },
       { label: "Role", href: "/role", icon: ShieldCheck },
-      { label: "Permission", href: "/permission", icon: Key },
       { label: "Audit Log", href: "/audit-log", icon: FileText },
       { label: "Profil apotek", href: "/pengaturan/profil", icon: Settings }
     ]
@@ -105,7 +99,6 @@ const menuGroups = [
 const menuItems = menuGroups.flatMap((group) => group.items);
 const ownerOnlyHrefs = new Set([
   "/pembelian",
-  "/surat-pesanan",
   "/retur",
   "/akun",
   "/jurnal",
@@ -115,7 +108,6 @@ const ownerOnlyHrefs = new Set([
   "/laporan/stok",
   "/users",
   "/role",
-  "/permission",
   "/audit-log",
   "/pengaturan/profil"
 ]);
@@ -210,29 +202,6 @@ export function Sidebar() {
         </nav>
 
         <div className="border-t border-stone-100 p-2">
-          {canViewOwnerOnly ? (
-            <Link
-              href="/pengaturan/profil"
-              title="Bantuan"
-              onClick={() => setPendingHref("/pengaturan/profil")}
-              className={cn("dashboard-menu-link", pendingHref === "/pengaturan/profil" && "pointer-events-none opacity-70")}
-            >
-              <CircleHelp className="h-4 w-4 shrink-0" strokeWidth={1.8} />
-              <span className="dashboard-sidebar-label">Bantuan</span>
-              {pendingHref === "/pengaturan/profil" ? <span className="ml-auto h-3 w-3 animate-spin rounded-full border-2 border-[#b9d8cf] border-t-[#0f766e]" /> : null}
-            </Link>
-          ) : (
-            <button
-              type="button"
-              aria-label="Bantuan terkunci"
-              title="Khusus Owner"
-              className="dashboard-menu-link w-full cursor-not-allowed opacity-55"
-            >
-              <CircleHelp className="h-4 w-4 shrink-0" strokeWidth={1.8} />
-              <span className="dashboard-sidebar-label">Bantuan</span>
-              <Lock className="ml-auto h-3.5 w-3.5 shrink-0" strokeWidth={1.8} />
-            </button>
-          )}
           <button type="button" title="Keluar" className="dashboard-menu-link w-full" onClick={() => setLogoutOpen(true)}>
             <LogOut className="h-4 w-4 shrink-0" strokeWidth={1.8} />
             <span className="dashboard-sidebar-label">Keluar</span>

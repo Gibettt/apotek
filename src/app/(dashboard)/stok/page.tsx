@@ -1,8 +1,7 @@
 "use client";
 
-import { ModuleListPage } from "@/components/pages/ModuleListPage";
-import { moduleConfigs } from "@/constants/modules";
+import { StokOverviewPage } from "@/components/pages/StokOverviewPage";
 
 export default function StokPage() {
-  return <ModuleListPage config={moduleConfigs.stok} />;
+  return <StokOverviewPage />;
 }

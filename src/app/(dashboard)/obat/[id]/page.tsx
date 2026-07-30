@@ -1,6 +1,10 @@
 import { ModuleDetailPage } from "@/components/pages/ModuleDetailPage";
 import type { ModuleConfig, ModuleRecord } from "@/constants/modules";
 import { obatService, type ObatListItem } from "@/services/obatService";
+import { returPenjualanService } from "@/services/returPenjualanService";
+
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
 
 const obatDetailConfig: ModuleConfig = {
   key: "obat",
@@ -42,6 +46,7 @@ export default async function DetailObatPage({
 }: {
   params: { id: string };
 }) {
+  await returPenjualanService.list({ page: 1, perPage: 1000 }).catch(() => null);
   const obat = await obatService.getById(params.id).catch(() => null);
   const record = obat ? toDetailRecord(obat) : undefined;
 

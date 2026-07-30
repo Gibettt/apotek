@@ -9,13 +9,6 @@ export const satuanList = [
   { id: "st-5", kode: "PCS", nama: "Pcs", deskripsi: "Satuan buah", aktif: true }
 ];
 
-export const jenisBarangList = [
-  { id: "jb-1", kode: "OBT", nama: "Obat", deskripsi: "Produk obat", aktif: true },
-  { id: "jb-2", kode: "ALKES", nama: "Alat Kesehatan", deskripsi: "Alat kesehatan", aktif: true },
-  { id: "jb-3", kode: "BHP", nama: "Bahan Habis Pakai", deskripsi: "BHP medis", aktif: true },
-  { id: "jb-4", kode: "SUPP", nama: "Suplemen", deskripsi: "Suplemen & vitamin", aktif: true }
-];
-
 export const lokasiSimpanList = [
   { id: "lk-1", kode: "RAK-A", nama: "Rak A", tipeLokasi: "Rak", deskripsi: "Obat bebas", aktif: true },
   { id: "lk-2", kode: "RAK-B", nama: "Rak B", tipeLokasi: "Rak", deskripsi: "Obat keras", aktif: true },
@@ -43,18 +36,7 @@ export const akunList = [
 
 export const roleList = [
   { id: "ro-1", kode: "owner", nama: "Owner", deskripsi: "Akses penuh seluruh sistem" },
-  { id: "ro-2", kode: "admin", nama: "Admin", deskripsi: "Kelola master data & operasional" },
-  { id: "ro-3", kode: "apoteker", nama: "Apoteker", deskripsi: "Verifikasi resep & stok" },
   { id: "ro-4", kode: "kasir", nama: "Kasir", deskripsi: "Transaksi penjualan" }
-];
-
-export const permissionList = [
-  { id: "pm-1", kode: "obat.view", nama: "Lihat Obat", modul: "Master", deskripsi: "Melihat daftar obat" },
-  { id: "pm-2", kode: "obat.edit", nama: "Ubah Obat", modul: "Master", deskripsi: "Menambah/ubah obat" },
-  { id: "pm-3", kode: "penjualan.create", nama: "Buat Penjualan", modul: "Penjualan", deskripsi: "Transaksi kasir" },
-  { id: "pm-4", kode: "pembelian.create", nama: "Buat Pembelian", modul: "Pembelian", deskripsi: "Buat faktur beli" },
-  { id: "pm-5", kode: "laporan.view", nama: "Lihat Laporan", modul: "Laporan", deskripsi: "Akses laporan" },
-  { id: "pm-6", kode: "user.manage", nama: "Kelola User", modul: "Manajemen", deskripsi: "Kelola user & role" }
 ];
 
 export const suratPesananList = [
@@ -63,9 +45,3 @@ export const suratPesananList = [
   { id: "sp-3", nomor: "SP-2026-0003", jenisSp: "Psikotropika", tanggal: "2026-07-07", namaSupplier: "Kimia Farma", status: "disetujui" }
 ];
 
-export const auditLogList = [
-  { id: "al-1", waktu: "2026-07-10T08:30:00", aksi: "INSERT", namaTabel: "penjualan", pengguna: "Admin Apotek" },
-  { id: "al-2", waktu: "2026-07-10T09:15:00", aksi: "UPDATE", namaTabel: "barang", pengguna: "Admin Apotek" },
-  { id: "al-3", waktu: "2026-07-10T10:00:00", aksi: "DELETE", namaTabel: "supplier", pengguna: "Owner" },
-  { id: "al-4", waktu: "2026-07-11T14:20:00", aksi: "INSERT", namaTabel: "pembelian", pengguna: "Admin Apotek" }
-];

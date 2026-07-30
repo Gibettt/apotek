@@ -15,7 +15,7 @@ import { Button } from "@/components/ui/Button";
 const modules = [
   {
     title: "Stok real-time",
-    description: "Batch, lokasi rak, minimum stok, mutasi, opname, dan expired.",
+    description: "Batch, lokasi rak, minimum stok, mutasi, dan expired.",
     icon: Boxes
   },
   {

@@ -15,20 +15,33 @@ import { Header } from "@/components/layout/Header";
 import type { ColumnConfig, ModuleConfig, ModuleRecord } from "@/constants/modules";
 import { statusLabel } from "@/constants/status";
 import { usePagination } from "@/hooks/usePagination";
+import { auditLogService } from "@/services/auditLogService";
 import { formatCurrency } from "@/utils/formatCurrency";
 import { formatDate, formatDateTime } from "@/utils/formatDate";
 
 function formatCell(value: unknown, column: ColumnConfig) {
   if (column.type === "currency") {
-    return formatCurrency(Number(value ?? 0));
+    return (
+      <span className="font-black text-[#20201d]">
+        {formatCurrency(Number(value ?? 0))}
+      </span>
+    );
   }
 
   if (column.type === "date" && value) {
-    return formatDate(String(value));
+    return (
+      <span className="font-bold text-stone-600">
+        {formatDate(String(value))}
+      </span>
+    );
   }
 
   if (column.type === "datetime" && value) {
-    return formatDateTime(String(value));
+    return (
+      <span className="font-bold text-stone-600">
+        {formatDateTime(String(value))}
+      </span>
+    );
   }
 
   if (column.type === "boolean") {
@@ -43,7 +56,27 @@ function formatCell(value: unknown, column: ColumnConfig) {
     return <Badge variant="info">{statusLabel(String(value))}</Badge>;
   }
 
-  return String(value ?? "-");
+  if (column.key.toLowerCase().includes("kode")) {
+    return (
+      <span className="inline-flex max-w-[160px] items-center rounded-md bg-[#f8f7f3] px-2.5 py-1 font-black text-stone-700">
+        <span className="truncate">{String(value ?? "-")}</span>
+      </span>
+    );
+  }
+
+  if (column.key.toLowerCase().includes("deskripsi")) {
+    return (
+      <span className="block max-w-[560px] leading-6 text-stone-600">
+        {String(value ?? "-")}
+      </span>
+    );
+  }
+
+  if (column.key.toLowerCase().includes("nama")) {
+    return <span className="font-black text-[#20201d]">{String(value ?? "-")}</span>;
+  }
+
+  return <span className="font-semibold text-stone-600">{String(value ?? "-")}</span>;
 }
 
 function BooleanCell({
@@ -122,6 +155,12 @@ export function ModuleListPage({ config }: { config: ModuleConfig }) {
 
     try {
       await config.remove(id);
+      await auditLogService.record({
+        aksi: "DELETE",
+        namaTabel: config.key,
+        recordId: id,
+        deskripsi: `Hapus ${config.title}${label ? `: ${label}` : ""}`
+      });
       setRowsData((current) => current.filter((item) => String(item.id) !== id));
       toast.success(`${config.title} berhasil dihapus`);
     } catch (error) {
@@ -143,6 +182,12 @@ export function ModuleListPage({ config }: { config: ModuleConfig }) {
 
     try {
       const updated = await config.update(id, { ...row, [key]: nextValue }, row);
+      await auditLogService.record({
+        aksi: "UPDATE",
+        namaTabel: config.key,
+        recordId: id,
+        deskripsi: `Update ${config.title}`
+      });
       setRowsData((current) =>
         current.map((item) =>
           String(item.id) === id ? { ...item, ...(updated ?? row), [key]: nextValue } : item
@@ -196,19 +241,31 @@ export function ModuleListPage({ config }: { config: ModuleConfig }) {
     {
       key: "actions",
       header: "",
-      className: "w-36 text-right",
+      className: "w-32 text-right",
       cell: (row: ModuleRecord) => (
         <div className="flex justify-end gap-1">
           {config.allowDetail ? (
             <Link href={`${config.basePath}/${row.id}`} aria-label="Detail">
-              <Button type="button" variant="ghost" size="icon">
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                title="Detail"
+                className="h-9 w-9 rounded-lg text-stone-500 hover:bg-emerald-50 hover:text-[#0f766e]"
+              >
                 <Eye className="h-4 w-4" />
               </Button>
             </Link>
           ) : null}
           {config.allowEdit ? (
             <Link href={`${config.basePath}/${row.id}/edit`} aria-label="Edit">
-              <Button type="button" variant="ghost" size="icon">
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                title="Edit"
+                className="h-9 w-9 rounded-lg text-stone-500 hover:bg-emerald-50 hover:text-[#0f766e]"
+              >
                 <Pencil className="h-4 w-4" />
               </Button>
             </Link>
@@ -221,7 +278,8 @@ export function ModuleListPage({ config }: { config: ModuleConfig }) {
               aria-label="Hapus"
               disabled={deletingId === String(row.id)}
               onClick={() => handleDelete(row)}
-              className="text-red-600 hover:bg-red-50 hover:text-red-700"
+              title="Hapus"
+              className="h-9 w-9 rounded-lg text-red-600 hover:bg-red-50 hover:text-red-700"
             >
               <Trash2 className="h-4 w-4" />
             </Button>
@@ -239,7 +297,7 @@ export function ModuleListPage({ config }: { config: ModuleConfig }) {
         action={
           config.addPath ? (
             <Link href={config.addPath}>
-              <Button>
+              <Button className="rounded-lg bg-[#0f766e] px-5 font-black hover:bg-[#115e59]">
                 <Plus className="h-4 w-4" />
                 Tambah
               </Button>
@@ -248,16 +306,23 @@ export function ModuleListPage({ config }: { config: ModuleConfig }) {
         }
       />
 
-      <Card>
-        <CardContent className="space-y-4">
-          <SearchInput
-            value={search}
-            onChange={(value) => {
-              setSearch(value);
-              pagination.setPage(1);
-            }}
-            placeholder={`Cari ${config.title.toLowerCase()}...`}
-          />
+      <Card className="rounded-lg">
+        <CardContent className="space-y-4 p-4">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div className="min-w-[260px] flex-1">
+              <SearchInput
+                value={search}
+                onChange={(value) => {
+                  setSearch(value);
+                  pagination.setPage(1);
+                }}
+                placeholder={`Cari ${config.title.toLowerCase()}...`}
+              />
+            </div>
+            <div className="rounded-lg bg-[#f8f7f3] px-3 py-2 text-sm font-black text-[#0f766e]">
+              {filteredRows.length} data
+            </div>
+          </div>
           <Table
             columns={columns}
             data={rows}

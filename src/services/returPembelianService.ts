@@ -41,7 +41,7 @@ interface ReturDetailRow {
   barang_id: string | null;
   batch_id: string | null;
   qty: number | null;
-  harga_beli: number | string | null;
+  harga_beli?: number | string | null;
   subtotal: number | string | null;
 }
 
@@ -71,7 +71,7 @@ function toDetail(row: ReturDetailRow, obatById: Record<string, string> = {}): R
     namaBarang: obatById[barangId] ?? "-",
     batchId: row.batch_id ?? undefined,
     jumlah: Number(row.qty ?? 0),
-    hargaBeli: toNumber(row.harga_beli),
+    hargaBeli: row.harga_beli != null ? toNumber(row.harga_beli) : toNumber(row.subtotal) / Math.max(1, Number(row.qty ?? 0)),
     subtotal: toNumber(row.subtotal)
   };
 }
@@ -151,6 +151,15 @@ async function loadDetailsForRetur(ids: string[]) {
     acc[detail.returId] = [...(acc[detail.returId] ?? []), detail];
     return acc;
   }, {});
+}
+
+async function removeReturById(id: string) {
+  if (!supabase) {
+    return;
+  }
+
+  await supabase.from("retur_pembelian_detail").delete().eq("retur_pembelian_id", id);
+  await supabase.from("retur_pembelian").delete().eq("id", id);
 }
 
 async function resolveCabangId(preferred?: string): Promise<string> {
@@ -272,9 +281,18 @@ export const returPembelianService = {
 
     const rows = (data ?? []) as ReturRow[];
     const detailByRetur = await loadDetailsForRetur(rows.map((item) => item.id));
+    const orphanIds = rows
+      .filter((item) => (detailByRetur[item.id] ?? []).length === 0)
+      .map((item) => item.id);
+
+    if (orphanIds.length) {
+      await Promise.all(orphanIds.map((id) => removeReturById(id)));
+    }
 
     const result = filterRetur(
-      rows.map((item) => toRetur(item, detailByRetur[item.id] ?? [], lookupMaps.supplierById)),
+      rows
+        .filter((item) => !orphanIds.includes(item.id))
+        .map((item) => toRetur(item, detailByRetur[item.id] ?? [], lookupMaps.supplierById)),
       params.search
     );
 
@@ -298,6 +316,11 @@ export const returPembelianService = {
       }
 
       throw new Error(error.message);
+    }
+
+    if (data && (detailByRetur[id] ?? []).length === 0) {
+      await removeReturById(id);
+      return null;
     }
 
     return data ? toRetur(data, detailByRetur[id] ?? [], lookupMaps.supplierById) : null;
@@ -348,35 +371,37 @@ export const returPembelianService = {
 
     const dibuatOleh = await resolvePenggunaId();
 
-    const { data, error } = await supabase
-      .from("retur_pembelian")
-      .insert({
-        cabang_id: cabangId,
-        supplier_id: payload.supplierId,
-        pembelian_id: payload.pembelianId || null,
-        nomor,
-        tanggal: payload.tanggal || null,
-        alasan: payload.alasan,
-        total,
-        status,
-        dibuat_oleh: dibuatOleh,
-        updated_at: new Date().toISOString()
-      })
-      .select("*")
-      .single();
+    let createdId: string | null = null;
 
-    if (error) {
-      throw new Error(error.message);
-    }
+    try {
+      const { data, error } = await supabase
+        .from("retur_pembelian")
+        .insert({
+          cabang_id: cabangId,
+          supplier_id: payload.supplierId,
+          nomor,
+          tanggal: payload.tanggal || null,
+          alasan: payload.alasan,
+          total,
+          status,
+          dibuat_oleh: dibuatOleh,
+          updated_at: new Date().toISOString()
+        })
+        .select("*")
+        .single();
 
-    if (payload.items.length) {
+      if (error) {
+        throw new Error(error.message);
+      }
+
+      createdId = data.id as string;
+
       const { error: detailError } = await supabase.from("retur_pembelian_detail").insert(
         payload.items.map((item) => ({
-          retur_pembelian_id: data.id,
+          retur_pembelian_id: createdId,
           barang_id: item.barangId,
           batch_id: item.batchId || null,
           qty: item.jumlah,
-          harga_beli: item.hargaBeli,
           subtotal: item.jumlah * item.hargaBeli
         }))
       );
@@ -384,19 +409,25 @@ export const returPembelianService = {
       if (detailError) {
         throw new Error(detailError.message);
       }
+
+      const created = await this.getById(createdId);
+
+      if (!created) {
+        throw new Error("Retur berhasil dibuat, tetapi data tidak dapat dimuat ulang");
+      }
+
+      if (created.status === "posted") {
+        await reduceStockForRetur(created);
+      }
+
+      return created;
+    } catch (error) {
+      if (createdId) {
+        await removeReturById(createdId);
+      }
+
+      throw error;
     }
-
-    const created = await this.getById(data.id);
-
-    if (!created) {
-      throw new Error("Retur berhasil dibuat, tetapi data tidak dapat dimuat ulang");
-    }
-
-    if (created.status === "posted") {
-      await reduceStockForRetur(created);
-    }
-
-    return created;
   },
 
   async post(id: string) {
