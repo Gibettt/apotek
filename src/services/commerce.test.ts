@@ -87,11 +87,30 @@ describe("commerce services", () => {
       search: "PBL-TEST-0001",
       perPage: 5
     });
+    const history = await pembelianService.listHistory({
+      purchaseDate: "2026-07-08",
+      search: "BATCH-TEST",
+      perPage: 5
+    });
+    const emptyHistory = await pembelianService.listHistory({
+      purchaseDate: "2026-07-09",
+      search: "BATCH-TEST",
+      perPage: 5
+    });
     const received = await pembelianService.receive(created.id);
 
     expect(created.grandTotal).toBe(5500);
     expect(created.status).toBe("draft");
     expect(list.total).toBe(1);
+    expect(history.data[0]).toMatchObject({
+      nomorInternal: "PBL-TEST-0001",
+      tanggalFaktur: "2026-07-08",
+      namaBarang: "-",
+      batchNumber: "BATCH-TEST",
+      jumlah: 3,
+      subtotal: 5500
+    });
+    expect(emptyHistory.total).toBe(0);
     expect(received.status).toBe("diterima");
   });
 
@@ -294,7 +313,7 @@ describe("commerce services", () => {
   it("routes cash sales to Kas and everything else to Bank", () => {
     expect(resolveKasAkunKode("tunai").nama).toBe("Kas");
     expect(resolveKasAkunKode("transfer").nama).toBe("Bank");
-    expect(resolveKasAkunKode("BPJS").nama).toBe("Bank");
+    expect(resolveKasAkunKode("accurate").nama).toBe("Bank");
   });
 
   it("lists customer sales for sales returns and rejects over-returned quantities", async () => {

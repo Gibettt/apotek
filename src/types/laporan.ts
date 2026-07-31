@@ -26,6 +26,5 @@ export interface SalesReportSummary {
   canceledTransactions: number;
   cashRevenue: number;
   transferRevenue: number;
-  bpjsRevenue: number;
   accurateRevenue: number;
 }

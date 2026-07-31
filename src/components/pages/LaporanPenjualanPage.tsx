@@ -40,7 +40,6 @@ const defaultSummary: SalesReportSummary = {
   canceledTransactions: 0,
   cashRevenue: 0,
   transferRevenue: 0,
-  bpjsRevenue: 0,
   accurateRevenue: 0
 };
 
@@ -60,9 +59,6 @@ function defaultRange() {
 }
 
 function methodLabel(value: string) {
-  if (value === "BPJS") {
-    return "BPJS";
-  }
   if (value === "accurate") {
     return "Accurate e-Payment";
   }
@@ -223,7 +219,6 @@ export function LaporanPenjualanPage() {
   const maxPayment = Math.max(
     summary.cashRevenue,
     summary.transferRevenue,
-    summary.bpjsRevenue,
     summary.accurateRevenue
   );
 
@@ -363,7 +358,6 @@ export function LaporanPenjualanPage() {
                 { label: "Semua metode", value: "semua" },
                 { label: "Tunai", value: "tunai" },
                 { label: "Transfer", value: "transfer" },
-                { label: "BPJS", value: "BPJS" },
                 { label: "Accurate e-Payment", value: "accurate" }
               ]}
             />
@@ -423,7 +417,7 @@ export function LaporanPenjualanPage() {
             </span>
           </div>
 
-          <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-[repeat(4,minmax(0,1fr))_220px]">
+          <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-[repeat(3,minmax(0,1fr))_220px]">
             <PaymentBreakdown
               label="Tunai"
               value={summary.cashRevenue}
@@ -435,12 +429,6 @@ export function LaporanPenjualanPage() {
               value={summary.transferRevenue}
               max={maxPayment}
               icon={CreditCard}
-            />
-            <PaymentBreakdown
-              label="BPJS"
-              value={summary.bpjsRevenue}
-              max={maxPayment}
-              icon={WalletCards}
             />
             <PaymentBreakdown
               label="Accurate e-Payment"

@@ -1632,8 +1632,41 @@ textarea {
     display: none !important;
   }
 
+  html,
+  body,
+  html:has(.dashboard-app-shell),
+  body:has(.dashboard-app-shell) {
+    height: auto !important;
+    overflow: visible !important;
+  }
+
   body {
     background: white;
+  }
+
+  .dashboard-side-rail,
+  .dashboard-navbar {
+    display: none !important;
+  }
+
+  .dashboard-app-shell,
+  .dashboard-content {
+    display: block !important;
+    height: auto !important;
+    overflow: visible !important;
+    border: 0 !important;
+    box-shadow: none !important;
+    background: white !important;
+  }
+
+  .dashboard-content main {
+    max-width: none !important;
+    padding: 0 !important;
+  }
+
+  .dashboard-surface {
+    border-radius: 0 !important;
+    box-shadow: none !important;
   }
 }
 

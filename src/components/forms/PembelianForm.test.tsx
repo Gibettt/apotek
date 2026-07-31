@@ -60,11 +60,6 @@ function setAuthRole(role: "owner" | "kasir" = "owner") {
   });
 }
 
-function selectInlineOption(label: string, optionName: string) {
-  fireEvent.click(screen.getAllByLabelText(label)[0]);
-  fireEvent.click(screen.getByRole("option", { name: optionName }));
-}
-
 describe("PembelianForm", () => {
   beforeEach(() => {
     setAuthRole("owner");
@@ -149,7 +144,9 @@ describe("PembelianForm", () => {
     fireEvent.change(barangInputs[0], {
       target: { value: "Vitamin C Baru" }
     });
-    selectInlineOption("Satuan Pembelian", "Kaplet");
+    fireEvent.change(screen.getByLabelText("Satuan Pembelian"), {
+      target: { value: "sat-1" }
+    });
 
     fireEvent.click(screen.getByRole("button", { name: /simpan pembelian/i }));
 
@@ -241,10 +238,6 @@ describe("PembelianForm", () => {
       target: { value: "Paracetamol" }
     });
 
-    const konversi = screen.getAllByLabelText("Konversi")[0] as HTMLInputElement;
-    expect(konversi.value).toBe("10");
-    expect(konversi).toBeDisabled();
-
     fireEvent.click(screen.getByRole("button", { name: /simpan pembelian/i }));
 
     await waitFor(() => {
@@ -267,6 +260,11 @@ describe("PembelianForm", () => {
     await waitFor(() => {
       expect(mocks.listSupplier).toHaveBeenCalled();
     });
+
+    fireEvent.change(screen.getByLabelText("Barang"), {
+      target: { value: "Vitamin C Baru" }
+    });
+    fireEvent.click(screen.getByRole("button", { name: /tambah item/i }));
 
     expect(screen.getByText(/^BATCH-\d{8}-001$/)).toBeInTheDocument();
   });

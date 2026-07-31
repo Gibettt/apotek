@@ -1,10 +1,9 @@
 "use client";
 
-import { ArrowLeft, Check, ChevronDown, Lock, Maximize2, Minimize2, PackagePlus, Save, Trash2 } from "lucide-react";
+import { ArrowLeft, Lock, PackagePlus, Save, Trash2 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { createPortal } from "react-dom";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { Header } from "@/components/layout/Header";
 import { Button } from "@/components/ui/Button";
@@ -25,7 +24,6 @@ import { useAuthStore } from "@/store/authStore";
 import { useCabangStore } from "@/store/cabangStore";
 import type { StatusPembelian, Supplier } from "@/types";
 import { generateAutoKode } from "@/utils/autoKode";
-import { cn } from "@/utils/cn";
 import { formatCurrency } from "@/utils/formatCurrency";
 
 type DiskonMode = "rp" | "persen";
@@ -73,157 +71,6 @@ function todayInputValue() {
 function generateAutoBatchNumber(rowIndex: number, tanggalPembelian: string) {
   const datePart = (tanggalPembelian || todayInputValue()).replace(/-/g, "");
   return `BATCH-${datePart}-${String(rowIndex + 1).padStart(3, "0")}`;
-}
-
-const cellFieldClass =
-  "h-9 w-full min-w-0 rounded-none border-0 bg-transparent px-2 text-xs shadow-none outline-none focus:relative focus:z-10 focus:bg-white focus:ring-2 focus:ring-inset focus:ring-blue-500";
-
-interface InlineTableSelectProps {
-  ariaLabel: string;
-  row: number;
-  col: number;
-  value: string;
-  disabled?: boolean;
-  options: Array<{ label: string; value: string | number }>;
-  onChange: (value: string) => void;
-  onKeyDown: (event: React.KeyboardEvent) => void;
-}
-
-function InlineTableSelect({
-  ariaLabel,
-  row,
-  col,
-  value,
-  disabled,
-  options,
-  onChange,
-  onKeyDown
-}: InlineTableSelectProps) {
-  const [open, setOpen] = useState(false);
-  const [menuPosition, setMenuPosition] = useState<{ left: number; top: number; width: number } | null>(null);
-  const ref = useRef<HTMLDivElement>(null);
-  const buttonRef = useRef<HTMLButtonElement>(null);
-  const menuRef = useRef<HTMLDivElement>(null);
-  const selected = options.find((option) => String(option.value) === value);
-  const updatePosition = useCallback(() => {
-    const rect = buttonRef.current?.getBoundingClientRect();
-
-    if (rect) {
-      setMenuPosition({
-        left: rect.left,
-        top: rect.bottom + 4,
-        width: Math.max(rect.width, 224)
-      });
-    }
-  }, []);
-
-  useEffect(() => {
-    if (!open) return;
-    updatePosition();
-
-    function closeOnOutsideClick(event: MouseEvent) {
-      const target = event.target as Node;
-      if (!ref.current?.contains(target) && !menuRef.current?.contains(target)) {
-        setOpen(false);
-      }
-    }
-
-    document.addEventListener("mousedown", closeOnOutsideClick);
-    window.addEventListener("resize", updatePosition);
-    window.addEventListener("scroll", updatePosition, true);
-
-    return () => {
-      document.removeEventListener("mousedown", closeOnOutsideClick);
-      window.removeEventListener("resize", updatePosition);
-      window.removeEventListener("scroll", updatePosition, true);
-    };
-  }, [open, updatePosition]);
-
-  function toggleOpen() {
-    if (open) {
-      setOpen(false);
-      return;
-    }
-
-    updatePosition();
-    setOpen(true);
-  }
-
-  return (
-    <div ref={ref} className="relative">
-      <button
-        ref={buttonRef}
-        type="button"
-        aria-label={ariaLabel}
-        aria-expanded={open}
-        data-row={row}
-        data-col={col}
-        disabled={disabled}
-        onClick={toggleOpen}
-        onKeyDown={(event) => {
-          if (event.key === "Enter" || event.key === " ") {
-            event.preventDefault();
-            toggleOpen();
-            return;
-          }
-
-          onKeyDown(event);
-        }}
-        className={cn(
-          cellFieldClass,
-          "flex items-center justify-between gap-2 text-left hover:bg-[#f8f7f3]",
-          disabled && "cursor-not-allowed text-stone-400"
-        )}
-      >
-        <span className={cn("truncate", !value && "text-stone-500")}>
-          {selected?.label ?? options[0]?.label ?? "Pilih"}
-        </span>
-        <ChevronDown
-          className={cn("h-3.5 w-3.5 shrink-0 text-stone-400 transition", open && "rotate-180")}
-          strokeWidth={2}
-        />
-      </button>
-      {open && menuPosition && typeof document !== "undefined" ? createPortal(
-        <div
-          ref={menuRef}
-          role="listbox"
-          aria-label={ariaLabel}
-          style={{
-            left: menuPosition.left,
-            top: menuPosition.top,
-            width: menuPosition.width
-          }}
-          className="fixed z-[100] max-h-64 overflow-auto rounded-lg border border-stone-200 bg-white p-1 text-xs shadow-[0_18px_44px_rgba(25,24,21,.16)]"
-        >
-          {options.map((option) => {
-            const optionValue = String(option.value);
-            const active = optionValue === value;
-
-            return (
-              <button
-                key={optionValue || option.label}
-                type="button"
-                role="option"
-                aria-selected={active}
-                onClick={() => {
-                  onChange(optionValue);
-                  setOpen(false);
-                }}
-                className={cn(
-                  "flex w-full items-center justify-between gap-2 rounded-md px-3 py-2 text-left font-semibold transition",
-                  active ? "bg-[#0f766e] text-white" : "text-stone-600 hover:bg-[#eef7f2] hover:text-[#0f766e]"
-                )}
-              >
-                <span className="truncate">{option.label}</span>
-                {active ? <Check className="h-3.5 w-3.5 shrink-0" strokeWidth={2} /> : null}
-              </button>
-            );
-          })}
-        </div>,
-        document.body
-      ) : null}
-    </div>
-  );
 }
 
 function parseNumberInput(value: string) {
@@ -285,288 +132,13 @@ function lineSubtotal(item: PembelianFormItem) {
   return Math.max(0, lineGross(item) - lineDiskonNominal(item));
 }
 
-type ItemUpdater = (item: PembelianFormItem) => PembelianFormItem;
-
-interface PembelianItemRowProps {
-  item: PembelianFormItem;
-  index: number;
-  tanggalPembelian: string;
-  isLoadingOptions: boolean;
-  kategoriOptions: MasterOption[];
-  satuanOptions: MasterOption[];
-  obatById: Record<string, ObatListItem>;
-  onUpdateItem: (index: number, updater: ItemUpdater) => void;
-  onBarangNameChange: (index: number, value: string) => void;
-  onSatuanChange: (index: number, satuanId: string) => void;
-  onRemoveItem: (index: number) => void;
-  onCellKeyDown: (
-    event: React.KeyboardEvent,
-    row: number,
-    col: number,
-    isSelect?: boolean
-  ) => void;
+function itemHasContent(item: PembelianFormItem) {
+  return Boolean(item.barangId || item.barangNama.trim());
 }
 
-const PembelianItemRow = memo(function PembelianItemRow({
-  item,
-  index,
-  tanggalPembelian,
-  isLoadingOptions,
-  kategoriOptions,
-  satuanOptions,
-  obatById,
-  onUpdateItem,
-  onBarangNameChange,
-  onSatuanChange,
-  onRemoveItem,
-  onCellKeyDown
-}: PembelianItemRowProps) {
-  return (
-    <tr className="bg-white align-top even:bg-[#faf9f6]">
-      <td className="border-b border-r border-stone-100 bg-[#f8f7f3] px-2 text-center">
-        <span className="text-xs font-bold text-stone-600">{index + 1}</span>
-      </td>
-      <td className="border-b border-r border-stone-100 p-0">
-        <InlineTableSelect
-          ariaLabel="Kategori"
-          row={index}
-          col={1}
-          onKeyDown={(event) => onCellKeyDown(event, index, 1, true)}
-          value={item.kategoriId}
-          disabled={isLoadingOptions}
-          onChange={(value) =>
-            onUpdateItem(index, (current) => ({
-              ...current,
-              kategoriId: value
-            }))
-          }
-          options={[
-            { label: "Pilih kategori", value: "" },
-            ...kategoriOptions.map((kategori) => ({
-              label: kategori.label,
-              value: kategori.id
-            }))
-          ]}
-        />
-      </td>
-      <td className="border-b border-r border-stone-100 p-0">
-        <Input
-          aria-label="Barang"
-          data-row={index}
-          data-col={2}
-          onKeyDown={(event) => onCellKeyDown(event, index, 2)}
-          list="pembelian-barang-options"
-          value={item.barangNama}
-          disabled={isLoadingOptions}
-          onChange={(event) => onBarangNameChange(index, event.target.value)}
-          placeholder="Ketik nama obat"
-          title={
-            item.barangNama.trim() && !item.barangId
-              ? "Obat baru, akan otomatis dibuat di fitur Barang saat disimpan"
-              : undefined
-          }
-          className={`${cellFieldClass} truncate ${
-            item.barangNama.trim() && !item.barangId ? "text-sky-700" : ""
-          }`}
-        />
-      </td>
-      <td className="border-b border-r border-stone-100 bg-[#f8f7f3] p-0">
-        <div
-          title={item.autoKode ? "Preview kode obat baru" : undefined}
-          className={`flex h-9 items-center truncate px-2 text-xs font-bold ${
-            item.autoKode ? "text-sky-700" : "text-stone-500"
-          }`}
-        >
-          {item.barangId ? obatById[item.barangId]?.kode ?? "-" : item.autoKode || "-"}
-        </div>
-      </td>
-      <td className="border-b border-r border-stone-100 p-0">
-        <InlineTableSelect
-          ariaLabel="Satuan Pembelian"
-          row={index}
-          col={3}
-          onKeyDown={(event) => onCellKeyDown(event, index, 3, true)}
-          value={item.satuanId}
-          onChange={(value) => onSatuanChange(index, value)}
-          options={[
-            { label: "Pilih satuan", value: "" },
-            ...satuanOptions.map((satuan) => ({
-              label: satuan.label,
-              value: satuan.id
-            }))
-          ]}
-        />
-      </td>
-      <td className="border-b border-r border-stone-100 p-0">
-        <Input
-          aria-label="Konversi"
-          data-row={index}
-          data-col={4}
-          onKeyDown={(event) => onCellKeyDown(event, index, 4)}
-          type="number"
-          min={1}
-          value={item.konversi}
-          disabled={item.konversiLocked}
-          onChange={(event) =>
-            onUpdateItem(index, (current) => ({
-              ...current,
-              konversi: event.target.value
-            }))
-          }
-          className={`${cellFieldClass} ${item.konversiLocked ? "bg-[#f8f7f3] font-bold text-stone-500" : ""}`}
-        />
-      </td>
-      <td className="border-b border-r border-stone-100 p-0">
-        <Input
-          aria-label="Jumlah Dikirim"
-          data-row={index}
-          data-col={5}
-          onKeyDown={(event) => onCellKeyDown(event, index, 5)}
-          type="number"
-          min={0}
-          value={item.jumlahDikirim}
-          onChange={(event) =>
-            onUpdateItem(index, (current) => ({
-              ...current,
-              jumlahDikirim: event.target.value
-            }))
-          }
-          className={cellFieldClass}
-        />
-      </td>
-      <td className="border-b border-r border-stone-100 p-0">
-        <Input
-          aria-label="Jumlah Diterima"
-          data-row={index}
-          data-col={6}
-          onKeyDown={(event) => onCellKeyDown(event, index, 6)}
-          type="number"
-          min={0}
-          value={item.jumlahDiterima}
-          onChange={(event) =>
-            onUpdateItem(index, (current) => ({
-              ...current,
-              jumlahDiterima: event.target.value
-            }))
-          }
-          className={`${cellFieldClass} font-bold`}
-        />
-      </td>
-      <td className="border-b border-r border-stone-100 p-0">
-        <Input
-          aria-label="Jumlah Ditolak"
-          data-row={index}
-          data-col={7}
-          onKeyDown={(event) => onCellKeyDown(event, index, 7)}
-          type="number"
-          min={0}
-          value={item.jumlahDitolak}
-          onChange={(event) =>
-            onUpdateItem(index, (current) => ({
-              ...current,
-              jumlahDitolak: event.target.value
-            }))
-          }
-          className={cellFieldClass}
-        />
-      </td>
-      <td className="border-b border-r border-stone-100 p-0">
-        <div className="flex h-9 items-center truncate bg-[#f8f7f3] px-2 text-xs font-bold text-stone-600">
-          {generateAutoBatchNumber(index, tanggalPembelian)}
-        </div>
-      </td>
-      <td className="border-b border-r border-stone-100 p-0">
-        <Input
-          aria-label="Kedaluwarsa"
-          data-row={index}
-          data-col={9}
-          onKeyDown={(event) => onCellKeyDown(event, index, 9)}
-          type="date"
-          value={item.tanggalExpired}
-          onChange={(event) =>
-            onUpdateItem(index, (current) => ({
-              ...current,
-              tanggalExpired: event.target.value
-            }))
-          }
-          className={cellFieldClass}
-        />
-      </td>
-      <td className="border-b border-r border-stone-100 p-0">
-        <Input
-          aria-label="Harga Beli"
-          data-row={index}
-          data-col={10}
-          onKeyDown={(event) => onCellKeyDown(event, index, 10)}
-          type="number"
-          min={0}
-          value={item.hargaBeli}
-          onChange={(event) =>
-            onUpdateItem(index, (current) => ({
-              ...current,
-              hargaBeli: event.target.value
-            }))
-          }
-          className={cellFieldClass}
-        />
-      </td>
-      <td className="border-b border-r border-stone-100 p-0">
-        <div className="flex h-9 items-stretch">
-          <Input
-            aria-label="Diskon Item"
-            data-row={index}
-            data-col={11}
-            onKeyDown={(event) => onCellKeyDown(event, index, 11)}
-            type="number"
-            min={0}
-            value={item.diskon}
-            onChange={(event) =>
-              onUpdateItem(index, (current) => ({
-                ...current,
-                diskon: event.target.value
-              }))
-            }
-            className={`${cellFieldClass} flex-1`}
-          />
-          <select
-            aria-label="Mode Diskon Item"
-            value={item.diskonMode}
-            onChange={(event) =>
-              onUpdateItem(index, (current) => ({
-                ...current,
-                diskonMode: event.target.value as DiskonMode
-              }))
-            }
-            className="w-11 shrink-0 border-0 border-l border-stone-200 bg-transparent px-1 text-[10px] font-bold text-stone-500 outline-none focus:relative focus:z-10 focus:ring-2 focus:ring-inset focus:ring-blue-500"
-          >
-            <option value="rp">Rp</option>
-            <option value="persen">%</option>
-          </select>
-        </div>
-      </td>
-      <td className="overflow-hidden border-b border-r border-stone-100 px-2 text-right">
-        <span className="block truncate text-xs font-black text-[#20201d]">
-          {formatCurrency(lineSubtotal(item))}
-        </span>
-      </td>
-      <td className="overflow-hidden border-b border-r border-stone-100 px-2 text-right">
-        <span className="block truncate text-xs font-black text-emerald-700">
-          +{stokBertambah(item)}
-        </span>
-      </td>
-      <td className="border-b border-stone-100 p-1 text-center">
-        <button
-          type="button"
-          aria-label="Hapus item"
-          onClick={() => onRemoveItem(index)}
-          className="grid h-9 w-9 place-items-center rounded-md bg-red-50 text-red-600 transition hover:bg-red-100"
-        >
-          <Trash2 className="h-4 w-4" strokeWidth={1.9} />
-        </button>
-      </td>
-    </tr>
-  );
-});
+function optionLabel(options: MasterOption[], id: string) {
+  return options.find((option) => String(option.id) === id)?.label ?? "-";
+}
 
 export function PembelianForm() {
   const user = useAuthStore((state) => state.user);
@@ -621,10 +193,10 @@ function PembelianFormContent() {
   const [catatan, setCatatan] = useState("");
   const [diskon, setDiskon] = useState("0");
   const [pajak, setPajak] = useState("0");
-  const [items, setItems] = useState<PembelianFormItem[]>(() => [{ ...emptyItem }]);
-  const [rowsToAdd, setRowsToAdd] = useState("1");
-  const [isItemsFullscreen, setIsItemsFullscreen] = useState(false);
-  const itemsTableRef = useRef<HTMLTableElement>(null);
+  const [items, setItems] = useState<PembelianFormItem[]>([]);
+  const [draftItem, setDraftItem] = useState<PembelianFormItem>(() => ({ ...emptyItem }));
+  const [editingIndex, setEditingIndex] = useState<number | null>(null);
+  const [visibleItemCount, setVisibleItemCount] = useState(50);
 
   useEffect(() => {
     let active = true;
@@ -700,31 +272,39 @@ function PembelianFormContent() {
     [konversiSatuan]
   );
 
+  const effectiveItems = useMemo(() => {
+    if (!itemHasContent(draftItem)) {
+      return items;
+    }
+
+    return editingIndex === null
+      ? [...items, draftItem]
+      : items.map((item, index) => (index === editingIndex ? draftItem : item));
+  }, [draftItem, editingIndex, items]);
+
   const subtotal = useMemo(
-    () => items.reduce((sum, item) => sum + lineSubtotal(item), 0),
-    [items]
+    () => effectiveItems.reduce((sum, item) => sum + lineSubtotal(item), 0),
+    [effectiveItems]
   );
   const diskonValue = parseNumberInput(diskon);
   const pajakPersen = parseNumberInput(pajak);
   const pajakValue = Math.max(0, subtotal - diskonValue) * (pajakPersen / 100);
   const total = Math.max(0, subtotal - diskonValue + pajakValue);
 
-  const updateItem = useCallback((
-    index: number,
-    updater: (item: PembelianFormItem) => PembelianFormItem
-  ) => {
-    setItems((currentItems) =>
-      currentItems.map((item, itemIndex) =>
-        itemIndex === index ? updater(item) : item
-      )
-    );
+  const visibleItems = useMemo(
+    () => items.slice(0, visibleItemCount),
+    [items, visibleItemCount]
+  );
+
+  const updateDraftItem = useCallback((updater: (item: PembelianFormItem) => PembelianFormItem) => {
+    setDraftItem(updater);
   }, []);
 
-  const handleBarangNameChange = useCallback((index: number, value: string) => {
+  const handleBarangNameChange = useCallback((value: string) => {
     const trimmed = value.trim();
     const matchedObat = obatByNama[trimmed.toLowerCase()];
 
-    updateItem(index, (item) => ({
+    updateDraftItem((item) => ({
       ...item,
       barangNama: value,
       barangId: matchedObat?.id ?? "",
@@ -744,66 +324,58 @@ function PembelianFormContent() {
         ? String(matchedObat.hargaAktif?.hargaBeli ?? 0)
         : item.hargaBeli
     }));
-  }, [konversiByKey, obatById, obatByNama, updateItem]);
+  }, [konversiByKey, obatById, obatByNama, updateDraftItem]);
 
-  const handleSatuanChange = useCallback((index: number, satuanId: string) => {
-    updateItem(index, (item) => ({
+  const handleSatuanChange = useCallback((satuanId: string) => {
+    updateDraftItem((item) => ({
       ...item,
       satuanId,
       ...(item.barangId
         ? resolveKonversi(item.barangId, satuanId, obatById, konversiByKey)
         : { konversi: satuanId ? "1" : "", konversiLocked: Boolean(satuanId) })
     }));
-  }, [konversiByKey, obatById, updateItem]);
+  }, [konversiByKey, obatById, updateDraftItem]);
 
   const removeItem = useCallback((index: number) => {
-    setItems((currentItems) =>
-      currentItems.length === 1
-        ? [{ ...emptyItem }]
-        : currentItems.filter((_, itemIndex) => itemIndex !== index)
-    );
-  }, []);
+    setItems((currentItems) => currentItems.filter((_, itemIndex) => itemIndex !== index));
+    if (editingIndex === index) {
+      setDraftItem({ ...emptyItem });
+      setEditingIndex(null);
+    } else if (editingIndex !== null && editingIndex > index) {
+      setEditingIndex(editingIndex - 1);
+    }
+  }, [editingIndex]);
 
-  function addRows() {
-    const count = Math.max(1, Math.floor(parseNumberInput(rowsToAdd)));
-    setItems((currentItems) => [
-      ...currentItems,
-      ...Array.from({ length: count }, () => ({ ...emptyItem }))
-    ]);
-    setRowsToAdd("1");
+  function resetDraft() {
+    setDraftItem({ ...emptyItem });
+    setEditingIndex(null);
   }
 
-  const focusCell = useCallback((row: number, col: number) => {
-    const target = itemsTableRef.current?.querySelector<HTMLElement>(
-      `[data-row="${row}"][data-col="${col}"]`
-    );
-    target?.focus();
-  }, []);
-
-  /** Excel-style keyboard nav: Enter/ArrowDown-Up move a row, Arrow Left-Right on selects moves a column (Tab already handles it natively for text/number/date cells). */
-  const handleCellKeyDown = useCallback((
-    event: React.KeyboardEvent,
-    row: number,
-    col: number,
-    isSelect = false
-  ) => {
-    if (event.key === "Enter") {
-      event.preventDefault();
-      focusCell(row + (event.shiftKey ? -1 : 1), col);
-    } else if (event.key === "ArrowDown") {
-      event.preventDefault();
-      focusCell(row + 1, col);
-    } else if (event.key === "ArrowUp") {
-      event.preventDefault();
-      focusCell(row - 1, col);
-    } else if (isSelect && event.key === "ArrowRight") {
-      event.preventDefault();
-      focusCell(row, col + 1);
-    } else if (isSelect && event.key === "ArrowLeft") {
-      event.preventDefault();
-      focusCell(row, col - 1);
+  function saveDraftItem() {
+    if (!itemHasContent(draftItem)) {
+      toast.error("Nama barang wajib diisi sebelum ditambahkan");
+      return;
     }
-  }, [focusCell]);
+
+    if (editingIndex === null) {
+      setItems((currentItems) => [...currentItems, { ...draftItem }]);
+    } else {
+      setItems((currentItems) =>
+        currentItems.map((item, index) =>
+          index === editingIndex ? { ...draftItem } : item
+        )
+      );
+    }
+
+    resetDraft();
+  }
+
+  function editItem(index: number) {
+    const item = items[index];
+    if (!item) return;
+    setDraftItem({ ...item });
+    setEditingIndex(index);
+  }
 
   /** Baris yang nama obatnya belum cocok data master otomatis dibuatkan barang baru, jadi apapun yang diketik di sini pasti nongol di fitur Barang. */
   async function resolveBarangId(
@@ -849,7 +421,7 @@ function PembelianFormContent() {
       return null;
     }
 
-    const rowsToSubmit = items.filter(
+    const rowsToSubmit = effectiveItems.filter(
       (item) =>
         (item.barangId || item.barangNama.trim()) &&
         parseNumberInput(item.jumlahDiterima) > 0
@@ -872,12 +444,7 @@ function PembelianFormContent() {
       const jumlahDikirim = parseNumberInput(item.jumlahDikirim);
       const jumlahDiterima = parseNumberInput(item.jumlahDiterima);
       const jumlahDitolak = parseNumberInput(item.jumlahDitolak);
-      const konversi = parseNumberInput(item.konversi);
-
-      if (konversi <= 0) {
-        toast.error(`Konversi ${item.barangNama.trim() || "item"} wajib diisi lebih dari nol`);
-        return null;
-      }
+      const konversi = konversiValue(item);
 
       if (item.barangId && !obatById[item.barangId]?.satuanDefaultId) {
         toast.error(`Satuan dasar ${item.barangNama.trim() || "item"} belum diatur di master barang`);
@@ -1050,151 +617,282 @@ function PembelianFormContent() {
           </div>
         </section>
 
-        <section className={`min-w-0 overflow-hidden dashboard-surface xl:col-start-1 xl:col-span-2 xl:row-start-2 ${
-          isItemsFullscreen ? "fixed inset-3 z-50 overflow-auto" : ""
-        }`}>
+        <section className="min-w-0 overflow-hidden dashboard-surface xl:col-start-1 xl:col-span-2 xl:row-start-2">
           <div>
             <h2 className="text-lg font-black text-[#20201d]">
               Item Pembelian
             </h2>
             <p className="mt-1 text-sm font-semibold text-stone-500">
-              Mulai dari 1 baris. Tambah baris manual sesuai jumlah yang Anda butuhkan. Nama yang belum ada di
-              data Barang akan otomatis dibuatkan barang baru saat pembelian disimpan.
+              Isi satu item, tambahkan ke daftar, lalu ulangi sesuai kebutuhan.
+              Nama yang belum ada di data Barang akan otomatis dibuatkan barang baru saat pembelian disimpan.
             </p>
           </div>
-          <div className="mt-4 flex flex-wrap items-end gap-3">
-            <Input
-              label="Tambah Baris"
-              type="number"
-              min={1}
-              value={rowsToAdd}
-              onChange={(event) => setRowsToAdd(event.target.value)}
-              className="w-32"
-            />
-            <Button
-              type="button"
-              onClick={addRows}
-              className="h-10 rounded-lg bg-[#20201d] px-4 font-bold hover:bg-[#33312d]"
-            >
-              Tambah Baris
-            </Button>
-            <Button
-              type="button"
-              variant="secondary"
-              onClick={() => setIsItemsFullscreen((current) => !current)}
-              className="h-10"
-            >
-              {isItemsFullscreen ? (
-                <Minimize2 className="h-4 w-4" />
-              ) : (
-                <Maximize2 className="h-4 w-4" />
-              )}
-              {isItemsFullscreen ? "Kecilkan" : "Perbesar"}
-            </Button>
+
+          <datalist id="pembelian-barang-options">
+            {obatOptions.map((obat) => (
+              <option key={obat.id} value={obat.nama} />
+            ))}
+          </datalist>
+
+          <div className="mt-4 rounded-lg border border-stone-200 bg-[#f8f7f3] p-4">
+            <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+              <Select
+                label="Kategori"
+                value={draftItem.kategoriId}
+                disabled={isLoadingOptions}
+                onChange={(event) =>
+                  updateDraftItem((item) => ({
+                    ...item,
+                    kategoriId: event.target.value
+                  }))
+                }
+                options={[
+                  { label: "Pilih kategori", value: "" },
+                  ...kategoriOptions.map((kategori) => ({
+                    label: kategori.label,
+                    value: kategori.id
+                  }))
+                ]}
+              />
+              <Input
+                label="Barang"
+                list="pembelian-barang-options"
+                value={draftItem.barangNama}
+                disabled={isLoadingOptions}
+                onChange={(event) => handleBarangNameChange(event.target.value)}
+                placeholder="Ketik nama obat"
+                title={
+                  draftItem.barangNama.trim() && !draftItem.barangId
+                    ? "Obat baru, akan otomatis dibuat di fitur Barang saat disimpan"
+                    : undefined
+                }
+              />
+              <Input
+                label="Kode Barang"
+                value={draftItem.barangId ? obatById[draftItem.barangId]?.kode ?? "-" : draftItem.autoKode || "-"}
+                readOnly
+                className="bg-white font-bold text-stone-500"
+              />
+              <Select
+                label="Satuan Pembelian"
+                value={draftItem.satuanId}
+                onChange={(event) => handleSatuanChange(event.target.value)}
+                options={[
+                  { label: "Pilih satuan", value: "" },
+                  ...satuanOptions.map((satuan) => ({
+                    label: satuan.label,
+                    value: satuan.id
+                  }))
+                ]}
+              />
+              <Input
+                label="Jumlah Dikirim"
+                type="number"
+                min={0}
+                value={draftItem.jumlahDikirim}
+                onChange={(event) =>
+                  updateDraftItem((item) => ({
+                    ...item,
+                    jumlahDikirim: event.target.value
+                  }))
+                }
+              />
+              <Input
+                label="Jumlah Diterima"
+                type="number"
+                min={0}
+                value={draftItem.jumlahDiterima}
+                onChange={(event) =>
+                  updateDraftItem((item) => ({
+                    ...item,
+                    jumlahDiterima: event.target.value
+                  }))
+                }
+              />
+              <Input
+                label="Jumlah Ditolak"
+                type="number"
+                min={0}
+                value={draftItem.jumlahDitolak}
+                onChange={(event) =>
+                  updateDraftItem((item) => ({
+                    ...item,
+                    jumlahDitolak: event.target.value
+                  }))
+                }
+              />
+              <Input
+                label="Kedaluwarsa"
+                type="date"
+                value={draftItem.tanggalExpired}
+                onChange={(event) =>
+                  updateDraftItem((item) => ({
+                    ...item,
+                    tanggalExpired: event.target.value
+                  }))
+                }
+              />
+              <Input
+                label="Harga Beli"
+                type="number"
+                min={0}
+                value={draftItem.hargaBeli}
+                onChange={(event) =>
+                  updateDraftItem((item) => ({
+                    ...item,
+                    hargaBeli: event.target.value
+                  }))
+                }
+              />
+              <div className="grid gap-1.5 text-sm font-medium text-slate-700">
+                <span>Diskon Item</span>
+                <div className="flex">
+                  <Input
+                    aria-label="Diskon Item"
+                    type="number"
+                    min={0}
+                    value={draftItem.diskon}
+                    onChange={(event) =>
+                      updateDraftItem((item) => ({
+                        ...item,
+                        diskon: event.target.value
+                      }))
+                    }
+                    className="rounded-r-none"
+                  />
+                  <select
+                    aria-label="Mode Diskon Item"
+                    value={draftItem.diskonMode}
+                    onChange={(event) =>
+                      updateDraftItem((item) => ({
+                        ...item,
+                        diskonMode: event.target.value as DiskonMode
+                      }))
+                    }
+                    className="h-10 w-16 rounded-r-xl border border-l-0 border-slate-200 bg-white px-2 text-sm font-bold text-slate-700 outline-none focus:border-brand-600 focus:ring-2 focus:ring-brand-100"
+                  >
+                    <option value="rp">Rp</option>
+                    <option value="persen">%</option>
+                  </select>
+                </div>
+              </div>
+              <div className="grid content-end gap-1.5 rounded-lg bg-white p-3 text-sm font-semibold text-stone-600">
+                <div className="flex justify-between gap-3">
+                  <span>Subtotal item</span>
+                  <strong className="text-[#20201d]">
+                    {formatCurrency(lineSubtotal(draftItem))}
+                  </strong>
+                </div>
+                <div className="flex justify-between gap-3">
+                  <span>Stok bertambah</span>
+                  <strong className="text-emerald-700">
+                    +{stokBertambah(draftItem)}
+                  </strong>
+                </div>
+              </div>
+            </div>
+
+            <div className="mt-4 flex flex-wrap justify-end gap-2">
+              {editingIndex !== null ? (
+                <Button type="button" variant="secondary" onClick={resetDraft}>
+                  Batal Edit
+                </Button>
+              ) : null}
+              <Button
+                type="button"
+                onClick={saveDraftItem}
+                className="h-10 rounded-lg bg-[#20201d] px-4 font-bold hover:bg-[#33312d]"
+              >
+                {editingIndex === null ? "Tambah Item" : "Update Item"}
+              </Button>
+            </div>
           </div>
 
-          <div className={`mt-4 overflow-auto rounded-lg border border-stone-200 ${
-            isItemsFullscreen ? "max-h-[calc(100vh-210px)]" : ""
-          }`}>
-            <datalist id="pembelian-barang-options">
-              {obatOptions.map((obat) => (
-                <option key={obat.id} value={obat.nama} />
-              ))}
-            </datalist>
-            <table
-              ref={itemsTableRef}
-              className="min-w-[1800px] table-fixed border-collapse text-sm"
-            >
-              <colgroup>
-                <col style={{ width: "4%" }} />
-                <col style={{ width: "9%" }} />
-                <col style={{ width: "12%" }} />
-                <col style={{ width: "6%" }} />
-                <col style={{ width: "7%" }} />
-                <col style={{ width: "5%" }} />
-                <col style={{ width: "6%" }} />
-                <col style={{ width: "6%" }} />
-                <col style={{ width: "6%" }} />
-                <col style={{ width: "7%" }} />
-                <col style={{ width: "7%" }} />
-                <col style={{ width: "6%" }} />
-                <col style={{ width: "7%" }} />
-                <col style={{ width: "6%" }} />
-                <col style={{ width: "6%" }} />
-                <col />
-              </colgroup>
-              <thead className="sticky top-0 z-10 bg-[#20201d] text-white">
+          <div className="mt-4 overflow-auto rounded-lg border border-stone-200">
+            <table className="min-w-[1200px] w-full table-fixed text-sm">
+              <thead className="bg-[#20201d] text-white">
                 <tr>
-                  <th className="border-r border-stone-700 px-2 py-2 text-center text-[10px] font-black uppercase leading-tight tracking-wide">
-                    No
-                  </th>
-                  <th className="border-r border-stone-700 px-2 py-2 text-left text-[10px] font-black uppercase leading-tight tracking-wide">
-                    Kategori
-                  </th>
-                  <th className="border-r border-stone-700 px-2 py-2 text-left text-[10px] font-black uppercase leading-tight tracking-wide">
-                    Barang
-                  </th>
-                  <th className="border-r border-stone-700 px-2 py-2 text-left text-[10px] font-black uppercase leading-tight tracking-wide">
-                    Kode Barang
-                  </th>
-                  <th className="border-r border-stone-700 px-2 py-2 text-left text-[10px] font-black uppercase leading-tight tracking-wide">
-                    Satuan Pembelian
-                  </th>
-                  <th className="border-r border-stone-700 px-2 py-2 text-left text-[10px] font-black uppercase leading-tight tracking-wide">
-                    Konversi
-                  </th>
-                  <th className="border-r border-stone-700 px-2 py-2 text-left text-[10px] font-black uppercase leading-tight tracking-wide">
-                    Jumlah Dikirim
-                  </th>
-                  <th className="border-r border-stone-700 px-2 py-2 text-left text-[10px] font-black uppercase leading-tight tracking-wide">
-                    Jumlah Diterima
-                  </th>
-                  <th className="border-r border-stone-700 px-2 py-2 text-left text-[10px] font-black uppercase leading-tight tracking-wide">
-                    Jumlah Ditolak
-                  </th>
-                  <th className="border-r border-stone-700 px-2 py-2 text-left text-[10px] font-black uppercase leading-tight tracking-wide">
-                    Nomor Batch
-                  </th>
-                  <th className="border-r border-stone-700 px-2 py-2 text-left text-[10px] font-black uppercase leading-tight tracking-wide">
-                    Kedaluwarsa
-                  </th>
-                  <th className="border-r border-stone-700 px-2 py-2 text-left text-[10px] font-black uppercase leading-tight tracking-wide">
-                    Harga Beli
-                  </th>
-                  <th className="border-r border-stone-700 px-2 py-2 text-left text-[10px] font-black uppercase leading-tight tracking-wide">
-                    Diskon Item
-                  </th>
-                  <th className="border-r border-stone-700 px-2 py-2 text-right text-[10px] font-black uppercase leading-tight tracking-wide">
-                    Subtotal
-                  </th>
-                  <th className="border-r border-stone-700 px-2 py-2 text-right text-[10px] font-black uppercase leading-tight tracking-wide">
-                    Stok Bertambah
-                  </th>
-                  <th className="px-1 py-2" />
+                  <th className="w-12 px-3 py-3 text-center text-[10px] font-black uppercase leading-tight tracking-wide">No</th>
+                  <th className="px-3 py-3 text-left text-[10px] font-black uppercase leading-tight tracking-wide">Barang</th>
+                  <th className="px-3 py-3 text-left text-[10px] font-black uppercase leading-tight tracking-wide">Kategori</th>
+                  <th className="px-3 py-3 text-left text-[10px] font-black uppercase leading-tight tracking-wide">Satuan</th>
+                  <th className="px-3 py-3 text-right text-[10px] font-black uppercase leading-tight tracking-wide">Dikirim</th>
+                  <th className="px-3 py-3 text-right text-[10px] font-black uppercase leading-tight tracking-wide">Diterima</th>
+                  <th className="px-3 py-3 text-right text-[10px] font-black uppercase leading-tight tracking-wide">Ditolak</th>
+                  <th className="px-3 py-3 text-left text-[10px] font-black uppercase leading-tight tracking-wide">Batch</th>
+                  <th className="px-3 py-3 text-left text-[10px] font-black uppercase leading-tight tracking-wide">Expired</th>
+                  <th className="px-3 py-3 text-right text-[10px] font-black uppercase leading-tight tracking-wide">Harga</th>
+                  <th className="px-3 py-3 text-right text-[10px] font-black uppercase leading-tight tracking-wide">Subtotal</th>
+                  <th className="w-28 px-2 py-3" />
                 </tr>
               </thead>
               <tbody>
-                {items.map((item, index) => (
-                  <PembelianItemRow
-                    key={index}
-                    item={item}
-                    index={index}
-                    tanggalPembelian={tanggalPembelian}
-                    isLoadingOptions={isLoadingOptions}
-                    kategoriOptions={kategoriOptions}
-                    satuanOptions={satuanOptions}
-                    obatById={obatById}
-                    onUpdateItem={updateItem}
-                    onBarangNameChange={handleBarangNameChange}
-                    onSatuanChange={handleSatuanChange}
-                    onRemoveItem={removeItem}
-                    onCellKeyDown={handleCellKeyDown}
-                  />
-                ))}
+                {visibleItems.length ? (
+                  visibleItems.map((item, index) => (
+                    <tr key={`${item.barangNama}-${index}`} className="border-t border-stone-100 bg-white even:bg-[#faf9f6]">
+                      <td className="px-3 py-3 text-center text-xs font-bold text-stone-600">{index + 1}</td>
+                      <td className="px-3 py-3">
+                        <p className="truncate font-black text-[#20201d]">{item.barangNama || "-"}</p>
+                        <p className="mt-1 truncate text-xs font-semibold text-stone-400">
+                          {item.barangId ? obatById[item.barangId]?.kode ?? "-" : item.autoKode || "-"}
+                        </p>
+                      </td>
+                      <td className="px-3 py-3 text-xs font-semibold text-stone-600">{optionLabel(kategoriOptions, item.kategoriId)}</td>
+                      <td className="px-3 py-3 text-xs font-semibold text-stone-600">{optionLabel(satuanOptions, item.satuanId)}</td>
+                      <td className="px-3 py-3 text-right text-xs font-bold text-stone-700">{parseNumberInput(item.jumlahDikirim)}</td>
+                      <td className="px-3 py-3 text-right text-xs font-bold text-stone-700">{parseNumberInput(item.jumlahDiterima)}</td>
+                      <td className="px-3 py-3 text-right text-xs font-bold text-stone-700">{parseNumberInput(item.jumlahDitolak)}</td>
+                      <td className="px-3 py-3 text-xs font-semibold text-stone-600">{generateAutoBatchNumber(index, tanggalPembelian)}</td>
+                      <td className="px-3 py-3 text-xs font-semibold text-stone-600">{item.tanggalExpired || "-"}</td>
+                      <td className="px-3 py-3 text-right text-xs font-bold text-stone-700">{formatCurrency(parseNumberInput(item.hargaBeli))}</td>
+                      <td className="px-3 py-3 text-right text-xs font-black text-[#20201d]">{formatCurrency(lineSubtotal(item))}</td>
+                      <td className="px-2 py-2">
+                        <div className="flex justify-end gap-1">
+                          <button
+                            type="button"
+                            aria-label={`Edit item ${index + 1}`}
+                            onClick={() => editItem(index)}
+                            className="h-8 rounded-md bg-emerald-50 px-3 text-xs font-black text-emerald-700 transition hover:bg-emerald-100"
+                          >
+                            Edit
+                          </button>
+                          <button
+                            type="button"
+                            aria-label={`Hapus item ${index + 1}`}
+                            onClick={() => removeItem(index)}
+                            className="grid h-8 w-8 place-items-center rounded-md bg-red-50 text-red-600 transition hover:bg-red-100"
+                          >
+                            <Trash2 className="h-4 w-4" strokeWidth={1.9} />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))
+                ) : (
+                  <tr>
+                    <td colSpan={12} className="px-4 py-10 text-center text-sm font-semibold text-stone-500">
+                      Belum ada item pembelian.
+                    </td>
+                  </tr>
+                )}
               </tbody>
             </table>
           </div>
-          <div className="mt-4 flex justify-end">
+          <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
+            <p className="text-sm font-semibold text-stone-500">
+              {items.length
+                ? `Menampilkan ${visibleItems.length} dari ${items.length} item`
+                : "Data item yang sudah ditambahkan akan tampil di sini."}
+            </p>
+            {visibleItemCount < items.length ? (
+              <Button
+                type="button"
+                variant="secondary"
+                onClick={() => setVisibleItemCount((count) => count + 50)}
+              >
+                Tampilkan 50 Lagi
+              </Button>
+            ) : null}
             <Button
               type="submit"
               isLoading={isSubmitting}

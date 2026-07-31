@@ -1,4 +1,4 @@
-export type MetodePembayaran = "tunai" | "transfer" | "BPJS" | "accurate";
+export type MetodePembayaran = "tunai" | "transfer" | "accurate";
 export type StatusPenjualan =
   | "menunggu_pembayaran"
   | "selesai"

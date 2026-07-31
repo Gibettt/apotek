@@ -7,6 +7,7 @@ import {
   Clock3,
   Eye,
   FilePlus2,
+  History,
   Lock,
   PackageCheck,
   Plus,
@@ -260,13 +261,22 @@ function PembelianListContent() {
         title="Pembelian"
         description="Purchase order dari supplier, item masuk, dan update stok saat diterima."
         action={
-          <Link
-            href="/pembelian/tambah"
-            className="inline-flex h-10 items-center justify-center gap-2 rounded-lg bg-[#0f766e] px-4 text-sm font-bold text-white shadow-[0_12px_28px_rgba(15,118,110,.18)] transition hover:-translate-y-0.5 hover:bg-[#115e59]"
-          >
-            <Plus className="h-4 w-4" />
-            Tambah
-          </Link>
+          <div className="flex items-center gap-2">
+            <Link
+              href="/pembelian/riwayat"
+              className="inline-flex h-10 items-center justify-center gap-2 rounded-lg border border-stone-200 bg-white px-4 text-sm font-bold text-stone-700 transition hover:-translate-y-0.5 hover:text-stone-950"
+            >
+              <History className="h-4 w-4" />
+              Riwayat
+            </Link>
+            <Link
+              href="/pembelian/tambah"
+              className="inline-flex h-10 items-center justify-center gap-2 rounded-lg bg-[#0f766e] px-4 text-sm font-bold text-white shadow-[0_12px_28px_rgba(15,118,110,.18)] transition hover:-translate-y-0.5 hover:bg-[#115e59]"
+            >
+              <Plus className="h-4 w-4" />
+              Tambah
+            </Link>
+          </div>
         }
       />
 

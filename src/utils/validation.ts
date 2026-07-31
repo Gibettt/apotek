@@ -38,7 +38,7 @@ export const pembelianSchema = z.object({
 });
 
 export const penjualanSchema = z.object({
-  metodePembayaran: z.enum(["tunai", "transfer", "BPJS", "accurate"]),
+  metodePembayaran: z.enum(["tunai", "transfer", "accurate"]),
   bayar: z.coerce.number().nonnegative(),
   pelangganId: z.coerce.number().optional()
 });

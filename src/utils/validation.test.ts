@@ -31,7 +31,7 @@ describe("validation schemas", () => {
 
   it("requires a supported payment method", () => {
     const result = penjualanSchema.safeParse({
-      metodePembayaran: "voucher",
+      metodePembayaran: "BPJS",
       bayar: 10000
     });
 

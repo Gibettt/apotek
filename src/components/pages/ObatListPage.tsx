@@ -4,6 +4,7 @@ import Link from "next/link";
 import type { LucideIcon } from "lucide-react";
 import {
   AlertTriangle,
+  CalendarDays,
   ChevronDown,
   Check,
   Eye,
@@ -189,6 +190,7 @@ function ObatRow({
 export function ObatListPage() {
   const [search, setSearch] = useState("");
   const [kategoriId, setKategoriId] = useState("");
+  const [purchaseDate, setPurchaseDate] = useState("");
   const [kategoriOptions, setKategoriOptions] = useState<MasterOption[]>([]);
   const [isKategoriOpen, setIsKategoriOpen] = useState(false);
   const [page, setPage] = useState(1);
@@ -296,6 +298,7 @@ export function ObatListPage() {
         const result = await obatService.list({
           search,
           ...(kategoriId ? { kategoriId } : {}),
+          ...(purchaseDate ? { purchaseDate } : {}),
           page,
           perPage
         });
@@ -324,7 +327,7 @@ export function ObatListPage() {
     return () => {
       active = false;
     };
-  }, [page, search, kategoriId, refreshToken]);
+  }, [page, search, kategoriId, purchaseDate, refreshToken]);
 
   const stats = useMemo(() => {
     const activeItems = rows.filter((item) => item.status).length;
@@ -350,7 +353,7 @@ export function ObatListPage() {
           <StockStat label="Perlu resep" value={stats.recipeItems} icon={AlertTriangle} />
         </div>
 
-        <div className="mt-5 grid gap-3 md:grid-cols-[minmax(0,1fr)_220px_auto] md:items-center">
+        <div className="mt-5 grid gap-3 md:grid-cols-[minmax(0,1fr)_190px_220px_auto] md:items-center">
           <div className="relative w-full">
             <Search className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-stone-400" />
             <input
@@ -361,6 +364,20 @@ export function ObatListPage() {
               }}
               placeholder="Cari barang, kode, satuan, golongan..."
               className="h-11 w-full rounded-lg border border-stone-200 bg-white pl-10 pr-4 text-sm font-semibold text-stone-700 outline-none transition placeholder:text-stone-400 focus:border-[#ff6a3d] focus:ring-4 focus:ring-[#ff6a3d]/10"
+            />
+          </div>
+
+          <div className="relative w-full">
+            <CalendarDays className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-stone-400" />
+            <input
+              type="date"
+              aria-label="Filter tanggal pembelian"
+              value={purchaseDate}
+              onChange={(event) => {
+                setPurchaseDate(event.target.value);
+                setPage(1);
+              }}
+              className="h-11 w-full rounded-lg border border-stone-200 bg-white pl-10 pr-3 text-sm font-bold text-stone-700 outline-none transition focus:border-[#ff6a3d] focus:ring-4 focus:ring-[#ff6a3d]/10"
             />
           </div>
 

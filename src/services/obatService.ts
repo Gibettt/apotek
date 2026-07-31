@@ -97,6 +97,7 @@ export interface MasterOption {
 
 interface ObatListParams extends ListParams {
   kategoriId?: string;
+  purchaseDate?: string;
 }
 
 interface BarangRow {
@@ -338,6 +339,41 @@ function filterObat(rows: ObatListItem[], params: ObatListParams = {}) {
     [item.kode, item.nama, item.satuanNama, item.golonganNama, item.kategoriNama].some(
       (value) => String(value ?? "").toLowerCase().includes(normalized)
     )
+  );
+}
+
+async function loadBarangIdsPurchasedOn(purchaseDate?: string) {
+  if (!supabase || !purchaseDate) {
+    return null;
+  }
+
+  const { data: fakturRows, error: fakturError } = await supabase
+    .from("faktur_pembelian")
+    .select("id")
+    .eq("tanggal_faktur", purchaseDate);
+
+  if (fakturError) {
+    throw new Error(fakturError.message);
+  }
+
+  const fakturIds = (fakturRows ?? []).map((item) => item.id).filter(Boolean);
+  if (!fakturIds.length) {
+    return new Set<string>();
+  }
+
+  const { data: detailRows, error: detailError } = await supabase
+    .from("faktur_pembelian_detail")
+    .select("barang_id")
+    .in("faktur_pembelian_id", fakturIds);
+
+  if (detailError) {
+    throw new Error(detailError.message);
+  }
+
+  return new Set(
+    (detailRows ?? [])
+      .map((item) => item.barang_id as string | null)
+      .filter((id): id is string => Boolean(id))
   );
 }
 
@@ -644,13 +680,27 @@ export const obatService = {
       return paginate(filterObat(localObat, params), params);
     }
 
+    const purchasedBarangIds = await loadBarangIdsPurchasedOn(params.purchaseDate);
+    if (purchasedBarangIds && purchasedBarangIds.size === 0) {
+      return paginate([], params);
+    }
+
     let saldoQuery = supabase.from("saldo_stok").select("barang_id,qty");
     if (cabangId) {
       saldoQuery = saldoQuery.eq("cabang_id", cabangId);
     }
 
+    let barangQuery = supabase
+      .from("barang")
+      .select("*")
+      .order("created_at", { ascending: false });
+
+    if (purchasedBarangIds) {
+      barangQuery = barangQuery.in("id", [...purchasedBarangIds]);
+    }
+
     const [{ data, error }, saldoResult, lookupMaps] = await Promise.all([
-      supabase.from("barang").select("*").order("created_at", { ascending: false }),
+      barangQuery,
       saldoQuery,
       loadLookupMaps()
     ]);

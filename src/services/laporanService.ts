@@ -33,7 +33,7 @@ interface PenjualanDetailRow {
 
 interface PembayaranRow {
   penjualan_id: string | null;
-  metode: MetodePembayaran | null;
+  metode: string | null;
 }
 
 export interface SalesReportParams {
@@ -85,9 +85,6 @@ function summarizeSales(rows: SalesReportRow[]): SalesReportSummary {
       .reduce((sum, row) => sum + row.nilai, 0),
     transferRevenue: completedRows
       .filter((row) => row.kategori === "transfer")
-      .reduce((sum, row) => sum + row.nilai, 0),
-    bpjsRevenue: completedRows
-      .filter((row) => row.kategori === "BPJS")
       .reduce((sum, row) => sum + row.nilai, 0),
     accurateRevenue: completedRows
       .filter((row) => row.kategori === "accurate")
@@ -216,10 +213,12 @@ async function supabaseSalesRows(params: SalesReportParams) {
     (pelangganResult.data ?? []).map((item) => [item.id, item.nama])
   );
 
-  const metodeBySale = ((pembayaranResult.data ?? []) as PembayaranRow[]).reduce<
-    Record<string, MetodePembayaran>
-  >((acc, row) => {
-    if (row.penjualan_id && row.metode && !acc[row.penjualan_id]) {
+  const metodeBySale = ((pembayaranResult.data ?? []) as PembayaranRow[]).reduce<Record<string, MetodePembayaran>>((acc, row) => {
+    if (
+      row.penjualan_id &&
+      (row.metode === "tunai" || row.metode === "transfer" || row.metode === "accurate") &&
+      !acc[row.penjualan_id]
+    ) {
       acc[row.penjualan_id] = row.metode;
     }
     return acc;

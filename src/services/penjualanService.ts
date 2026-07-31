@@ -597,7 +597,6 @@ async function decrementStock(
   }
 }
 
-// ponytail: BPJS/accurate settle to bank same as transfer — no separate piutang tracking yet.
 export function resolveKasAkunKode(metodePembayaran: string) {
   return metodePembayaran === "tunai" ? { kode: "1-100", nama: "Kas" } : { kode: "1-110", nama: "Bank" };
 }

@@ -95,4 +95,23 @@ describe("ObatListPage", () => {
       });
     });
   });
+
+  it("filters stock items by purchase date", async () => {
+    render(<ObatListPage />);
+
+    await screen.findByText("Obat Supabase 500mg");
+
+    fireEvent.change(screen.getByLabelText("Filter tanggal pembelian"), {
+      target: { value: "2026-07-31" }
+    });
+
+    await waitFor(() => {
+      expect(mocks.list).toHaveBeenLastCalledWith({
+        search: "",
+        purchaseDate: "2026-07-31",
+        page: 1,
+        perPage: 8
+      });
+    });
+  });
 });

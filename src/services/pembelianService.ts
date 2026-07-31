@@ -35,6 +35,33 @@ export interface PembelianInput {
   items: PembelianItemInput[];
 }
 
+export interface PembelianHistoryItem {
+  id: string;
+  pembelianId: string;
+  detailId: string;
+  nomorFaktur: string;
+  nomorInternal: string;
+  supplierId: string;
+  namaSupplier: string;
+  tanggalFaktur: string;
+  status: StatusPembelian;
+  barangId: string;
+  namaBarang: string;
+  batchNumber?: string;
+  tanggalExpired?: string;
+  jumlah: number;
+  satuanNama?: string;
+  hargaBeli: number;
+  diskonPersen: number;
+  diskonNominal: number;
+  subtotal: number;
+}
+
+interface PembelianHistoryParams extends ListParams {
+  purchaseDate?: string;
+  supplierId?: string;
+}
+
 interface FakturPembelianRow {
   id: string;
   cabang_id: string | null;
@@ -144,7 +171,8 @@ function validKonversiItems(items: PembelianItemInput[]) {
 function toDetail(
   row: FakturPembelianDetailRow,
   obatById: Record<string, string> = {},
-  batchById: Record<string, BatchInfo> = {}
+  batchById: Record<string, BatchInfo> = {},
+  satuanById: Record<string, string> = {}
 ): PembelianDetail {
   const barangId = row.barang_id ?? "";
   const batchId = row.batch_id ?? undefined;
@@ -159,6 +187,7 @@ function toDetail(
     batchNumber: batch?.nomorBatch ?? "",
     tanggalExpired: batch?.tanggalExpired ?? "",
     satuanId: row.satuan_id ?? undefined,
+    satuanNama: row.satuan_id ? satuanById[row.satuan_id] : undefined,
     jumlah: Number(row.qty ?? 0),
     hargaBeli: toNumber(row.harga_beli),
     diskonPersen: toNumber(row.diskon_persen),
@@ -202,17 +231,63 @@ function filterPembelian(rows: Pembelian[], search?: string) {
   return matchSearch(rows, search, ["nomorFaktur", "nomorInternal", "namaSupplier", "status"]);
 }
 
+function toHistoryRows(rows: Pembelian[]): PembelianHistoryItem[] {
+  return rows.flatMap((row) =>
+    row.details.map((detail) => ({
+      id: `${row.id}-${detail.id}`,
+      pembelianId: row.id,
+      detailId: detail.id,
+      nomorFaktur: row.nomorFaktur,
+      nomorInternal: row.nomorInternal,
+      supplierId: row.supplierId,
+      namaSupplier: row.namaSupplier,
+      tanggalFaktur: row.tanggalFaktur,
+      status: row.status,
+      barangId: detail.barangId,
+      namaBarang: detail.namaBarang,
+      batchNumber: detail.batchNumber,
+      tanggalExpired: detail.tanggalExpired,
+      jumlah: detail.jumlah,
+      satuanNama: detail.satuanNama,
+      hargaBeli: detail.hargaBeli,
+      diskonPersen: detail.diskonPersen,
+      diskonNominal: detail.diskonNominal,
+      subtotal: detail.subtotal
+    }))
+  );
+}
+
+function filterHistoryRows(rows: PembelianHistoryItem[], params: PembelianHistoryParams = {}) {
+  const byDate = params.purchaseDate
+    ? rows.filter((item) => item.tanggalFaktur === params.purchaseDate)
+    : rows;
+  const bySupplier = params.supplierId
+    ? byDate.filter((item) => item.supplierId === params.supplierId)
+    : byDate;
+
+  return matchSearch(bySupplier, params.search, [
+    "nomorFaktur",
+    "nomorInternal",
+    "namaSupplier",
+    "namaBarang",
+    "batchNumber",
+    "status"
+  ]);
+}
+
 async function loadLookupMaps() {
   if (!supabase) {
     return {
       supplierById: {} as Record<string, string>,
-      obatById: {} as Record<string, string>
+      obatById: {} as Record<string, string>,
+      satuanById: {} as Record<string, string>
     };
   }
 
-  const [supplierResult, obatResult] = await Promise.all([
+  const [supplierResult, obatResult, satuanResult] = await Promise.all([
     supabase.from("supplier").select("id,nama"),
-    supabase.from("barang").select("id,nama")
+    supabase.from("barang").select("id,nama"),
+    supabase.from("satuan").select("id,nama")
   ]);
 
   if (supplierResult.error) {
@@ -223,12 +298,19 @@ async function loadLookupMaps() {
     throw new Error(obatResult.error.message);
   }
 
+  if (satuanResult.error) {
+    throw new Error(satuanResult.error.message);
+  }
+
   return {
     supplierById: Object.fromEntries(
       (supplierResult.data ?? []).map((item) => [item.id, item.nama])
     ),
     obatById: Object.fromEntries(
       (obatResult.data ?? []).map((item) => [item.id, item.nama])
+    ),
+    satuanById: Object.fromEntries(
+      (satuanResult.data ?? []).map((item) => [item.id, item.nama])
     )
   };
 }
@@ -276,7 +358,7 @@ async function loadDetailsForPembelian(ids: string[]) {
   );
 
   return rows.reduce<Record<string, PembelianDetail[]>>((acc, row) => {
-    const detail = toDetail(row, lookupMaps.obatById, batchById);
+    const detail = toDetail(row, lookupMaps.obatById, batchById, lookupMaps.satuanById);
     acc[detail.pembelianId] = [...(acc[detail.pembelianId] ?? []), detail];
     return acc;
   }, {});
@@ -621,6 +703,43 @@ export const pembelianService = {
     );
 
     return paginate(rows, params);
+  },
+
+  async listHistory(params: PembelianHistoryParams = {}) {
+    if (!isSupabaseConfigured || !supabase) {
+      return paginate(filterHistoryRows(toHistoryRows(localPembelian), params), params);
+    }
+
+    let query = supabase
+      .from("faktur_pembelian")
+      .select("*")
+      .order("tanggal_faktur", { ascending: false })
+      .order("created_at", { ascending: false });
+
+    if (params.purchaseDate) {
+      query = query.eq("tanggal_faktur", params.purchaseDate);
+    }
+
+    if (params.supplierId) {
+      query = query.eq("supplier_id", params.supplierId);
+    }
+
+    const [{ data, error }, lookupMaps] = await Promise.all([query, loadLookupMaps()]);
+
+    if (error) {
+      throw new Error(error.message);
+    }
+
+    const detailByPembelian = await loadDetailsForPembelian(
+      (data ?? []).map((item) => item.id)
+    );
+    const rows = toHistoryRows(
+      (data ?? []).map((item) =>
+        toPembelian(item, detailByPembelian[item.id] ?? [], lookupMaps.supplierById)
+      )
+    );
+
+    return paginate(filterHistoryRows(rows, params), params);
   },
 
   async getById(id: string) {

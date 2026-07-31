@@ -9,6 +9,7 @@ export interface PembelianDetail {
   batchNumber?: string;
   tanggalExpired?: string;
   satuanId?: string;
+  satuanNama?: string;
   jumlah: number;
   hargaBeli: number;
   diskonPersen: number;
