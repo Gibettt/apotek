@@ -75,7 +75,11 @@ function FieldRenderer({
       label={field.label}
       type={field.type}
       placeholder={field.placeholder}
-      className="h-11 rounded-lg border-stone-200 px-4 font-semibold focus:border-[#0f766e] focus:ring-4 focus:ring-[#0f766e]/10"
+      readOnly={field.readOnly}
+      className={cn(
+        "h-11 rounded-lg border-stone-200 px-4 font-semibold focus:border-[#0f766e] focus:ring-4 focus:ring-[#0f766e]/10",
+        field.readOnly && "cursor-default bg-stone-50 text-stone-500"
+      )}
       {...register(field.name)}
     />
   );
@@ -118,7 +122,9 @@ export function ModuleFormPage({
       }
 
       const sourceValue = String(watchedValues[field.autoFillFrom] ?? "");
-      const nextValue = generateAutoKode(sourceValue, { prefix: "KAT" });
+      const nextValue = generateAutoKode(sourceValue, {
+        prefix: field.autoFillPrefix ?? "KAT"
+      });
       if (String(watchedValues[field.name] ?? "") !== nextValue) {
         setValue(field.name, nextValue);
       }

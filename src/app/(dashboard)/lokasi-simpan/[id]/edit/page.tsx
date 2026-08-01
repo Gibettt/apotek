@@ -34,8 +34,7 @@ export default function EditLokasiSimpanPage() {
           kode: item.kode,
           nama: item.nama,
           tipeLokasi: item.tipeLokasi ?? "",
-          deskripsi: item.deskripsi ?? "",
-          aktif: item.aktif
+          deskripsi: item.deskripsi ?? ""
         });
       })
       .catch(() => {

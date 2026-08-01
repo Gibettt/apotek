@@ -369,7 +369,7 @@ export interface LokasiSimpan {
 }
 
 export interface LokasiSimpanInput {
-  kode: string;
+  kode?: string;
   nama: string;
   tipeLokasi?: string;
   deskripsi?: string;
@@ -453,20 +453,28 @@ export const lokasiSimpanService = {
   },
 
   async create(payload: LokasiSimpanInput): Promise<LokasiSimpan> {
+    const normalizedPayload = {
+      ...payload,
+      kode:
+        payload.kode?.trim() ||
+        generateAutoKode(payload.nama ?? "", { prefix: "LKS" }) ||
+        `LKS_${Date.now()}`
+    };
+
     if (!isSupabaseConfigured || !supabase) {
       return delay({
         id: `local-${Date.now()}`,
-        kode: payload.kode,
-        nama: payload.nama,
-        tipeLokasi: payload.tipeLokasi,
-        deskripsi: payload.deskripsi,
-        aktif: payload.aktif ?? true
+        kode: normalizedPayload.kode,
+        nama: normalizedPayload.nama,
+        tipeLokasi: normalizedPayload.tipeLokasi,
+        deskripsi: normalizedPayload.deskripsi,
+        aktif: normalizedPayload.aktif ?? true
       });
     }
 
     const { data, error } = await supabase
       .from("lokasi_simpan")
-      .insert(toLokasiSimpanRow(payload))
+      .insert(toLokasiSimpanRow(normalizedPayload))
       .select("id,kode,nama,tipe_lokasi,deskripsi,aktif")
       .single();
 

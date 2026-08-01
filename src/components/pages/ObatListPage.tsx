@@ -10,6 +10,7 @@ import {
   Eye,
   Pencil,
   Pill,
+  PackagePlus,
   Search,
   Tag,
   Trash2,
@@ -344,6 +345,15 @@ export function ObatListPage() {
       <Header
         title="Master Barang"
         description="Kelola data induk obat dan barang: nama, kategori, golongan, satuan, aturan batch, dan harga jual."
+        action={
+          <Link
+            href="/obat/tambah-awal"
+            className="inline-flex h-10 items-center justify-center gap-2 rounded-lg bg-[#0f766e] px-4 text-sm font-black text-white transition hover:-translate-y-0.5 hover:bg-[#115e59]"
+          >
+            <PackagePlus className="h-4 w-4" />
+            Tambah Barang Awal
+          </Link>
+        }
       />
 
       <section className="dashboard-surface">

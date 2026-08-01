@@ -61,6 +61,8 @@ export interface FieldConfig {
   defaultValue?: string | number | boolean;
   hiddenOnCreate?: boolean;
   autoFillFrom?: string;
+  autoFillPrefix?: string;
+  readOnly?: boolean;
 }
 
 export interface ColumnConfig {
@@ -847,8 +849,7 @@ export const moduleConfigs = {
         kode: item.kode,
         nama: item.nama,
         tipeLokasi: item.tipeLokasi,
-        deskripsi: item.deskripsi,
-        aktif: item.aktif
+        deskripsi: item.deskripsi
       }));
     },
     create: (payload) =>
@@ -858,31 +859,36 @@ export const moduleConfigs = {
           nama: String(payload.nama ?? ""),
           tipeLokasi: payload.tipeLokasi ? String(payload.tipeLokasi) : undefined,
           deskripsi: payload.deskripsi ? String(payload.deskripsi) : undefined,
-          aktif: Boolean(payload.aktif)
+          aktif: true
         })
         .then((item) => ({ ...item })),
-    update: (id, payload) =>
+    update: (id, payload, record) =>
       lokasiSimpanService
         .update(id, {
-          kode: String(payload.kode ?? ""),
+          kode: String(payload.kode ?? record?.kode ?? ""),
           nama: String(payload.nama ?? ""),
           tipeLokasi: payload.tipeLokasi ? String(payload.tipeLokasi) : undefined,
           deskripsi: payload.deskripsi ? String(payload.deskripsi) : undefined,
-          aktif: Boolean(payload.aktif)
+          aktif: true
         })
         .then((item) => (item ? { ...item } : null)),
     columns: [
       { key: "kode", header: "Kode" },
       { key: "nama", header: "Lokasi" },
-      { key: "tipeLokasi", header: "Tipe" },
-      { key: "aktif", header: "Status", type: "boolean" }
+      { key: "tipeLokasi", header: "Tipe" }
     ],
     fields: [
-      { name: "kode", label: "Kode Lokasi", type: "text" },
+      {
+        name: "kode",
+        label: "Kode Lokasi",
+        type: "text",
+        autoFillFrom: "nama",
+        autoFillPrefix: "LKS",
+        readOnly: true
+      },
       { name: "nama", label: "Nama Lokasi", type: "text" },
       { name: "tipeLokasi", label: "Tipe Lokasi", type: "text" },
-      { name: "deskripsi", label: "Deskripsi", type: "textarea" },
-      { name: "aktif", label: "Aktif", type: "checkbox", defaultValue: true }
+      { name: "deskripsi", label: "Deskripsi", type: "textarea" }
     ],
     detailTitleKey: "nama",
     allowDetail: true,
