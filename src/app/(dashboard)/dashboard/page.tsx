@@ -14,11 +14,14 @@ import {
   Lock,
   MoreVertical,
   Package,
+  PackagePlus,
   Pause,
   Pill,
   Play,
   ReceiptText,
   Search,
+  ShoppingBasket,
+  TrendingUp,
   Users
 } from "lucide-react";
 import {
@@ -97,6 +100,13 @@ function chartRangeForPeriod(period: DashboardPeriod) {
   const start = new Date(end);
   start.setDate(end.getDate() - (Number(period) - 1));
   return { start: dateInputValue(start), end: dateInputValue(end) };
+}
+
+function monthYearLabel(date = new Date()) {
+  return date.toLocaleDateString("id-ID", {
+    month: "long",
+    year: "numeric"
+  });
 }
 
 function elapsedSince(iso: string, now: number) {
@@ -296,6 +306,7 @@ export default function DashboardPage() {
 
   const [view, setView] = useState<Awaited<ReturnType<typeof buildDashboardView>>>({
     chart: [],
+    topSellingItems: [],
     lowStockCount: 0,
     activeMedicines: []
   });
@@ -385,6 +396,11 @@ export default function DashboardPage() {
   const pagedTableRows = tableRows.slice(
     (currentTablePage - 1) * medicineRowsPerPage,
     currentTablePage * medicineRowsPerPage
+  );
+  const topSellingMonthLabel = monthYearLabel();
+  const maxTopSellingQuantity = Math.max(
+    1,
+    ...view.topSellingItems.map((item) => item.quantity)
   );
 
   async function handleSelesaiResep(id: string) {
@@ -591,6 +607,111 @@ export default function DashboardPage() {
                   <Lock className="h-5 w-5" strokeWidth={1.8} />
                 </span>
                 <p className="text-sm font-semibold text-stone-900">Khusus Owner</p>
+              </div>
+            </div>
+          )}
+        </article>
+      </section>
+
+      <section className="dashboard-top-products-section">
+        <article className="dashboard-surface relative overflow-hidden">
+          <SectionHeader
+            title="Analisis penjualan produk"
+            icon={TrendingUp}
+            action={
+              <span className="text-xs font-medium text-stone-400">
+                {topSellingMonthLabel}
+              </span>
+            }
+          />
+          <div
+            className={cn(
+              "transition",
+              !canViewOwnerOnly && "pointer-events-none select-none blur-[10px] opacity-25"
+            )}
+          >
+            {view.topSellingItems.length ? (
+              <div className="grid gap-3 lg:grid-cols-5">
+                {view.topSellingItems.map((item, index) => {
+                  const ratio = Math.max(
+                    8,
+                    Math.round((item.quantity / maxTopSellingQuantity) * 100)
+                  );
+
+                  return (
+                    <div
+                      key={item.id}
+                      className="rounded-lg border border-stone-200 bg-white p-4"
+                    >
+                      <div className="flex items-start justify-between gap-3">
+                        <span className="grid h-10 w-10 shrink-0 place-items-center rounded-lg bg-[#e8f4ef] text-[#267d6b]">
+                          <ShoppingBasket className="h-5 w-5" strokeWidth={1.8} />
+                        </span>
+                        <span className="rounded-full bg-[#20201d] px-2.5 py-1 text-xs font-black text-white">
+                          #{index + 1}
+                        </span>
+                      </div>
+                      <p className="mt-3 truncate text-sm font-black text-[#20201d]">
+                        {item.name}
+                      </p>
+                      <p className="mt-1 truncate text-xs font-semibold text-stone-500">
+                        {item.category}
+                      </p>
+                      <div className="mt-4 h-2 rounded-full bg-[#edf0ee]">
+                        <span
+                          className="block h-full rounded-full bg-[#267d6b]"
+                          style={{ width: `${ratio}%` }}
+                        />
+                      </div>
+                      <div className="mt-4 grid grid-cols-2 gap-2 text-xs">
+                        <div>
+                          <p className="font-semibold text-stone-400">
+                            Terjual
+                          </p>
+                          <p className="mt-1 font-black text-[#20201d]">
+                            {item.quantity} item
+                          </p>
+                        </div>
+                        <div>
+                          <p className="font-semibold text-stone-400">
+                            Omzet
+                          </p>
+                          <p className="mt-1 font-black text-[#20201d]">
+                            {compactCurrency(item.revenue)}
+                          </p>
+                        </div>
+                      </div>
+                      <div className="mt-3 flex items-center justify-between gap-3 rounded-lg bg-[#f8f7f3] px-3 py-2">
+                        <span className="flex items-center gap-1.5 text-xs font-semibold text-stone-500">
+                          <PackagePlus className="h-3.5 w-3.5" strokeWidth={1.8} />
+                          Saran beli
+                        </span>
+                        <strong className="text-sm text-[#267d6b]">
+                          {item.suggestedPurchase}
+                        </strong>
+                      </div>
+                      <p className="mt-2 text-xs font-semibold text-stone-400">
+                        {item.transactionCount} transaksi bulan ini
+                      </p>
+                    </div>
+                  );
+                })}
+              </div>
+            ) : (
+              <div className="dashboard-empty">
+                Belum ada penjualan selesai pada bulan ini.
+              </div>
+            )}
+          </div>
+          {!canViewOwnerOnly && (
+            <div className="absolute inset-0 z-10 grid place-items-center bg-white/85 backdrop-blur-md">
+              <div className="mx-6 grid max-w-64 place-items-center gap-2 text-center">
+                <span className="grid h-10 w-10 place-items-center rounded-full bg-[#e8f4ef] text-[#267d6b] shadow-sm">
+                  <Lock className="h-5 w-5" strokeWidth={1.8} />
+                </span>
+                <p className="text-sm font-semibold text-stone-900">
+                  Khusus Owner
+                </p>
               </div>
             </div>
           )}

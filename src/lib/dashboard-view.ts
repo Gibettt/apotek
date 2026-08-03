@@ -14,6 +14,15 @@ type DashboardSelection = {
   includeSales?: boolean;
 };
 
+type TopSellingBucket = {
+  id: string;
+  name: string;
+  category: string;
+  quantity: number;
+  revenue: number;
+  transactions: Set<string>;
+};
+
 const weekDayLabels = ["Sen", "Sel", "Rab", "Kam", "Jum", "Sab", "Min"];
 
 function dayLabel(date: Date) {
@@ -41,6 +50,21 @@ function chartDateRange(period: DashboardPeriod, startDate?: string, endDate?: s
   const end = parseInputDate(endDate) ?? fallbackEnd;
 
   return start <= end ? { start, end } : { start: end, end: start };
+}
+
+function monthRange(date = new Date()) {
+  const start = new Date(date.getFullYear(), date.getMonth(), 1);
+  const end = new Date(date.getFullYear(), date.getMonth() + 1, 0);
+  end.setHours(23, 59, 59, 999);
+
+  return { start, end };
+}
+
+function isDateInRange(value: string, start: Date, end: Date) {
+  const date = new Date(value);
+  const time = date.getTime();
+
+  return Number.isFinite(time) && time >= start.getTime() && time <= end.getTime();
 }
 
 async function resolveCategoryId(category: DashboardCategory) {
@@ -71,6 +95,7 @@ export async function buildDashboardView({
   );
 
   const { start, end } = chartDateRange(period, startDate, endDate);
+  const currentMonth = monthRange();
   const days =
     Math.floor((end.getTime() - start.getTime()) / 86_400_000) + 1;
 
@@ -80,6 +105,8 @@ export async function buildDashboardView({
     return { key: date.toDateString(), label: chartLabel(date, days), revenue: 0, profit: 0 };
   });
   const bucketByKey = new Map(buckets.map((bucket) => [bucket.key, bucket]));
+  const productById = new Map(activeMedicinesSource.map((item) => [item.id, item]));
+  const topSellingByBarang = new Map<string, TopSellingBucket>();
 
   if (includeSales) {
     const penjualanResult = await penjualanService.list({ perPage: 1000 });
@@ -98,6 +125,31 @@ export async function buildDashboardView({
         bucket.revenue += detail.subtotal;
         bucket.profit += detail.subtotal - detail.hargaPokok * detail.jumlah;
       }
+
+      if (sale.status !== "selesai" || !isDateInRange(sale.tanggal, currentMonth.start, currentMonth.end)) {
+        continue;
+      }
+
+      for (const detail of sale.details ?? []) {
+        const product = productById.get(detail.barangId);
+        if (!product) {
+          continue;
+        }
+
+        const current = topSellingByBarang.get(detail.barangId) ?? {
+          id: detail.barangId,
+          name: detail.namaBarang || product.nama,
+          category: product.kategoriNama ?? "Lainnya",
+          quantity: 0,
+          revenue: 0,
+          transactions: new Set<string>()
+        };
+
+        current.quantity += detail.jumlah;
+        current.revenue += detail.subtotal;
+        current.transactions.add(sale.id);
+        topSellingByBarang.set(detail.barangId, current);
+      }
     }
   }
 
@@ -107,6 +159,24 @@ export async function buildDashboardView({
 
   return {
     chart: buckets.map(({ label, revenue, profit }) => ({ label, revenue, profit })),
+    topSellingItems: [...topSellingByBarang.values()]
+      .sort((first, second) => {
+        if (second.quantity !== first.quantity) {
+          return second.quantity - first.quantity;
+        }
+
+        return second.revenue - first.revenue;
+      })
+      .slice(0, 5)
+      .map((item) => ({
+        id: item.id,
+        name: item.name,
+        category: item.category,
+        quantity: item.quantity,
+        revenue: item.revenue,
+        transactionCount: item.transactions.size,
+        suggestedPurchase: Math.ceil(item.quantity * 1.2)
+      })),
     lowStockCount,
     activeMedicines: activeMedicinesSource.map((item) => ({
       id: item.id,

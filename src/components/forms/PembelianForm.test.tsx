@@ -11,6 +11,7 @@ const mocks = vi.hoisted(() => ({
   listObat: vi.fn(),
   listSatuanOptions: vi.fn(),
   listKategoriOptions: vi.fn(),
+  listGolonganOptions: vi.fn(),
   createObat: vi.fn(),
   listSupplier: vi.fn()
 }));
@@ -35,6 +36,7 @@ vi.mock("@/services/obatService", () => ({
     list: mocks.listObat,
     listSatuanOptions: mocks.listSatuanOptions,
     listKategoriOptions: mocks.listKategoriOptions,
+    listGolonganOptions: mocks.listGolonganOptions,
     create: mocks.createObat
   }
 }));
@@ -72,6 +74,7 @@ describe("PembelianForm", () => {
     mocks.listObat.mockResolvedValue({ data: [], total: 0 });
     mocks.listSatuanOptions.mockResolvedValue([]);
     mocks.listKategoriOptions.mockResolvedValue([]);
+    mocks.listGolonganOptions.mockResolvedValue([]);
     mocks.listKonversiSatuan.mockResolvedValue([]);
   });
 
@@ -129,6 +132,9 @@ describe("PembelianForm", () => {
     mocks.createObat.mockResolvedValue({ id: "obat-new-1" });
     mocks.createPembelian.mockResolvedValue({ id: "pembelian-1" });
     mocks.listSatuanOptions.mockResolvedValue([{ id: "sat-1", label: "Kaplet" }]);
+    mocks.listGolonganOptions.mockResolvedValue([
+      { id: "gol-1", label: "Obat Bebas" }
+    ]);
 
     render(<PembelianForm />);
 
@@ -147,6 +153,9 @@ describe("PembelianForm", () => {
     fireEvent.change(screen.getByLabelText("Satuan Pembelian"), {
       target: { value: "sat-1" }
     });
+    fireEvent.change(screen.getByLabelText("Golongan Obat"), {
+      target: { value: "gol-1" }
+    });
 
     fireEvent.click(screen.getByRole("button", { name: /simpan pembelian/i }));
 
@@ -155,7 +164,8 @@ describe("PembelianForm", () => {
     });
 
     expect(mocks.createObat.mock.calls[0][0]).toMatchObject({
-      nama: "Vitamin C Baru"
+      nama: "Vitamin C Baru",
+      golonganId: "gol-1"
     });
 
     await waitFor(() => {

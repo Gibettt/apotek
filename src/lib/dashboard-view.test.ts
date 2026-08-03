@@ -67,6 +67,14 @@ describe("buildDashboardView", () => {
 
     expect(view.chart).toHaveLength(7);
     expect(view.chart.at(-1)?.revenue).toBeGreaterThanOrEqual(3000);
+    expect(view.topSellingItems[0]).toMatchObject({
+      id: aktif.id,
+      name: "Dashboard Test Aktif",
+      quantity: 3,
+      revenue: 3000,
+      transactionCount: 1,
+      suggestedPurchase: 4
+    });
     expect(view.activeMedicines.some((item) => item.id === aktif.id)).toBe(true);
     expect(view.activeMedicines.some((item) => item.id === nonaktif.id)).toBe(false);
     expect(view.lowStockCount).toBeGreaterThanOrEqual(1);
@@ -97,6 +105,7 @@ describe("buildDashboardView", () => {
 
     expect(listSpy).not.toHaveBeenCalled();
     expect(view.chart.every((item) => item.revenue === 0 && item.profit === 0)).toBe(true);
+    expect(view.topSellingItems).toHaveLength(0);
 
     listSpy.mockRestore();
   });

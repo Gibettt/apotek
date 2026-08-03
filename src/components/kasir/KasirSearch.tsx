@@ -67,9 +67,10 @@ export function KasirSearch({ refreshToken }: { refreshToken?: number } = {}) {
   const [kategoriOptions, setKategoriOptions] = useState<MasterOption[]>([]);
   const [results, setResults] = useState<ObatListItem[]>([]);
   const [total, setTotal] = useState(0);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(false);
   const addItem = useCartStore((state) => state.addItem);
   const cartItems = useCartStore((state) => state.items);
+  const trimmedQuery = query.trim();
 
   const cartStockQuantityById = useMemo(
     () =>
@@ -130,11 +131,18 @@ export function KasirSearch({ refreshToken }: { refreshToken?: number } = {}) {
     let active = true;
 
     async function loadObat() {
+      if (!trimmedQuery) {
+        setResults([]);
+        setTotal(0);
+        setIsLoading(false);
+        return;
+      }
+
       setIsLoading(true);
 
       try {
         const result = await obatService.list({
-          search: query,
+          search: trimmedQuery,
           ...(kategoriId ? { kategoriId } : {}),
           perPage
         });
@@ -165,7 +173,7 @@ export function KasirSearch({ refreshToken }: { refreshToken?: number } = {}) {
     return () => {
       active = false;
     };
-  }, [query, kategoriId, refreshToken]);
+  }, [trimmedQuery, kategoriId, refreshToken]);
 
   return (
     <div className="space-y-5">
@@ -175,7 +183,7 @@ export function KasirSearch({ refreshToken }: { refreshToken?: number } = {}) {
           <input
             value={query}
             onChange={(event) => setQuery(event.target.value)}
-            placeholder="Cari nama atau kode obat"
+            placeholder="Ketik nama atau kode obat"
             className="h-12 w-full rounded-lg border border-stone-200 bg-white pl-11 pr-4 text-sm font-semibold text-stone-700 outline-none transition placeholder:text-stone-400 focus:border-[#ff6a3d] focus:ring-4 focus:ring-[#ff6a3d]/10"
           />
         </div>
@@ -383,12 +391,14 @@ export function KasirSearch({ refreshToken }: { refreshToken?: number } = {}) {
               )}
             </span>
             <p className="mt-4 text-sm font-black text-[#20201d]">
-              {query ? "Obat tidak ditemukan" : "Belum ada obat untuk dijual"}
+              {trimmedQuery
+                ? "Obat tidak ditemukan"
+                : "Ketik nama atau kode obat"}
             </p>
             <p className="mt-2 max-w-sm text-sm font-semibold leading-6 text-stone-500">
-              {query
+              {trimmedQuery
                 ? "Coba cari dengan kode atau nama lain."
-                : "Tambahkan obat dari menu Stok Obat. Setelah tersimpan di Supabase, obat akan muncul di sini."}
+                : "Daftar obat dan alat akan muncul setelah pencarian diisi."}
             </p>
           </div>
         )}

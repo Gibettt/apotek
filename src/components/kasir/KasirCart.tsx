@@ -49,87 +49,115 @@ export function KasirCart({
         </span>
       </div>
 
-      <div className="max-h-[420px] space-y-3 overflow-y-auto pr-1">
+      <div className="max-h-[420px] overflow-y-auto pr-1">
         {items.length ? (
-          items.map((item) => (
-            <div
-              key={item.cartKey ?? item.barangId}
-              className="rounded-lg border border-stone-200 bg-white p-4 transition hover:border-stone-300 hover:shadow-[0_16px_34px_rgba(25,24,21,.08)]"
-            >
-              <div className="flex items-start justify-between gap-3">
-                <div className="min-w-0">
-                  <p className="truncate font-black text-[#20201d]">
-                    {item.nama}
-                  </p>
-                  <p className="mt-1 text-sm font-semibold text-stone-500">
-                    {formatCurrency(item.hargaJual)} /{" "}
-                    {item.satuanNama || "item"}
-                  </p>
-                </div>
-                <button
-                  type="button"
-                  aria-label={`Hapus ${item.nama}`}
-                  onClick={() => removeItem(item.cartKey ?? item.barangId)}
-                  className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-red-50 text-red-600 transition hover:bg-red-100"
-                >
-                  <Trash2 className="h-4 w-4" strokeWidth={1.9} />
-                </button>
-              </div>
+          <div className="overflow-x-auto rounded-lg border border-stone-200 bg-white">
+            <table className="min-w-[980px] text-left text-sm">
+              <thead className="bg-[#f8f7f3] text-xs font-black uppercase text-stone-500">
+                <tr>
+                  <th className="w-12 px-3 py-3">No</th>
+                  <th className="w-32 px-3 py-3">Kode Barang</th>
+                  <th className="w-56 px-3 py-3">Nama Barang</th>
+                  <th className="w-40 px-3 py-3 text-center">Jumlah</th>
+                  <th className="w-28 px-3 py-3">Satuan</th>
+                  <th className="w-32 px-3 py-3 text-right">Harga</th>
+                  <th className="w-28 px-3 py-3 text-right">Pajak</th>
+                  <th className="w-36 px-3 py-3 text-right">Total</th>
+                  <th className="w-28 px-3 py-3 text-right">Diskon</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-stone-100">
+                {items.map((item, index) => {
+                  const cartKey = item.cartKey ?? item.barangId;
+                  const maxQuantity = Math.floor(
+                    item.stokTersedia / (item.stockQtyPerUnit ?? 1)
+                  );
+                  const lineTotal = item.hargaJual * item.quantity;
+                  const lineTax = 0;
+                  const lineDiscount = 0;
 
-              <div className="mt-4 grid gap-3 sm:grid-cols-[138px_1fr] sm:items-center">
-                <div className="flex h-10 items-center overflow-hidden rounded-lg border border-stone-200 bg-[#f8f7f3]">
-                  <button
-                    type="button"
-                    aria-label={`Kurangi ${item.nama}`}
-                    onClick={() =>
-                      updateQuantity(
-                        item.cartKey ?? item.barangId,
-                        item.quantity - 1
-                      )
-                    }
-                    className="grid h-full w-10 place-items-center text-stone-500 transition hover:bg-white hover:text-stone-950"
-                  >
-                    <Minus className="h-4 w-4" strokeWidth={2} />
-                  </button>
-                  <input
-                    aria-label={`Qty ${item.nama}`}
-                    type="number"
-                    min={1}
-                    max={Math.floor(
-                      item.stokTersedia / (item.stockQtyPerUnit ?? 1)
-                    )}
-                    value={item.quantity}
-                    onChange={(event) =>
-                      updateQuantity(
-                        item.cartKey ?? item.barangId,
-                        Number(event.target.value)
-                      )
-                    }
-                    className="h-full w-14 border-x border-stone-200 bg-white text-center text-sm font-black text-[#20201d] outline-none"
-                  />
-                  <button
-                    type="button"
-                    aria-label={`Tambah qty ${item.nama}`}
-                    onClick={() =>
-                      updateQuantity(
-                        item.cartKey ?? item.barangId,
-                        item.quantity + 1
-                      )
-                    }
-                    className="grid h-full w-10 place-items-center text-stone-500 transition hover:bg-white hover:text-stone-950"
-                  >
-                    <Plus className="h-4 w-4" strokeWidth={2} />
-                  </button>
-                </div>
-                <div className="text-right">
-                  <p className="text-xs font-bold text-stone-400">Subtotal</p>
-                  <p className="text-lg font-black text-[#20201d]">
-                    {formatCurrency(item.hargaJual * item.quantity)}
-                  </p>
-                </div>
-              </div>
-            </div>
-          ))
+                  return (
+                    <tr
+                      key={cartKey}
+                      className="align-middle text-stone-700 transition hover:bg-[#f8f7f3]"
+                    >
+                      <td className="px-3 py-3 font-black text-[#20201d]">
+                        {index + 1}
+                      </td>
+                      <td className="px-3 py-3 font-semibold text-stone-600">
+                        {item.kode || "-"}
+                      </td>
+                      <td className="px-3 py-3">
+                        <div className="flex min-w-0 items-center justify-between gap-2">
+                          <span className="min-w-0 truncate font-black text-[#20201d]">
+                            {item.nama}
+                          </span>
+                          <button
+                            type="button"
+                            aria-label={`Hapus ${item.nama}`}
+                            onClick={() => removeItem(cartKey)}
+                            className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-red-50 text-red-600 transition hover:bg-red-100"
+                          >
+                            <Trash2 className="h-4 w-4" strokeWidth={1.9} />
+                          </button>
+                        </div>
+                      </td>
+                      <td className="px-3 py-3">
+                        <div className="mx-auto flex h-9 w-32 items-center overflow-hidden rounded-lg border border-stone-200 bg-[#f8f7f3]">
+                          <button
+                            type="button"
+                            aria-label={`Kurangi ${item.nama}`}
+                            onClick={() =>
+                              updateQuantity(cartKey, item.quantity - 1)
+                            }
+                            className="grid h-full w-9 place-items-center text-stone-500 transition hover:bg-white hover:text-stone-950"
+                          >
+                            <Minus className="h-4 w-4" strokeWidth={2} />
+                          </button>
+                          <input
+                            aria-label={`Qty ${item.nama}`}
+                            type="number"
+                            min={1}
+                            max={maxQuantity}
+                            value={item.quantity}
+                            onChange={(event) =>
+                              updateQuantity(cartKey, Number(event.target.value))
+                            }
+                            className="h-full w-14 border-x border-stone-200 bg-white text-center text-sm font-black text-[#20201d] outline-none"
+                          />
+                          <button
+                            type="button"
+                            aria-label={`Tambah qty ${item.nama}`}
+                            onClick={() =>
+                              updateQuantity(cartKey, item.quantity + 1)
+                            }
+                            className="grid h-full w-9 place-items-center text-stone-500 transition hover:bg-white hover:text-stone-950"
+                          >
+                            <Plus className="h-4 w-4" strokeWidth={2} />
+                          </button>
+                        </div>
+                      </td>
+                      <td className="px-3 py-3 font-semibold text-stone-600">
+                        {item.satuanNama || "item"}
+                      </td>
+                      <td className="px-3 py-3 text-right font-semibold text-stone-700">
+                        {formatCurrency(item.hargaJual)}
+                      </td>
+                      <td className="px-3 py-3 text-right font-semibold text-stone-500">
+                        {formatCurrency(lineTax)}
+                      </td>
+                      <td className="px-3 py-3 text-right font-black text-[#20201d]">
+                        {formatCurrency(lineTotal)}
+                      </td>
+                      <td className="px-3 py-3 text-right font-semibold text-stone-500">
+                        {formatCurrency(lineDiscount)}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
         ) : (
           <div className="rounded-lg border border-dashed border-stone-200 bg-[#f8f7f3] p-8 text-center">
             <p className="text-sm font-black text-[#20201d]">

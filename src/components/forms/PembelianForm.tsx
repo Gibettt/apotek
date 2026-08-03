@@ -30,6 +30,7 @@ type DiskonMode = "rp" | "persen";
 
 interface PembelianFormItem {
   kategoriId: string;
+  golonganId: string;
   barangId: string;
   barangNama: string;
   autoKode: string;
@@ -48,6 +49,7 @@ interface PembelianFormItem {
 
 const emptyItem: PembelianFormItem = {
   kategoriId: "",
+  golonganId: "",
   barangId: "",
   barangNama: "",
   autoKode: "",
@@ -184,6 +186,7 @@ function PembelianFormContent() {
   const [obatOptions, setObatOptions] = useState<ObatListItem[]>([]);
   const [satuanOptions, setSatuanOptions] = useState<MasterOption[]>([]);
   const [kategoriOptions, setKategoriOptions] = useState<MasterOption[]>([]);
+  const [golonganOptions, setGolonganOptions] = useState<MasterOption[]>([]);
   const [konversiSatuan, setKonversiSatuan] = useState<SatuanKonversi[]>([]);
   const [isLoadingOptions, setIsLoadingOptions] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -205,12 +208,20 @@ function PembelianFormContent() {
       setIsLoadingOptions(true);
 
       try {
-        const [supplierResult, obatResult, satuanResult, kategoriResult, konversiResult] =
+        const [
+          supplierResult,
+          obatResult,
+          satuanResult,
+          kategoriResult,
+          golonganResult,
+          konversiResult
+        ] =
           await Promise.all([
             supplierService.list({ perPage: 1000 }),
             obatService.list({ perPage: 1000 }),
             obatService.listSatuanOptions(),
             obatService.listKategoriOptions(),
+            obatService.listGolonganOptions(),
             pembelianService.listKonversiSatuan()
           ]);
 
@@ -222,6 +233,7 @@ function PembelianFormContent() {
         setObatOptions(obatResult.data.filter((obat) => obat.status));
         setSatuanOptions(satuanResult);
         setKategoriOptions(kategoriResult);
+        setGolonganOptions(golonganResult);
         setKonversiSatuan(konversiResult);
       } catch (error) {
         if (active) {
@@ -320,6 +332,7 @@ function PembelianFormContent() {
           )
         : { konversi: item.satuanId ? "1" : item.konversi, konversiLocked: Boolean(item.satuanId) }),
       kategoriId: matchedObat?.kategoriId ?? item.kategoriId,
+      golonganId: matchedObat?.golonganId ?? item.golonganId,
       hargaBeli: matchedObat
         ? String(matchedObat.hargaAktif?.hargaBeli ?? 0)
         : item.hargaBeli
@@ -398,6 +411,7 @@ function PembelianFormContent() {
       kode: item.autoKode || generateAutoKode(item.barangNama, { unique: true }),
       nama: item.barangNama.trim(),
       kategoriId: item.kategoriId || undefined,
+      golonganId: item.golonganId || undefined,
       satuanDefaultId: item.satuanId || undefined,
       satuanBeliId: item.satuanId || undefined,
       satuanJualId: item.satuanId || undefined,
@@ -654,6 +668,24 @@ function PembelianFormContent() {
                   }))
                 ]}
               />
+              <Select
+                label="Golongan Obat"
+                value={draftItem.golonganId}
+                disabled={isLoadingOptions}
+                onChange={(event) =>
+                  updateDraftItem((item) => ({
+                    ...item,
+                    golonganId: event.target.value
+                  }))
+                }
+                options={[
+                  { label: "Pilih golongan", value: "" },
+                  ...golonganOptions.map((golongan) => ({
+                    label: golongan.label,
+                    value: golongan.id
+                  }))
+                ]}
+              />
               <Input
                 label="Barang"
                 list="pembelian-barang-options"
@@ -809,12 +841,13 @@ function PembelianFormContent() {
           </div>
 
           <div className="mt-4 overflow-auto rounded-lg border border-stone-200">
-            <table className="min-w-[1200px] w-full table-fixed text-sm">
+            <table className="min-w-[1320px] w-full table-fixed text-sm">
               <thead className="bg-[#20201d] text-white">
                 <tr>
                   <th className="w-12 px-3 py-3 text-center text-[10px] font-black uppercase leading-tight tracking-wide">No</th>
                   <th className="px-3 py-3 text-left text-[10px] font-black uppercase leading-tight tracking-wide">Barang</th>
                   <th className="px-3 py-3 text-left text-[10px] font-black uppercase leading-tight tracking-wide">Kategori</th>
+                  <th className="px-3 py-3 text-left text-[10px] font-black uppercase leading-tight tracking-wide">Golongan</th>
                   <th className="px-3 py-3 text-left text-[10px] font-black uppercase leading-tight tracking-wide">Satuan</th>
                   <th className="px-3 py-3 text-right text-[10px] font-black uppercase leading-tight tracking-wide">Dikirim</th>
                   <th className="px-3 py-3 text-right text-[10px] font-black uppercase leading-tight tracking-wide">Diterima</th>
@@ -838,6 +871,7 @@ function PembelianFormContent() {
                         </p>
                       </td>
                       <td className="px-3 py-3 text-xs font-semibold text-stone-600">{optionLabel(kategoriOptions, item.kategoriId)}</td>
+                      <td className="px-3 py-3 text-xs font-semibold text-stone-600">{optionLabel(golonganOptions, item.golonganId)}</td>
                       <td className="px-3 py-3 text-xs font-semibold text-stone-600">{optionLabel(satuanOptions, item.satuanId)}</td>
                       <td className="px-3 py-3 text-right text-xs font-bold text-stone-700">{parseNumberInput(item.jumlahDikirim)}</td>
                       <td className="px-3 py-3 text-right text-xs font-bold text-stone-700">{parseNumberInput(item.jumlahDiterima)}</td>
@@ -870,7 +904,7 @@ function PembelianFormContent() {
                   ))
                 ) : (
                   <tr>
-                    <td colSpan={12} className="px-4 py-10 text-center text-sm font-semibold text-stone-500">
+                    <td colSpan={13} className="px-4 py-10 text-center text-sm font-semibold text-stone-500">
                       Belum ada item pembelian.
                     </td>
                   </tr>
