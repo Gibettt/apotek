@@ -397,6 +397,51 @@ describe("commerce services", () => {
     expect(reloadedReports.data[0]?.id).toBe(created.id);
   });
 
+  it("keeps partially returned items available with the remaining qty", async () => {
+    const createdSale = await penjualanService.checkout({
+      pelangganId: "p-2",
+      items: [
+        {
+          barangId: "o-1",
+          kode: "OBT-001",
+          nama: "Paracetamol 500mg",
+          hargaJual: 650,
+          stokTersedia: 340,
+          membutuhkanResep: false,
+          quantity: 5
+        }
+      ],
+      metodePembayaran: "tunai",
+      bayar: 3250
+    });
+
+    await returPenjualanService.create({
+      pelangganId: "p-2",
+      penjualanId: createdSale.id,
+      tanggal: "2026-07-08",
+      alasan: "Retur sebagian",
+      items: [
+        {
+          penjualanDetailId: createdSale.details[0].id,
+          penjualanId: createdSale.id,
+          barangId: "o-1",
+          jumlah: 4,
+          hargaJual: 650
+        }
+      ]
+    });
+
+    const sales = await returPenjualanService.salesByPelanggan("p-2");
+    const remaining = sales
+      .flatMap((sale) => sale.details)
+      .find((detail) => detail.id === createdSale.details[0].id);
+
+    expect(remaining).toMatchObject({
+      sudahDiretur: 4,
+      sisaRetur: 1
+    });
+  });
+
   it("books a balanced jurnal for a purchase receipt (inventory in, payable out)", () => {
     const details = buildPembelianJurnalDetails({
       grandTotal: 255300,

@@ -4,14 +4,12 @@ import { useState } from "react";
 import { Header } from "@/components/layout/Header";
 import { KasirCart } from "@/components/kasir/KasirCart";
 import { KasirPaymentModal } from "@/components/kasir/KasirPaymentModal";
-import { KasirReceipt } from "@/components/kasir/KasirReceipt";
 import { KasirSearch } from "@/components/kasir/KasirSearch";
 import { Card, CardContent, CardHeader } from "@/components/ui/Card";
-import type { Pelanggan, Penjualan } from "@/types";
+import type { Pelanggan } from "@/types";
 
 export default function KasirPage() {
   const [paymentOpen, setPaymentOpen] = useState(false);
-  const [lastSale, setLastSale] = useState<Penjualan | null>(null);
   const [stockRefreshToken, setStockRefreshToken] = useState(0);
   const [selectedPelanggan, setSelectedPelanggan] =
     useState<Pelanggan | null>(null);
@@ -51,16 +49,13 @@ export default function KasirPage() {
             />
           </CardContent>
         </Card>
-
-        <KasirReceipt penjualan={lastSale} />
       </section>
       <KasirPaymentModal
         open={paymentOpen}
         pelangganId={selectedPelanggan?.id}
         pelangganNama={pelangganNama}
         onClose={() => setPaymentOpen(false)}
-        onSuccess={(penjualan) => {
-          setLastSale(penjualan);
+        onSuccess={() => {
           setSelectedPelanggan(null);
           setPelangganNama("");
           setStockRefreshToken((token) => token + 1);

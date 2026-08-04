@@ -19,7 +19,6 @@ import {
   MapPin,
   Package,
   Pill,
-  ReceiptText,
   Ruler,
   Settings,
   ShieldCheck,
@@ -40,9 +39,7 @@ const menuGroups = [
   {
     label: "Operasional",
     items: [
-      { label: "Penjualan", href: "/penjualan/kasir", icon: ShoppingCart },
-      { label: "Riwayat Transaksi", href: "/penjualan", icon: ReceiptText },
-      { label: "Retur Penjualan", href: "/retur-penjualan", icon: Undo2 },
+      { label: "Penjualan", href: "/penjualan", icon: ShoppingCart },
       { label: "Pembelian", href: "/pembelian", icon: Package },
       { label: "Resep", href: "/resep", icon: ClipboardList },
       { label: "Stok", href: "/stok", icon: Boxes }
@@ -126,6 +123,10 @@ export function Sidebar() {
   }, [pathname]);
 
   const isActive = (href: string) => {
+    if (href === "/penjualan" && pathname.startsWith("/retur-penjualan")) {
+      return true;
+    }
+
     if (pathname === href) {
       return true;
     }

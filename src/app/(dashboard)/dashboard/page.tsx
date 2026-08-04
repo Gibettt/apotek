@@ -94,6 +94,11 @@ function dateInputValue(date: Date) {
   return local.toISOString().slice(0, 10);
 }
 
+function monthInputValue(date = new Date()) {
+  const local = new Date(date.getFullYear(), date.getMonth(), 1);
+  return `${local.getFullYear()}-${pad(local.getMonth() + 1)}`;
+}
+
 function chartRangeForPeriod(period: DashboardPeriod) {
   const end = new Date();
   end.setHours(0, 0, 0, 0);
@@ -107,6 +112,15 @@ function monthYearLabel(date = new Date()) {
     month: "long",
     year: "numeric"
   });
+}
+
+function monthLabelFromInput(value: string) {
+  const [year, month] = value.split("-").map(Number);
+  if (!year || !month) {
+    return monthYearLabel();
+  }
+
+  return monthYearLabel(new Date(year, month - 1, 1));
 }
 
 function elapsedSince(iso: string, now: number) {
@@ -290,6 +304,7 @@ export default function DashboardPage() {
   const canViewSalesChart = canViewOwnerOnly;
   const [category, setCategory] = useState<DashboardCategory>("semua");
   const [chartRange, setChartRange] = useState(() => chartRangeForPeriod("7"));
+  const [topSellingMonth, setTopSellingMonth] = useState(() => monthInputValue());
   const [openFilter, setOpenFilter] = useState<"category" | null>(null);
   const [query, setQuery] = useState("");
   const [tablePage, setTablePage] = useState(1);
@@ -324,6 +339,7 @@ export default function DashboardPage() {
       category,
       startDate: chartRange.start,
       endDate: chartRange.end,
+      topSellingMonth,
       includeSales: canViewSalesChart
     }).then((result) => {
       if (active) {
@@ -334,7 +350,7 @@ export default function DashboardPage() {
     return () => {
       active = false;
     };
-  }, [canViewSalesChart, category, chartRange.end, chartRange.start]);
+  }, [canViewSalesChart, category, chartRange.end, chartRange.start, topSellingMonth]);
 
   useEffect(() => {
     setTablePage(1);
@@ -397,7 +413,7 @@ export default function DashboardPage() {
     (currentTablePage - 1) * medicineRowsPerPage,
     currentTablePage * medicineRowsPerPage
   );
-  const topSellingMonthLabel = monthYearLabel();
+  const topSellingMonthLabel = monthLabelFromInput(topSellingMonth);
   const maxTopSellingQuantity = Math.max(
     1,
     ...view.topSellingItems.map((item) => item.quantity)
@@ -619,11 +635,22 @@ export default function DashboardPage() {
             title="Analisis penjualan produk"
             icon={TrendingUp}
             action={
-              <span className="text-xs font-medium text-stone-400">
-                {topSellingMonthLabel}
-              </span>
+              <label className="flex items-center gap-2 text-xs font-medium text-stone-500">
+                <span className="sr-only">Pilih bulan analisis produk</span>
+                <input
+                  aria-label="Pilih bulan analisis produk"
+                  type="month"
+                  disabled={!canViewOwnerOnly}
+                  value={topSellingMonth}
+                  onChange={(event) => setTopSellingMonth(event.target.value)}
+                  className="h-9 rounded-lg border border-stone-200 bg-white px-3 text-sm font-bold text-stone-700 outline-none transition focus:border-[#0f766e] focus:ring-4 focus:ring-[#0f766e]/10 disabled:cursor-not-allowed disabled:opacity-60"
+                />
+              </label>
             }
           />
+          <p className="mb-3 text-xs font-semibold text-stone-400">
+            Menampilkan penjualan produk bulan {topSellingMonthLabel}.
+          </p>
           <div
             className={cn(
               "transition",
@@ -691,7 +718,7 @@ export default function DashboardPage() {
                         </strong>
                       </div>
                       <p className="mt-2 text-xs font-semibold text-stone-400">
-                        {item.transactionCount} transaksi bulan ini
+                        {item.transactionCount} transaksi periode ini
                       </p>
                     </div>
                   );
@@ -699,7 +726,7 @@ export default function DashboardPage() {
               </div>
             ) : (
               <div className="dashboard-empty">
-                Belum ada penjualan selesai pada bulan ini.
+                Belum ada penjualan selesai pada bulan {topSellingMonthLabel}.
               </div>
             )}
           </div>

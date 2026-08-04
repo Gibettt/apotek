@@ -24,7 +24,7 @@ export const menuGroups: MenuGroup[] = [
       },
       {
         label: "Penjualan",
-        href: "/penjualan/kasir",
+        href: "/penjualan",
         icon: "ShoppingCart",
         roles: ["kasir", "admin", "owner"]
       },
@@ -79,18 +79,6 @@ export const menuGroups: MenuGroup[] = [
         href: "/pembelian",
         icon: "PackagePlus",
         roles: ["owner", "admin"]
-      },
-      {
-        label: "Riwayat Transaksi",
-        href: "/penjualan",
-        icon: "ReceiptText",
-        roles: ["owner", "admin", "kasir"]
-      },
-      {
-        label: "Retur Penjualan",
-        href: "/retur-penjualan",
-        icon: "RotateCcw",
-        roles: ["owner", "admin", "kasir"]
       },
       {
         label: "Resep",

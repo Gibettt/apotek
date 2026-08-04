@@ -9,6 +9,10 @@ function dateInputValue(date: Date) {
   return local.toISOString().slice(0, 10);
 }
 
+function monthInputValue(date: Date) {
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
+}
+
 describe("buildDashboardView", () => {
   it("pulls the chart and medicine table from real service data, not mock numbers", async () => {
     const kategori = await kategoriService.list({ perPage: 10 });
@@ -92,6 +96,15 @@ describe("buildDashboardView", () => {
     });
     expect(daily.chart).toHaveLength(1);
     expect(daily.chart[0].revenue).toBeGreaterThanOrEqual(3000);
+
+    const future = new Date();
+    future.setFullYear(future.getFullYear() + 10);
+    const futureMonth = await buildDashboardView({
+      period: "7",
+      category: "semua",
+      topSellingMonth: monthInputValue(future)
+    });
+    expect(futureMonth.topSellingItems.some((item) => item.id === aktif.id)).toBe(false);
   });
 
   it("does not load sales data when sales chart access is locked", async () => {

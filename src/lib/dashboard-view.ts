@@ -11,6 +11,7 @@ type DashboardSelection = {
   category: DashboardCategory;
   startDate?: string;
   endDate?: string;
+  topSellingMonth?: string;
   includeSales?: boolean;
 };
 
@@ -60,6 +61,15 @@ function monthRange(date = new Date()) {
   return { start, end };
 }
 
+function monthRangeFromInput(value?: string) {
+  if (!value || !/^\d{4}-\d{2}$/.test(value)) {
+    return monthRange();
+  }
+
+  const [year, month] = value.split("-").map(Number);
+  return monthRange(new Date(year, month - 1, 1));
+}
+
 function isDateInRange(value: string, start: Date, end: Date) {
   const date = new Date(value);
   const time = date.getTime();
@@ -81,6 +91,7 @@ export async function buildDashboardView({
   category,
   startDate,
   endDate,
+  topSellingMonth,
   includeSales = true
 }: DashboardSelection) {
   const categoryId = await resolveCategoryId(category);
@@ -95,7 +106,7 @@ export async function buildDashboardView({
   );
 
   const { start, end } = chartDateRange(period, startDate, endDate);
-  const currentMonth = monthRange();
+  const selectedTopSellingMonth = monthRangeFromInput(topSellingMonth);
   const days =
     Math.floor((end.getTime() - start.getTime()) / 86_400_000) + 1;
 
@@ -126,7 +137,14 @@ export async function buildDashboardView({
         bucket.profit += detail.subtotal - detail.hargaPokok * detail.jumlah;
       }
 
-      if (sale.status !== "selesai" || !isDateInRange(sale.tanggal, currentMonth.start, currentMonth.end)) {
+      if (
+        sale.status !== "selesai" ||
+        !isDateInRange(
+          sale.tanggal,
+          selectedTopSellingMonth.start,
+          selectedTopSellingMonth.end
+        )
+      ) {
         continue;
       }
 

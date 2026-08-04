@@ -36,7 +36,8 @@ describe("Sidebar", () => {
 
     expect(screen.getAllByRole("link", { name: "Overview" })).toHaveLength(1);
     expect(screen.getAllByRole("link", { name: "Penjualan" })).toHaveLength(2);
-    expect(screen.getAllByRole("link", { name: "Riwayat Transaksi" })).toHaveLength(1);
+    expect(screen.queryByRole("link", { name: "Riwayat Transaksi" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: "Retur Penjualan" })).not.toBeInTheDocument();
     expect(screen.getByText("Operasional")).toBeInTheDocument();
   });
 
@@ -53,16 +54,21 @@ describe("Sidebar", () => {
     pathname = "/penjualan";
     render(<Sidebar />);
 
-    expect(screen.getByRole("link", { name: "Riwayat Transaksi" })).toHaveClass("dashboard-menu-link-active");
-    expect(screen.getAllByRole("link", { name: "Penjualan" })[0]).not.toHaveClass("dashboard-menu-link-active");
+    expect(screen.getAllByRole("link", { name: "Penjualan" })[0]).toHaveClass("dashboard-menu-link-active");
   });
 
-  it("does not mark the parent route active when a child route is open", () => {
+  it("marks penjualan active when a child sales route is open", () => {
     pathname = "/penjualan/kasir";
     render(<Sidebar />);
 
     expect(screen.getAllByRole("link", { name: "Penjualan" })[0]).toHaveClass("dashboard-menu-link-active");
-    expect(screen.getByRole("link", { name: "Riwayat Transaksi" })).not.toHaveClass("dashboard-menu-link-active");
+  });
+
+  it("marks penjualan active when retur penjualan is open", () => {
+    pathname = "/retur-penjualan";
+    render(<Sidebar />);
+
+    expect(screen.getAllByRole("link", { name: "Penjualan" })[0]).toHaveClass("dashboard-menu-link-active");
   });
 
   it("locks owner-only finance, report, and management links for non-owner email", () => {

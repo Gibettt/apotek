@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import type { ReactNode } from "react";
 import { Eye, Pencil, Plus, Trash2 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
@@ -106,7 +107,13 @@ function BooleanCell({
   );
 }
 
-export function ModuleListPage({ config }: { config: ModuleConfig }) {
+export function ModuleListPage({
+  config,
+  beforeContent
+}: {
+  config: ModuleConfig;
+  beforeContent?: ReactNode;
+}) {
   const [search, setSearch] = useState("");
   const [rowsData, setRowsData] = useState<ModuleRecord[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -305,6 +312,8 @@ export function ModuleListPage({ config }: { config: ModuleConfig }) {
           ) : null
         }
       />
+
+      {beforeContent}
 
       <Card className="rounded-lg">
         <CardContent className="space-y-4 p-4">

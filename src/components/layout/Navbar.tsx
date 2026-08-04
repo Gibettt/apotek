@@ -26,18 +26,18 @@ import { formatDateTime } from "@/utils/formatDate";
 
 const mobileItems = [
   { label: "Overview", href: "/dashboard" },
-  { label: "Penjualan", href: "/penjualan/kasir" },
+  { label: "Penjualan", href: "/penjualan" },
   { label: "Obat", href: "/obat" },
   { label: "Resep", href: "/resep" },
   { label: "Laporan", href: "/laporan/penjualan" }
 ];
 
 function resolvePageLabel(pathname: string) {
-  if (pathname === "/penjualan") {
-    return "Riwayat Transaksi";
+  if (pathname === "/penjualan" || pathname.startsWith("/penjualan/")) {
+    return "Penjualan";
   }
 
-  if (pathname === "/penjualan/kasir") {
+  if (pathname.startsWith("/retur-penjualan")) {
     return "Penjualan";
   }
 
@@ -214,7 +214,10 @@ export function Navbar() {
       </div>
       <nav className="flex gap-2 overflow-x-auto border-t border-stone-100 px-4 py-2 lg:hidden">
         {mobileItems.map((item) => {
-          const active = pathname === item.href || (item.href !== "/dashboard" && pathname.startsWith(item.href));
+          const active =
+            pathname === item.href ||
+            (item.href !== "/dashboard" && pathname.startsWith(item.href)) ||
+            (item.href === "/penjualan" && pathname.startsWith("/retur-penjualan"));
           return <Link key={item.href} href={item.href} className={cn("shrink-0 rounded-lg px-3 py-1.5 text-xs font-medium text-stone-500", active && "bg-[#e8f4ef] text-[#267d6b]")}>{item.label}</Link>;
         })}
       </nav>

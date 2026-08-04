@@ -4,11 +4,18 @@ import { useCartStore } from "@/store/cartStore";
 import type { Obat } from "@/types";
 import { KasirPaymentModal } from "./KasirPaymentModal";
 
-const { checkoutMock, createAccuratePaymentMock, pelangganListMock, pelangganCreateMock } = vi.hoisted(() => ({
+const {
+  checkoutMock,
+  createAccuratePaymentMock,
+  pelangganListMock,
+  pelangganCreateMock,
+  printReceiptMock
+} = vi.hoisted(() => ({
   checkoutMock: vi.fn(),
   createAccuratePaymentMock: vi.fn(),
   pelangganListMock: vi.fn(),
-  pelangganCreateMock: vi.fn()
+  pelangganCreateMock: vi.fn(),
+  printReceiptMock: vi.fn()
 }));
 
 vi.mock("@/services/penjualanService", () => ({
@@ -31,6 +38,18 @@ vi.mock("@/services/pelangganService", () => ({
     create: pelangganCreateMock
   }
 }));
+
+vi.mock("@/utils/printReceipt", async () => {
+  const actual =
+    await vi.importActual<typeof import("@/utils/printReceipt")>(
+      "@/utils/printReceipt"
+    );
+
+  return {
+    ...actual,
+    printReceipt: printReceiptMock
+  };
+});
 
 const medicine: Obat = {
   id: "12",
@@ -98,7 +117,7 @@ describe("KasirPaymentModal", () => {
     );
 
     const bayarInput = screen.getByLabelText(
-      "Nominal Bayar"
+      "Uang Pembayaran"
     ) as HTMLInputElement;
 
     expect(bayarInput.value).toBe("30000");
@@ -122,7 +141,7 @@ describe("KasirPaymentModal", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "QRIS / e-Wallet" }));
 
-    expect(screen.queryByLabelText("Nominal Bayar")).not.toBeInTheDocument();
+    expect(screen.queryByLabelText("Uang Pembayaran")).not.toBeInTheDocument();
     fireEvent.click(
       screen.getByRole("button", { name: "Buat Link Pembayaran" })
     );
@@ -185,6 +204,23 @@ describe("KasirPaymentModal", () => {
       });
       expect(checkoutMock).toHaveBeenCalledWith(
         expect.objectContaining({ pelangganId: "pel-new" })
+      );
+    });
+  });
+
+  it("prints the receipt after saving with print", async () => {
+    render(
+      <KasirPaymentModal open onClose={vi.fn()} onSuccess={vi.fn()} />
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Simpan + Cetak" }));
+
+    await waitFor(() => {
+      expect(checkoutMock).toHaveBeenCalled();
+    });
+    await waitFor(() => {
+      expect(printReceiptMock).toHaveBeenCalledWith(
+        expect.objectContaining({ nomorInvoice: "PJL-TEST" })
       );
     });
   });

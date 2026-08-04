@@ -3,16 +3,15 @@
 import {
   Banknote,
   CheckCircle2,
-  CreditCard,
   ExternalLink,
   Landmark,
+  Printer,
   Wallet
 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { Alert } from "@/components/ui/Alert";
 import { Button } from "@/components/ui/Button";
-import { Input } from "@/components/ui/Input";
 import { Modal } from "@/components/ui/Modal";
 import {
   accuratePaymentService,
@@ -24,6 +23,7 @@ import { useCabangStore } from "@/store/cabangStore";
 import { useCartStore } from "@/store/cartStore";
 import type { MetodePembayaran, Penjualan } from "@/types";
 import { formatCurrency } from "@/utils/formatCurrency";
+import { printReceipt } from "@/utils/printReceipt";
 
 function createIdempotencyKey() {
   if (typeof crypto !== "undefined" && "randomUUID" in crypto) {
@@ -38,12 +38,18 @@ function createIdempotencyKey() {
 }
 
 const paymentMethods = [
-  { value: "tunai", label: "Tunai", icon: Banknote },
-  { value: "transfer", label: "Transfer", icon: Landmark },
-  { value: "accurate", label: "QRIS / e-Wallet", icon: Wallet }
+  { value: "tunai", label: "Tunai", note: "Uang kas", icon: Banknote },
+  { value: "transfer", label: "Transfer", note: "Bank manual", icon: Landmark },
+  {
+    value: "accurate",
+    label: "QRIS / e-Wallet",
+    note: "Link checkout",
+    icon: Wallet
+  }
 ] satisfies Array<{
   value: MetodePembayaran;
   label: string;
+  note: string;
   icon: typeof Banknote;
 }>;
 
@@ -196,7 +202,7 @@ export function KasirPaymentModal({
     return created.id;
   }
 
-  async function handleCheckout() {
+  async function handleCheckout(printAfterSave = false) {
     if (metodePembayaran === "accurate") {
       await handleAccurateCheckout();
       return;
@@ -222,6 +228,9 @@ export function KasirPaymentModal({
       onSuccess(result);
       toast.success("Transaksi selesai");
       onClose();
+      if (printAfterSave) {
+        printReceipt(result);
+      }
     } catch (error) {
       toast.error(
         error instanceof Error ? error.message : "Gagal menyimpan transaksi"
@@ -232,56 +241,138 @@ export function KasirPaymentModal({
   }
 
   return (
-    <Modal open={open} title="Pembayaran" onClose={onClose}>
+    <Modal
+      open={open}
+      title="Pembayaran"
+      panelClassName="max-w-2xl rounded-2xl"
+      onClose={onClose}
+    >
       <div className="space-y-5">
-        <div className="rounded-xl bg-[#080c1c] p-5 text-white shadow-[0_20px_50px_rgba(8,12,28,.20)]">
-          <div className="flex items-start justify-between gap-4">
-            <div>
-              <p className="text-xs font-black uppercase tracking-wide text-white/50">
-                Total tagihan
-              </p>
-              <p className="mt-2 text-3xl font-black tracking-normal">
-                {formatCurrency(total)}
-              </p>
-              <p className="mt-1 text-sm font-semibold text-white/60">
-                {totalItems} item dalam keranjang
-              </p>
+        <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4 shadow-inner">
+          <div className="grid gap-3">
+            <div className="grid min-w-0 gap-2 sm:grid-cols-[150px_minmax(0,1fr)] sm:items-center">
+              <p className="text-xl font-black text-slate-950">Total</p>
+              <div className="min-w-0 overflow-hidden rounded-xl border border-yellow-300 bg-yellow-300 px-4 py-3 text-right shadow-sm">
+                <p className="truncate text-3xl font-black leading-none text-slate-950 sm:text-4xl">
+                  {formatCurrency(total)}
+                </p>
+              </div>
             </div>
-            <span className="grid h-12 w-12 shrink-0 place-items-center rounded-xl bg-white/10 text-[#7dd3fc]">
-              <CreditCard className="h-6 w-6" strokeWidth={1.9} />
+
+            {metodePembayaran !== "accurate" ? (
+              <>
+                <div className="grid min-w-0 gap-2 sm:grid-cols-[150px_minmax(0,1fr)] sm:items-center">
+                  <label
+                    htmlFor="nominal-bayar"
+                    className="text-base font-black text-slate-900"
+                  >
+                    Uang Pembayaran
+                  </label>
+                  <div className="flex min-h-14 min-w-0 items-center rounded-xl border border-emerald-300 bg-emerald-300 px-4 text-right shadow-sm transition focus-within:border-brand-700 focus-within:ring-2 focus-within:ring-brand-100">
+                    <span className="mr-3 text-lg font-black text-emerald-950/60">
+                      Rp
+                    </span>
+                    <input
+                      id="nominal-bayar"
+                      type="number"
+                      min={0}
+                      value={bayar}
+                      onChange={(event) => setBayar(event.target.value)}
+                      className="h-12 min-w-0 flex-1 bg-transparent text-right text-3xl font-black leading-none text-emerald-950 outline-none sm:text-4xl"
+                    />
+                  </div>
+                </div>
+
+                <div className="grid min-w-0 gap-2 sm:grid-cols-[150px_minmax(0,1fr)] sm:items-center">
+                  <p className="text-base font-black text-slate-900">
+                    {kurang ? "Kurang Bayar" : "Kembalian"}
+                  </p>
+                  <div
+                    className={`min-w-0 overflow-hidden rounded-xl border px-4 py-3 text-right shadow-sm ${
+                      kurang
+                        ? "border-red-300 bg-red-200"
+                        : "border-orange-300 bg-orange-300"
+                    }`}
+                  >
+                    <p
+                      className={`truncate text-3xl font-black leading-none sm:text-4xl ${
+                        kurang ? "text-red-950" : "text-orange-950"
+                      }`}
+                    >
+                      {formatCurrency(kurang || kembalian)}
+                    </p>
+                  </div>
+                </div>
+              </>
+            ) : (
+              <div className="grid min-w-0 gap-2 sm:grid-cols-[150px_minmax(0,1fr)] sm:items-center">
+                <p className="text-base font-black text-slate-900">
+                  Total Bayar
+                </p>
+                <div className="min-w-0 overflow-hidden rounded-xl border border-emerald-300 bg-emerald-300 px-4 py-3 text-right shadow-sm">
+                  <p className="truncate text-3xl font-black leading-none text-emerald-950 sm:text-4xl">
+                    {formatCurrency(total)}
+                  </p>
+                </div>
+              </div>
+            )}
+          </div>
+          <div className="mt-3 flex flex-wrap gap-2 text-xs font-bold text-slate-500">
+            <span className="rounded-full bg-white px-3 py-1 shadow-sm">
+              {totalItems} item
+            </span>
+            <span className="rounded-full bg-white px-3 py-1 shadow-sm">
+              {paymentMethods.find((item) => item.value === metodePembayaran)
+                ?.label ?? "Pembayaran"}
             </span>
           </div>
         </div>
 
         <div>
-          <p className="mb-2 text-sm font-black text-[#20201d]">
+          <p className="mb-2 text-sm font-black text-slate-900">
             Metode pembayaran
           </p>
-          <div className="grid grid-cols-2 gap-2">
-            {paymentMethods.map(({ value, label, icon: Icon }) => {
+          <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+            {paymentMethods.map(({ value, label, note, icon: Icon }) => {
               const selected = metodePembayaran === value;
 
               return (
                 <button
                   key={value}
                   type="button"
+                  aria-label={label}
                   aria-pressed={selected}
                   disabled={value === "accurate" && hasEceranItem}
                   onClick={() => setMetodePembayaran(value)}
-                  className={`flex h-14 items-center gap-3 rounded-lg border px-3 text-left text-sm font-black transition ${
+                  className={`group relative flex min-h-20 items-center gap-3 rounded-xl border p-3 text-left transition ${
                     selected
-                      ? "border-[#0f766e] bg-emerald-50 text-[#0f766e] shadow-[0_12px_28px_rgba(15,118,110,.12)]"
-                      : "border-stone-200 bg-white text-stone-600 hover:border-stone-300 hover:bg-[#f8f7f3] disabled:pointer-events-none disabled:bg-stone-100 disabled:text-stone-400"
+                      ? "border-brand-600 bg-brand-50 text-brand-700 shadow-[0_14px_34px_rgba(15,118,110,.13)]"
+                      : "border-slate-200 bg-white text-slate-600 hover:border-brand-200 hover:bg-slate-50 disabled:pointer-events-none disabled:bg-slate-50 disabled:text-slate-400"
                   }`}
                 >
                   <span
-                    className={`grid h-9 w-9 shrink-0 place-items-center rounded-lg ${
-                      selected ? "bg-white" : "bg-[#f8f7f3]"
+                    className={`grid h-11 w-11 shrink-0 place-items-center rounded-xl ${
+                      selected
+                        ? "bg-white text-brand-700"
+                        : "bg-slate-100 text-slate-500 group-hover:text-brand-700"
                     }`}
                   >
                     <Icon className="h-4 w-4" strokeWidth={2} />
                   </span>
-                  <span className="min-w-0 truncate">{label}</span>
+                  <span className="min-w-0">
+                    <span className="block truncate text-sm font-black">
+                      {label}
+                    </span>
+                    <span className="mt-0.5 block truncate text-xs font-semibold opacity-70">
+                      {note}
+                    </span>
+                  </span>
+                  {selected ? (
+                    <CheckCircle2
+                      className="absolute right-3 top-3 h-4 w-4 text-brand-700"
+                      strokeWidth={2.4}
+                    />
+                  ) : null}
                 </button>
               );
             })}
@@ -298,69 +389,30 @@ export function KasirPaymentModal({
           </Alert>
         ) : (
           <div className="space-y-3">
-            <Input
-              label="Nominal Bayar"
-              type="number"
-              min={0}
-              value={bayar}
-              onChange={(event) => setBayar(event.target.value)}
-              className="h-14 text-lg font-black"
-            />
+            <p className="text-sm font-black text-slate-900">Nominal cepat</p>
             <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
               {quickAmounts(total).map((amount) => (
                 <button
                   key={amount}
                   type="button"
                   onClick={() => setBayar(String(amount))}
-                  className="h-10 rounded-lg border border-stone-200 bg-white text-sm font-black text-stone-700 transition hover:border-[#0f766e] hover:bg-emerald-50 hover:text-[#0f766e]"
+                  className="h-10 rounded-xl border border-slate-200 bg-white px-2 text-sm font-black text-slate-700 shadow-sm transition hover:border-brand-300 hover:bg-brand-50 hover:text-brand-700 active:translate-y-px"
                 >
-                  {amount === total ? "Uang pas" : formatCurrency(amount)}
+                  <span className="block truncate">
+                    {amount === total ? "Uang pas" : formatCurrency(amount)}
+                  </span>
                 </button>
               ))}
             </div>
           </div>
         )}
 
-        {metodePembayaran !== "accurate" ? (
-          <div
-            className={`rounded-xl border p-4 ${
-              kurang
-                ? "border-red-100 bg-red-50"
-                : "border-emerald-100 bg-emerald-50"
-            }`}
-          >
-            <div className="flex items-center justify-between gap-4">
-              <div>
-                <p
-                  className={`text-xs font-black uppercase ${
-                    kurang ? "text-red-500" : "text-emerald-600"
-                  }`}
-                >
-                  {kurang ? "Nominal kurang" : "Kembalian"}
-                </p>
-                <p
-                  className={`mt-1 text-3xl font-black tracking-normal ${
-                    kurang ? "text-red-700" : "text-emerald-700"
-                  }`}
-                >
-                  {formatCurrency(kurang || kembalian)}
-                </p>
-              </div>
-              {!kurang ? (
-                <span className="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-white text-emerald-700 shadow-sm">
-                  <CheckCircle2 className="h-6 w-6" strokeWidth={2} />
-                </span>
-              ) : null}
-            </div>
-          </div>
-        ) : null}
-
         {paymentSession?.paymentUrl ? (
           <div
-            className="space-y-3 rounded-lg border border-emerald-200 bg-emerald-50 p-4"
+            className="space-y-3 rounded-2xl border border-brand-200 bg-brand-50 p-4"
             aria-live="polite"
           >
-            <div className="flex items-start gap-3 text-emerald-800">
+            <div className="flex items-start gap-3 text-brand-900">
               <Wallet className="mt-0.5 h-5 w-5 shrink-0" />
               <div>
                 <p className="text-sm font-semibold">Menunggu pembayaran</p>
@@ -374,27 +426,47 @@ export function KasirPaymentModal({
               href={paymentSession.paymentUrl}
               target="_blank"
               rel="noreferrer"
-              className="inline-flex h-10 w-full items-center justify-center gap-2 rounded-md bg-emerald-700 px-4 text-sm font-semibold text-white transition-colors hover:bg-emerald-800 focus:outline-none focus:ring-2 focus:ring-emerald-600 focus:ring-offset-2"
+              className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-xl bg-brand-700 px-4 text-sm font-semibold text-white transition-colors hover:bg-brand-900 focus:outline-none focus:ring-2 focus:ring-brand-600 focus:ring-offset-2"
             >
               <ExternalLink className="h-4 w-4" />
               Buka Halaman Pembayaran
             </a>
           </div>
         ) : null}
-        <Button
-          type="button"
-          className="h-12 w-full rounded-lg bg-[#0f766e] text-base font-black hover:bg-[#115e59]"
-          isLoading={isSubmitting}
-          disabled={
-            Boolean(paymentSession?.paymentUrl) ||
-            (metodePembayaran !== "accurate" && kurang > 0)
-          }
-          onClick={handleCheckout}
-        >
-          {metodePembayaran === "accurate"
-            ? "Buat Link Pembayaran"
-            : "Selesaikan Transaksi"}
-        </Button>
+        {metodePembayaran === "accurate" ? (
+          <Button
+            type="button"
+            className="h-12 w-full rounded-xl bg-brand-700 text-base font-black shadow-[0_14px_30px_rgba(15,118,110,.24)] hover:bg-brand-900 active:translate-y-px"
+            isLoading={isSubmitting}
+            disabled={Boolean(paymentSession?.paymentUrl)}
+            onClick={() => handleCheckout()}
+          >
+            Buat Link Pembayaran
+          </Button>
+        ) : (
+          <div className="grid gap-2 sm:grid-cols-[1fr_1.4fr]">
+            <Button
+              type="button"
+              variant="secondary"
+              className="h-12 rounded-xl text-base font-black active:translate-y-px"
+              isLoading={isSubmitting}
+              disabled={kurang > 0}
+              onClick={() => handleCheckout()}
+            >
+              Selesaikan Transaksi
+            </Button>
+            <Button
+              type="button"
+              className="h-12 rounded-xl bg-brand-700 text-base font-black shadow-[0_14px_30px_rgba(15,118,110,.24)] hover:bg-brand-900 active:translate-y-px"
+              isLoading={isSubmitting}
+              disabled={kurang > 0}
+              onClick={() => handleCheckout(true)}
+            >
+              <Printer className="h-4 w-4" />
+              Simpan + Cetak
+            </Button>
+          </div>
+        )}
       </div>
     </Modal>
   );
