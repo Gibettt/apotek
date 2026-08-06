@@ -68,6 +68,16 @@ describe("KasirSearch", () => {
     ).toBeInTheDocument();
   });
 
+  it("reports the total medicines count to the cashier dashboard", async () => {
+    const onTotalChange = vi.fn();
+
+    render(<KasirSearch onTotalChange={onTotalChange} />);
+
+    await screen.findByText("Obat Supabase 500mg");
+
+    expect(onTotalChange).toHaveBeenCalledWith(1);
+  });
+
   it("loads medicines from obat service after search and can add them to cart", async () => {
     render(<KasirSearch />);
 
@@ -89,6 +99,30 @@ describe("KasirSearch", () => {
     expect(useCartStore.getState().items[0]).toMatchObject({
       barangId: "77",
       nama: "Obat Supabase 500mg",
+      quantity: 1
+    });
+  });
+
+  it("allows prescription medicines to be sold from cashier", async () => {
+    mocks.list.mockResolvedValue({
+      data: [{ ...supabaseMedicine, membutuhkanResep: true, golonganNama: "Obat Keras" }],
+      total: 1,
+      page: 1,
+      perPage: 12,
+      totalPages: 1
+    });
+
+    render(<KasirSearch />);
+
+    expect(await screen.findByText("Resep")).toBeInTheDocument();
+
+    fireEvent.click(
+      screen.getByRole("button", { name: "Tambah Obat Supabase 500mg" })
+    );
+
+    expect(useCartStore.getState().items[0]).toMatchObject({
+      barangId: "77",
+      membutuhkanResep: true,
       quantity: 1
     });
   });

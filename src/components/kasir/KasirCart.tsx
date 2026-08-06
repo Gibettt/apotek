@@ -12,12 +12,14 @@ export function KasirCart({
   pelangganNama,
   onPelangganNameChange,
   onPelangganChange,
+  onPelangganTotalChange,
   onPay
 }: {
   pelangganId?: string;
   pelangganNama?: string;
   onPelangganNameChange?: (nama: string) => void;
   onPelangganChange?: (pelanggan: Pelanggan | null) => void;
+  onPelangganTotalChange?: (total: number) => void;
   onPay: () => void;
 }) {
   const { items, removeItem, updateQuantity, clear, subtotal } = useCartStore();
@@ -32,6 +34,7 @@ export function KasirCart({
             pelangganId={pelangganId}
             pelangganNama={pelangganNama}
             onNameChange={onPelangganNameChange}
+            onTotalChange={onPelangganTotalChange}
             onChange={onPelangganChange}
           />
         </div>

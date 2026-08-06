@@ -51,7 +51,7 @@ describe("KasirPelangganPicker", () => {
 
     render(<KasirPelangganPicker onChange={onChange} />);
 
-    fireEvent.change(await screen.findByPlaceholderText("Cari nama pelanggan"), {
+    fireEvent.change(await screen.findByPlaceholderText("Cari / ketik nama pelanggan"), {
       target: { value: "budi" }
     });
     fireEvent.click(await screen.findByRole("button", { name: /Budi Santoso/ }));
@@ -61,10 +61,22 @@ describe("KasirPelangganPicker", () => {
     );
   });
 
+  it("reports registered customer count to the cashier dashboard", async () => {
+    const onTotalChange = vi.fn();
+
+    render(
+      <KasirPelangganPicker onChange={vi.fn()} onTotalChange={onTotalChange} />
+    );
+
+    await screen.findByPlaceholderText("Cari / ketik nama pelanggan");
+
+    expect(onTotalChange).toHaveBeenCalledWith(1);
+  });
+
   it("hides registered customers behind a toggle button", async () => {
     render(<KasirPelangganPicker onChange={vi.fn()} />);
 
-    await screen.findByPlaceholderText("Cari nama pelanggan");
+    await screen.findByPlaceholderText("Cari / ketik nama pelanggan");
 
     expect(screen.queryByRole("button", { name: /Budi Santoso/ })).not.toBeInTheDocument();
 
@@ -81,14 +93,14 @@ describe("KasirPelangganPicker", () => {
       <KasirPelangganPicker onChange={onChange} onNameChange={onNameChange} />
     );
 
-    fireEvent.change(await screen.findByPlaceholderText("Cari nama pelanggan"), {
+    fireEvent.change(await screen.findByPlaceholderText("Cari / ketik nama pelanggan"), {
       target: { value: "Gita" }
     });
 
     expect(onNameChange).toHaveBeenCalledWith("Gita");
 
     fireEvent.click(
-      screen.getByRole("button", { name: /Tambah Gita sebagai pelanggan/ })
+      screen.getByRole("button", { name: /Daftarkan Gita sebagai pelanggan baru/ })
     );
 
     await waitFor(() => {
@@ -98,5 +110,25 @@ describe("KasirPelangganPicker", () => {
       );
       expect(onNameChange).toHaveBeenLastCalledWith("Gita");
     });
+  });
+
+  it("uses a typed customer name for the current sale without registering it", async () => {
+    const onChange = vi.fn();
+    const onNameChange = vi.fn();
+
+    render(
+      <KasirPelangganPicker onChange={onChange} onNameChange={onNameChange} />
+    );
+
+    fireEvent.change(await screen.findByPlaceholderText("Cari / ketik nama pelanggan"), {
+      target: { value: "Siti" }
+    });
+    fireEvent.click(
+      screen.getByRole("button", { name: /Pakai Siti untuk transaksi ini/ })
+    );
+
+    expect(onChange).toHaveBeenLastCalledWith(null);
+    expect(onNameChange).toHaveBeenLastCalledWith("Siti");
+    expect(mocks.create).not.toHaveBeenCalled();
   });
 });

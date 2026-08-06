@@ -18,6 +18,8 @@ export default function KasirPage() {
   const [selectedPelanggan, setSelectedPelanggan] =
     useState<Pelanggan | null>(null);
   const [pelangganNama, setPelangganNama] = useState("");
+  const [productTotal, setProductTotal] = useState(0);
+  const [pelangganTotal, setPelangganTotal] = useState(0);
   const totalItems = cartItems.reduce((sum, item) => sum + item.quantity, 0);
 
   return (
@@ -38,9 +40,9 @@ export default function KasirPage() {
               <div className="mb-4 grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
                 {[
                   ["Transaksi", "Baru", "Aktif"],
-                  ["Pelanggan", selectedPelanggan?.nama ?? (pelangganNama || "Umum"), "Siap bayar"],
-                  ["Item", `${totalItems} item`, "Di keranjang"],
-                  ["Total", formatCurrency(subtotal()), "Belanja"]
+                  ["Pelanggan", String(pelangganTotal), "Terdaftar"],
+                  ["Item", String(productTotal), "Barang tampil"],
+                  ["Total", String(subtotal()), "Belanja"]
                 ].map(([title, value, status]) => (
                   <div key={title} className="rounded-[16px] bg-white p-3 shadow-[0_12px_24px_rgba(48,57,30,0.08)]">
                     <div className="flex items-start justify-between gap-2">
@@ -63,7 +65,10 @@ export default function KasirPage() {
               </div>
 
               <div className="min-h-0 flex-1 overflow-y-auto pr-1">
-                <KasirSearch refreshToken={stockRefreshToken} />
+                <KasirSearch
+                  refreshToken={stockRefreshToken}
+                  onTotalChange={setProductTotal}
+                />
               </div>
             </div>
 
@@ -81,6 +86,7 @@ export default function KasirPage() {
                 pelangganId={selectedPelanggan?.id}
                 pelangganNama={pelangganNama}
                 onPelangganNameChange={setPelangganNama}
+                onPelangganTotalChange={setPelangganTotal}
                 onPelangganChange={setSelectedPelanggan}
                 onPay={() => setPaymentOpen(true)}
               />

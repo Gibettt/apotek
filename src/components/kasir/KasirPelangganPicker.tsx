@@ -10,11 +10,13 @@ export function KasirPelangganPicker({
   pelangganId,
   pelangganNama,
   onNameChange,
+  onTotalChange,
   onChange
 }: {
   pelangganId?: string;
   pelangganNama?: string;
   onNameChange?: (nama: string) => void;
+  onTotalChange?: (total: number) => void;
   onChange: (pelanggan: Pelanggan | null) => void;
 }) {
   const [query, setQuery] = useState("");
@@ -37,13 +39,16 @@ export function KasirPelangganPicker({
       try {
         const result = await pelangganService.list({ perPage: 1000 });
         if (active) {
-          setPelanggan(result.data.filter((item) => item.aktif));
+          const activePelanggan = result.data.filter((item) => item.aktif);
+          setPelanggan(activePelanggan);
+          onTotalChange?.(activePelanggan.length);
         }
       } catch (error) {
         if (active) {
           toast.error(
             error instanceof Error ? error.message : "Gagal memuat pelanggan"
           );
+          onTotalChange?.(0);
         }
       } finally {
         if (active) {
@@ -57,7 +62,7 @@ export function KasirPelangganPicker({
     return () => {
       active = false;
     };
-  }, []);
+  }, [onTotalChange]);
 
   const filtered = useMemo(() => {
     const normalized = query.trim().toLowerCase();
@@ -96,6 +101,15 @@ export function KasirPelangganPicker({
     } finally {
       setIsCreating(false);
     }
+  }
+
+  function useTypedName() {
+    if (!typedName) return;
+
+    onChange(exactMatch ?? null);
+    onNameChange?.(exactMatch?.nama ?? typedName);
+    setQuery("");
+    setShowRegistered(false);
   }
 
   return (
@@ -138,7 +152,7 @@ export function KasirPelangganPicker({
           onNameChange?.(event.target.value);
           setShowRegistered(false);
         }}
-        placeholder={isLoading ? "Memuat pelanggan..." : "Cari nama pelanggan"}
+        placeholder={isLoading ? "Memuat pelanggan..." : "Cari / ketik nama pelanggan"}
         className="h-11 w-full rounded-lg border border-stone-200 bg-white px-4 text-sm font-semibold text-stone-700 outline-none transition placeholder:text-stone-400 focus:border-[#0f766e] focus:ring-4 focus:ring-[#0f766e]/10"
       />
 
@@ -180,6 +194,18 @@ export function KasirPelangganPicker({
               </span>
             </button>
           ) : null}
+          {query.trim() ? (
+            <button
+              type="button"
+              onClick={useTypedName}
+              className="flex min-h-10 items-center justify-between gap-3 rounded-lg bg-white px-3 py-2 text-left text-xs font-black leading-5 text-[#20201d] transition hover:bg-[#f8f7f3]"
+            >
+              <span className="min-w-0 truncate">
+                Pakai {exactMatch?.nama ?? typedName} untuk transaksi ini
+              </span>
+              <UserRound className="h-4 w-4 shrink-0 text-[#0f766e]" />
+            </button>
+          ) : null}
           {typedName && !exactMatch ? (
             <button
               type="button"
@@ -188,7 +214,7 @@ export function KasirPelangganPicker({
               className="flex min-h-10 items-center justify-between gap-3 rounded-lg bg-emerald-50 px-3 py-2 text-left text-xs font-black leading-5 text-emerald-700 transition hover:bg-emerald-100 disabled:opacity-70"
             >
               <span className="min-w-0 truncate">
-                Tambah {typedName} sebagai pelanggan
+                Daftarkan {typedName} sebagai pelanggan baru
               </span>
               {isCreating ? (
                 <Loader2 className="h-4 w-4 shrink-0 animate-spin" />

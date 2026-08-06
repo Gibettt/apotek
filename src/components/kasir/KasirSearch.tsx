@@ -49,10 +49,6 @@ function getDisabledReason(
     return "Stok habis";
   }
 
-  if (item.membutuhkanResep) {
-    return "Butuh resep";
-  }
-
   if (cartStockQuantity + stockQtyPerUnit > item.stokTersedia) {
     return "Maksimal";
   }
@@ -60,7 +56,13 @@ function getDisabledReason(
   return null;
 }
 
-export function KasirSearch({ refreshToken }: { refreshToken?: number } = {}) {
+export function KasirSearch({
+  refreshToken,
+  onTotalChange
+}: {
+  refreshToken?: number;
+  onTotalChange?: (total: number) => void;
+} = {}) {
   const [query, setQuery] = useState("");
   const [kategoriId, setKategoriId] = useState("");
   const [kategoriOptions, setKategoriOptions] = useState<MasterOption[]>([]);
@@ -86,8 +88,7 @@ export function KasirSearch({ refreshToken }: { refreshToken?: number } = {}) {
   const readyCount = useMemo(
     () =>
       results.filter(
-        (item) =>
-          item.status && item.stokTersedia > 0 && !item.membutuhkanResep
+        (item) => item.status && item.stokTersedia > 0
       ).length,
     [results]
   );
@@ -145,6 +146,7 @@ export function KasirSearch({ refreshToken }: { refreshToken?: number } = {}) {
 
         setResults(result.data);
         setTotal(result.total);
+        onTotalChange?.(result.total);
       } catch (error) {
         if (active) {
           toast.error(
@@ -152,6 +154,7 @@ export function KasirSearch({ refreshToken }: { refreshToken?: number } = {}) {
           );
           setResults([]);
           setTotal(0);
+          onTotalChange?.(0);
         }
       } finally {
         if (active) {
@@ -165,7 +168,7 @@ export function KasirSearch({ refreshToken }: { refreshToken?: number } = {}) {
     return () => {
       active = false;
     };
-  }, [trimmedQuery, kategoriId, page, refreshToken]);
+  }, [trimmedQuery, kategoriId, page, refreshToken, onTotalChange]);
 
   return (
     <div className="space-y-4">
