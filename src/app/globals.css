@@ -24,7 +24,9 @@ body {
 }
 
 html:has(.dashboard-app-shell),
-body:has(.dashboard-app-shell) {
+body:has(.dashboard-app-shell),
+html:has(.kasir-app-shell),
+body:has(.kasir-app-shell) {
   height: 100%;
   overflow: hidden;
 }

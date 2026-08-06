@@ -8,7 +8,7 @@ interface AuthState {
   user: AuthUser | null;
   token: string | null;
   isLoading: boolean;
-  login: (credentials: LoginCredentials) => Promise<void>;
+  login: (credentials: LoginCredentials) => Promise<AuthUser>;
   register: (payload: RegisterPayload) => Promise<RegisterResult>;
   logout: () => Promise<void>;
   setUser: (user: AuthUser | null) => void;
@@ -52,6 +52,7 @@ export const useAuthStore = create<AuthState>((set) => ({
         token: session.accessToken,
         isLoading: false
       });
+      return session.user;
     } catch (error) {
       set({ isLoading: false });
       throw error;

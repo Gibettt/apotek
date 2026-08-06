@@ -1,7 +1,6 @@
 "use client";
 
 import {
-  ChevronDown,
   Loader2,
   PackageSearch,
   Pill,
@@ -19,7 +18,7 @@ import { obatService, type ObatListItem } from "@/services/obatService";
 import { useCartStore } from "@/store/cartStore";
 import { formatCurrency } from "@/utils/formatCurrency";
 
-const perPage = 8;
+const perPage = 12;
 
 function getStockBadge(item: ObatListItem) {
   if (!item.status) {
@@ -67,6 +66,7 @@ export function KasirSearch({ refreshToken }: { refreshToken?: number } = {}) {
   const [kategoriOptions, setKategoriOptions] = useState<MasterOption[]>([]);
   const [results, setResults] = useState<ObatListItem[]>([]);
   const [total, setTotal] = useState(0);
+  const [page, setPage] = useState(1);
   const [isLoading, setIsLoading] = useState(false);
   const addItem = useCartStore((state) => state.addItem);
   const cartItems = useCartStore((state) => state.items);
@@ -95,10 +95,8 @@ export function KasirSearch({ refreshToken }: { refreshToken?: number } = {}) {
     () => [{ id: "", label: "Semua kategori" }, ...kategoriOptions],
     [kategoriOptions]
   );
-  const selectedKategoriLabel =
-    categoryMenuOptions.find((option) => option.id === kategoriId)?.label ??
-    "Semua kategori";
-  const [isKategoriOpen, setIsKategoriOpen] = useState(false);
+  const totalPages = Math.max(1, Math.ceil(total / perPage));
+  const hasNextPage = page < totalPages;
 
   useEffect(() => {
     let active = true;
@@ -131,19 +129,13 @@ export function KasirSearch({ refreshToken }: { refreshToken?: number } = {}) {
     let active = true;
 
     async function loadObat() {
-      if (!trimmedQuery) {
-        setResults([]);
-        setTotal(0);
-        setIsLoading(false);
-        return;
-      }
-
       setIsLoading(true);
 
       try {
         const result = await obatService.list({
-          search: trimmedQuery,
+          ...(trimmedQuery ? { search: trimmedQuery } : {}),
           ...(kategoriId ? { kategoriId } : {}),
+          page,
           perPage
         });
 
@@ -173,90 +165,63 @@ export function KasirSearch({ refreshToken }: { refreshToken?: number } = {}) {
     return () => {
       active = false;
     };
-  }, [trimmedQuery, kategoriId, refreshToken]);
+  }, [trimmedQuery, kategoriId, page, refreshToken]);
 
   return (
-    <div className="space-y-5">
-      <div className="grid gap-3 md:grid-cols-[minmax(0,1fr)_220px_auto] md:items-center">
+    <div className="space-y-4">
+      <div className="grid gap-3 md:grid-cols-[minmax(0,1fr)_auto] md:items-center">
         <div className="relative">
           <Search className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-stone-400" />
           <input
             value={query}
-            onChange={(event) => setQuery(event.target.value)}
+            onChange={(event) => {
+              setQuery(event.target.value);
+              setPage(1);
+            }}
             placeholder="Ketik nama atau kode obat"
-            className="h-12 w-full rounded-lg border border-stone-200 bg-white pl-11 pr-4 text-sm font-semibold text-stone-700 outline-none transition placeholder:text-stone-400 focus:border-[#ff6a3d] focus:ring-4 focus:ring-[#ff6a3d]/10"
+            className="h-11 w-full rounded-full border border-white bg-white/90 pl-11 pr-4 text-sm font-bold text-[#171717] outline-none transition placeholder:text-stone-400 focus:border-[#171717] focus:ring-4 focus:ring-white/50"
           />
         </div>
-        <div
-          className="relative"
-          onBlur={(event) => {
-            if (!event.currentTarget.contains(event.relatedTarget)) {
-              setIsKategoriOpen(false);
-            }
-          }}
-        >
-          <button
-            type="button"
-            aria-label={`Filter kategori: ${selectedKategoriLabel}`}
-            aria-haspopup="listbox"
-            aria-expanded={isKategoriOpen}
-            onClick={() => setIsKategoriOpen((open) => !open)}
-            className="flex h-12 w-full items-center justify-between gap-3 rounded-lg border border-[#ff6a3d]/45 bg-white px-4 text-left text-sm font-black text-[#20201d] shadow-[0_10px_24px_rgba(255,106,61,.12)] outline-none transition hover:-translate-y-0.5 hover:border-[#ff6a3d] focus:border-[#ff6a3d] focus:ring-4 focus:ring-[#ff6a3d]/10"
-          >
-            <span className="min-w-0 truncate">{selectedKategoriLabel}</span>
-            <ChevronDown
-              className={`h-4 w-4 shrink-0 text-[#ff6a3d] transition ${
-                isKategoriOpen ? "rotate-180" : ""
-              }`}
-              strokeWidth={2.2}
-            />
-          </button>
-          {isKategoriOpen ? (
-            <div
-              role="listbox"
-              className="absolute left-0 right-0 top-[calc(100%+6px)] z-20 overflow-hidden rounded-lg border border-stone-200 bg-white p-1 shadow-[0_18px_44px_rgba(25,24,21,.14)]"
-            >
-              {categoryMenuOptions.map((option) => {
-                const selected = option.id === kategoriId;
-
-                return (
-                  <button
-                    key={option.id || "all"}
-                    type="button"
-                    role="option"
-                    aria-selected={selected}
-                    onClick={() => {
-                      setKategoriId(option.id);
-                      setIsKategoriOpen(false);
-                    }}
-                    className={`flex w-full items-center rounded-md px-3 py-2 text-left text-sm font-bold transition ${
-                      selected
-                        ? "bg-[#20201d] text-white"
-                        : "text-stone-600 hover:bg-[#fff0ea] hover:text-[#20201d]"
-                    }`}
-                  >
-                    {option.label}
-                  </button>
-                );
-              })}
-            </div>
-          ) : null}
-        </div>
-        <div className="grid grid-cols-2 gap-2 text-sm md:w-[220px]">
-          <div className="rounded-lg bg-[#f8f7f3] px-3 py-2">
-            <p className="text-xs font-bold text-stone-400">Ditemukan</p>
+        <div className="grid grid-cols-2 gap-2 text-sm md:w-[190px]">
+          <div className="rounded-[14px] bg-white px-3 py-2">
+            <p className="text-[11px] font-bold text-stone-400">Ditemukan</p>
             <p className="mt-1 font-black text-[#20201d]">{total}</p>
           </div>
-          <div className="rounded-lg bg-emerald-50 px-3 py-2">
-            <p className="text-xs font-bold text-emerald-600">Siap</p>
-            <p className="mt-1 font-black text-emerald-700">{readyCount}</p>
+          <div className="rounded-[14px] bg-[#151514] px-3 py-2">
+            <p className="text-[11px] font-bold text-white/45">Siap</p>
+            <p className="mt-1 font-black text-[#d5eb72]">{readyCount}</p>
           </div>
         </div>
       </div>
 
-      <div className="grid gap-3">
+      <div className="flex gap-2 overflow-x-auto pb-1">
+        {categoryMenuOptions.map((option) => {
+          const selected = option.id === kategoriId;
+
+          return (
+            <button
+              key={option.id || "all"}
+              type="button"
+              aria-pressed={selected}
+              onClick={() => {
+                setKategoriId(option.id);
+                setPage(1);
+              }}
+              className={`h-8 shrink-0 rounded-full px-4 text-xs font-black transition ${
+                selected
+                  ? "bg-[#cbb8ff] text-[#171717] shadow-[0_10px_20px_rgba(71,55,120,0.16)]"
+                  : "bg-white/70 text-[#59633d] hover:bg-white"
+              }`}
+            >
+              {option.label}
+            </button>
+          );
+        })}
+      </div>
+
+      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
         {isLoading ? (
-          <div className="grid place-items-center rounded-lg border border-dashed border-stone-200 bg-[#f8f7f3] px-4 py-12 text-center">
+          <div className="col-span-full grid place-items-center rounded-[18px] border border-dashed border-white/70 bg-white/45 px-4 py-12 text-center">
             <Loader2 className="h-6 w-6 animate-spin text-[#ff6a3d]" />
             <p className="mt-3 text-sm font-bold text-stone-500">
               Memuat obat dari Supabase...
@@ -277,33 +242,34 @@ export function KasirSearch({ refreshToken }: { refreshToken?: number } = {}) {
             return (
               <div
                 key={item.id}
-                className="grid gap-4 rounded-lg border border-stone-200 bg-white p-4 transition hover:-translate-y-0.5 hover:border-stone-300 hover:shadow-[0_18px_44px_rgba(25,24,21,.08)] sm:grid-cols-[1fr_auto] sm:items-center"
+                className="rounded-[18px] bg-white p-2 shadow-[0_14px_30px_rgba(48,57,30,0.08)] transition hover:-translate-y-0.5 hover:shadow-[0_18px_36px_rgba(48,57,30,0.14)]"
               >
-                <div className="flex min-w-0 gap-3">
-                  <span className="grid h-12 w-12 shrink-0 place-items-center rounded-lg bg-[#fff0ea] text-[#ff6a3d]">
-                    <Pill className="h-5 w-5" strokeWidth={1.9} />
-                  </span>
+                <div className="grid min-h-[116px] grid-cols-[96px_minmax(0,1fr)] gap-3">
+                  <div
+                    className="grid h-24 w-24 place-items-center rounded-[16px] bg-[#f1f4e6] bg-cover bg-center text-[#ff6a3d]"
+                    style={
+                      item.gambarUrl
+                        ? { backgroundImage: `url(${item.gambarUrl})` }
+                        : undefined
+                    }
+                  >
+                    {!item.gambarUrl ? <Pill className="h-9 w-9" strokeWidth={1.8} /> : null}
+                  </div>
                   <div className="min-w-0">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <p className="truncate font-black text-[#20201d]">
-                        {item.nama}
+                    <div className="flex items-start justify-between gap-2">
+                      <p className="truncate text-sm font-black text-[#20201d]">{item.nama}</p>
+                      <p className="shrink-0 text-xs font-black text-[#20201d]">
+                        {formatCurrency(item.hargaAktif?.hargaJual ?? 0)}
                       </p>
-                      <Badge variant={stockBadge.variant}>
-                        {stockBadge.label}
-                      </Badge>
-                      {item.membutuhkanResep ? (
-                        <Badge variant="info">Resep</Badge>
-                      ) : null}
                     </div>
-                    <p className="mt-1 truncate text-sm font-semibold text-stone-500">
-                      {item.kode} - {item.satuanNama || "item"} -{" "}
+                    <p className="mt-1 truncate text-[11px] font-bold text-stone-400">
                       {item.kategoriNama || "Tanpa kategori"}
                     </p>
-                    <div className="mt-3 flex flex-wrap gap-2 text-xs font-bold text-stone-500">
-                      <span className="rounded-full bg-[#f8f7f3] px-3 py-1">
+                    <div className="mt-2 flex flex-wrap gap-1.5 text-[10px] font-bold text-stone-500">
+                      <span className="rounded-full bg-[#f3f3ef] px-2 py-1">
                         Stok {stockLabel(item)}
                       </span>
-                      <span className="rounded-full bg-[#f8f7f3] px-3 py-1">
+                      <span className="rounded-full bg-[#f3f3ef] px-2 py-1">
                         Di keranjang{" "}
                         {formatMixedStock(
                           cartStockQuantity,
@@ -312,27 +278,17 @@ export function KasirSearch({ refreshToken }: { refreshToken?: number } = {}) {
                           item.eceran?.satuanNama
                         )}
                       </span>
-                      <span className="rounded-full bg-[#f8f7f3] px-3 py-1">
-                        {item.golonganNama || "Tanpa golongan"}
-                      </span>
+                      <Badge variant={stockBadge.variant}>{stockBadge.label}</Badge>
+                      {item.membutuhkanResep ? <Badge variant="info">Resep</Badge> : null}
                     </div>
                   </div>
                 </div>
 
-                <div className="flex items-center justify-between gap-3 sm:min-w-[184px] sm:flex-col sm:items-end">
-                  <div className="text-left sm:text-right">
-                    <p className="text-xs font-bold text-stone-400">Harga</p>
-                    <p className="text-lg font-black text-[#20201d]">
-                      {formatCurrency(item.hargaAktif?.hargaJual ?? 0)}
-                    </p>
-                    {item.eceran ? (
-                      <p className="mt-1 text-xs font-bold text-emerald-700">
-                        {formatCurrency(item.eceran.hargaJual)} /{" "}
-                        {item.eceran.satuanNama ?? "eceran"}
-                      </p>
-                    ) : null}
-                  </div>
-                  <div className="flex flex-wrap justify-end gap-2">
+                <div className="mt-2 flex items-center justify-between gap-2 border-t border-stone-100 pt-2">
+                  <p className="truncate text-[11px] font-bold text-stone-500">
+                    {item.kode} - {item.satuanNama || "item"}
+                  </p>
+                  <div className="flex shrink-0 items-center gap-1.5">
                     {item.eceran ? (
                       <button
                         type="button"
@@ -348,16 +304,9 @@ export function KasirSearch({ refreshToken }: { refreshToken?: number } = {}) {
                             hargaJual: item.eceran.hargaJual
                           })
                         }
-                        className="inline-flex h-11 items-center justify-center gap-2 rounded-lg bg-[#0f766e] px-4 text-sm font-black text-white shadow-[0_14px_28px_rgba(15,118,110,.16)] transition hover:-translate-y-0.5 hover:bg-[#115e59] disabled:pointer-events-none disabled:bg-stone-100 disabled:text-stone-400 disabled:shadow-none"
+                        className="grid h-8 min-w-8 place-items-center rounded-full bg-[#cbb8ff] px-2 text-[10px] font-black text-[#171717] transition hover:-translate-y-0.5 disabled:pointer-events-none disabled:bg-stone-100 disabled:text-stone-400"
                       >
-                        {disabledEceranReason ? (
-                          disabledEceranReason
-                        ) : (
-                          <>
-                            <Plus className="h-4 w-4" strokeWidth={2} />
-                            Eceran
-                          </>
-                        )}
+                        {disabledEceranReason ? disabledEceranReason : "Eceran"}
                       </button>
                     ) : null}
                     <button
@@ -365,15 +314,12 @@ export function KasirSearch({ refreshToken }: { refreshToken?: number } = {}) {
                       aria-label={`Tambah ${item.nama}`}
                       disabled={Boolean(disabledReason)}
                       onClick={() => addItem(item)}
-                      className="inline-flex h-11 items-center justify-center gap-2 rounded-lg bg-[#20201d] px-4 text-sm font-black text-white shadow-[0_14px_28px_rgba(25,24,21,.16)] transition hover:-translate-y-0.5 hover:bg-black disabled:pointer-events-none disabled:bg-stone-100 disabled:text-stone-400 disabled:shadow-none"
+                      className="grid h-8 min-w-8 place-items-center rounded-full bg-[#151514] px-2 text-xs font-black text-white transition hover:-translate-y-0.5 disabled:pointer-events-none disabled:bg-stone-100 disabled:text-stone-400"
                     >
                       {disabledReason ? (
                         disabledReason
                       ) : (
-                        <>
-                          <Plus className="h-4 w-4" strokeWidth={2} />
-                          Tambah
-                        </>
+                        <Plus className="h-4 w-4" strokeWidth={2.2} />
                       )}
                     </button>
                   </div>
@@ -382,7 +328,7 @@ export function KasirSearch({ refreshToken }: { refreshToken?: number } = {}) {
             );
           })
         ) : (
-          <div className="grid place-items-center rounded-lg border border-dashed border-stone-200 bg-[#f8f7f3] px-4 py-12 text-center">
+          <div className="col-span-full grid place-items-center rounded-[18px] border border-dashed border-white/70 bg-white/45 px-4 py-12 text-center">
             <span className="grid h-14 w-14 place-items-center rounded-full bg-white text-stone-500 shadow-sm">
               {query ? (
                 <PackageSearch className="h-6 w-6" strokeWidth={1.9} />
@@ -391,18 +337,40 @@ export function KasirSearch({ refreshToken }: { refreshToken?: number } = {}) {
               )}
             </span>
             <p className="mt-4 text-sm font-black text-[#20201d]">
-              {trimmedQuery
-                ? "Obat tidak ditemukan"
-                : "Ketik nama atau kode obat"}
+              {trimmedQuery ? "Obat tidak ditemukan" : "Belum ada obat aktif"}
             </p>
             <p className="mt-2 max-w-sm text-sm font-semibold leading-6 text-stone-500">
               {trimmedQuery
                 ? "Coba cari dengan kode atau nama lain."
-                : "Daftar obat dan alat akan muncul setelah pencarian diisi."}
+                : "Data produk akan muncul di sini setelah tersedia di Supabase."}
             </p>
           </div>
         )}
       </div>
+
+      {results.length ? (
+        <div className="flex items-center justify-between gap-3 rounded-[18px] bg-white/60 p-2">
+          <button
+            type="button"
+            disabled={page <= 1 || isLoading}
+            onClick={() => setPage((current) => Math.max(1, current - 1))}
+            className="h-10 rounded-full bg-white px-4 text-xs font-black text-[#59633d] transition hover:bg-[#f8ffe7] disabled:pointer-events-none disabled:opacity-40"
+          >
+            Prev
+          </button>
+          <span className="text-xs font-black text-[#59633d]">
+            Halaman {page} dari {totalPages}
+          </span>
+          <button
+            type="button"
+            disabled={!hasNextPage || isLoading}
+            onClick={() => setPage((current) => current + 1)}
+            className="h-10 rounded-full bg-[#151514] px-5 text-xs font-black text-white transition hover:bg-black disabled:pointer-events-none disabled:bg-white disabled:text-[#a0a77c]"
+          >
+            Next
+          </button>
+        </div>
+      ) : null}
     </div>
   );
 }

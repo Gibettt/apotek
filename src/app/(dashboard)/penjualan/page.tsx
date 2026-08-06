@@ -2,8 +2,10 @@
 
 import Link from "next/link";
 import { RotateCcw, ShoppingCart, ReceiptText } from "lucide-react";
+import { KasirRiwayatPenjualanPage } from "@/components/kasir/KasirRiwayatPenjualanPage";
 import { ModuleListPage } from "@/components/pages/ModuleListPage";
 import { moduleConfigs } from "@/constants/modules";
+import { useAuthStore } from "@/store/authStore";
 
 const penjualanActions = [
   {
@@ -27,6 +29,12 @@ const penjualanActions = [
 ];
 
 export default function PenjualanPage() {
+  const user = useAuthStore((state) => state.user);
+
+  if (user?.role === "kasir") {
+    return <KasirRiwayatPenjualanPage />;
+  }
+
   return (
     <ModuleListPage
       config={{

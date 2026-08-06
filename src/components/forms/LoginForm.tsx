@@ -29,9 +29,9 @@ export function LoginForm() {
 
   async function onSubmit(values: LoginFormValues) {
     try {
-      await login(values);
+      const user = await login(values);
       toast.success("Login berhasil");
-      router.push("/dashboard");
+      router.push(user.role === "kasir" ? "/penjualan/kasir" : "/dashboard");
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Login gagal");
     }

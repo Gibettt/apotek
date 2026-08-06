@@ -52,22 +52,19 @@ describe("KasirSearch", () => {
       data: [supabaseMedicine],
       total: 1,
       page: 1,
-      perPage: 8,
+      perPage: 12,
       totalPages: 1
     });
   });
 
-  it("waits for a search query before showing medicines", async () => {
+  it("loads initial medicines before search", async () => {
     render(<KasirSearch />);
 
-    expect(mocks.list).not.toHaveBeenCalled();
-    expect(screen.getByText("Ketik nama atau kode obat")).toBeInTheDocument();
+    expect(await screen.findByText("Obat Supabase 500mg")).toBeInTheDocument();
+    expect(mocks.list).toHaveBeenCalledWith({ page: 1, perPage: 12 });
 
-    fireEvent.click(
-      screen.getByRole("button", { name: "Filter kategori: Semua kategori" })
-    );
     expect(
-      await screen.findByRole("option", { name: "Analgesik" })
+      await screen.findByRole("button", { name: "Analgesik" })
     ).toBeInTheDocument();
   });
 
@@ -81,7 +78,8 @@ describe("KasirSearch", () => {
     expect(await screen.findByText("Obat Supabase 500mg")).toBeInTheDocument();
     expect(mocks.list).toHaveBeenCalledWith({
       search: "supabase",
-      perPage: 8
+      page: 1,
+      perPage: 12
     });
 
     fireEvent.click(
@@ -105,7 +103,8 @@ describe("KasirSearch", () => {
     await waitFor(() => {
       expect(mocks.list).toHaveBeenLastCalledWith({
         search: "supabase",
-        perPage: 8
+        page: 1,
+        perPage: 12
       });
     });
   });
@@ -119,17 +118,34 @@ describe("KasirSearch", () => {
 
     await screen.findByText("Obat Supabase 500mg");
 
-    fireEvent.click(
-      screen.getByRole("button", { name: "Filter kategori: Semua kategori" })
-    );
-    fireEvent.click(screen.getByRole("option", { name: "Analgesik" }));
+    fireEvent.click(screen.getByRole("button", { name: "Analgesik" }));
 
     await waitFor(() => {
       expect(mocks.list).toHaveBeenLastCalledWith({
         search: "supabase",
         kategoriId: "kat-1",
-        perPage: 8
+        page: 1,
+        perPage: 12
       });
+    });
+  });
+
+  it("loads the next page when more than 12 medicines exist", async () => {
+    mocks.list.mockResolvedValue({
+      data: [supabaseMedicine],
+      total: 13,
+      page: 1,
+      perPage: 12
+    });
+
+    render(<KasirSearch />);
+
+    expect(await screen.findByText("Obat Supabase 500mg")).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Next" }));
+
+    await waitFor(() => {
+      expect(mocks.list).toHaveBeenLastCalledWith({ page: 2, perPage: 12 });
     });
   });
 });
