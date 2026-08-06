@@ -56,16 +56,16 @@ export function KasirRiwayatPenjualanPage() {
 
   return (
     <KasirPageShell active="riwayat">
-      <main className="min-h-0 flex-1 overflow-hidden rounded-b-[16px] bg-[#151514]">
-        <section className="flex h-full min-h-0 flex-col overflow-hidden rounded-[22px] bg-[#e6f3c4] p-4">
+      <main className="min-h-0 flex-1 overflow-hidden bg-[#fbfcfb] p-3">
+        <section className="flex h-full min-h-0 flex-col overflow-hidden rounded-[18px] bg-white p-4 shadow-[0_20px_60px_rgba(31,41,35,0.06)]">
           <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
             <div>
-              <p className="text-xl font-black">Riwayat Penjualan</p>
-              <p className="text-xs font-bold text-[#59633d]">
+              <p className="text-xl font-black text-[#2d3832]">Riwayat Penjualan</p>
+              <p className="text-xs font-bold text-[#89918c]">
                 Transaksi, pembayaran, pelanggan, dan status dari Supabase.
               </p>
             </div>
-            <div className="grid h-12 min-w-[118px] place-items-center rounded-[16px] bg-white px-4 text-center">
+            <div className="grid h-12 min-w-[118px] place-items-center rounded-[12px] border border-[#e6eae7] bg-[#fdfefd] px-4 text-center">
               <p className="text-xs font-bold text-stone-400">Total data</p>
               <p className="text-base font-black text-[#0f766e]">{filteredRows.length}</p>
             </div>
@@ -78,21 +78,21 @@ export function KasirRiwayatPenjualanPage() {
                 value={search}
                 onChange={(event) => setSearch(event.target.value)}
                 placeholder="Cari nomor, pelanggan, bayar, status"
-                className="h-12 w-full rounded-full border-0 bg-white pl-11 pr-4 text-sm font-bold outline-none ring-1 ring-white/70 placeholder:text-stone-400 focus:ring-4 focus:ring-[#cbb8ff]/60"
+                className="h-12 w-full rounded-full border border-[#e1e6e3] bg-white pl-11 pr-4 text-sm font-bold text-[#37413b] outline-none placeholder:text-stone-400 focus:border-[#0f766e] focus:ring-4 focus:ring-[#0f766e]/10"
               />
             </label>
-            <div className="hidden items-center gap-3 rounded-[16px] bg-[#151514] px-4 text-white lg:flex">
-              <ReceiptText className="h-5 w-5 text-[#d5eb72]" strokeWidth={1.9} />
+            <div className="hidden items-center gap-3 rounded-[12px] bg-[#247967] px-4 text-white lg:flex">
+              <ReceiptText className="h-5 w-5 text-white" strokeWidth={1.9} />
               <div>
-                <p className="text-[11px] font-bold text-white/50">Sumber</p>
+                <p className="text-[11px] font-bold text-white/65">Sumber</p>
                 <p className="text-sm font-black">Supabase</p>
               </div>
             </div>
           </div>
 
-          <div className="min-h-0 flex-1 overflow-auto rounded-[18px] bg-white">
+          <div className="min-h-0 flex-1 overflow-auto rounded-[14px] border border-[#e6eae7] bg-white">
             <table className="min-w-[920px] w-full text-left text-sm">
-              <thead className="sticky top-0 z-10 bg-[#f7f5ef] text-xs font-black uppercase text-stone-500">
+              <thead className="sticky top-0 z-10 bg-[#f7faf8] text-xs font-black uppercase text-stone-500">
                 <tr>
                   <th className="px-5 py-4">Nomor</th>
                   <th className="px-5 py-4">Pelanggan</th>
@@ -125,7 +125,7 @@ export function KasirRiwayatPenjualanPage() {
                         <Link
                           href={`/penjualan/${row.id}`}
                           aria-label={`Lihat ${row.nomorInvoice}`}
-                          className="inline-grid h-9 w-9 place-items-center rounded-full bg-[#cbb8ff] text-[#171717] transition hover:bg-[#b49af7]"
+                          className="inline-grid h-9 w-9 place-items-center rounded-full bg-[#dcf1e7] text-[#1c6e5b] transition hover:bg-[#cdead9]"
                         >
                           <Eye className="h-4 w-4" strokeWidth={1.9} />
                         </Link>

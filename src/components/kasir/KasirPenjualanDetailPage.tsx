@@ -25,8 +25,8 @@ function unitLabel(value?: string) {
 function InfoRow({ label, value }: { label: string; value: string }) {
   return (
     <div className="flex items-start justify-between gap-4">
-      <span className="text-xs font-bold text-[#55458a]">{label}</span>
-      <strong className="text-right text-sm text-[#20201d]">{value}</strong>
+      <span className="text-xs font-bold text-[#55605a]">{label}</span>
+      <strong className="text-right text-sm text-[#2d3832]">{value}</strong>
     </div>
   );
 }
@@ -64,21 +64,21 @@ export function KasirPenjualanDetailPage({ id }: { id: string }) {
 
   return (
     <KasirPageShell active="riwayat">
-      <main className="min-h-0 flex-1 overflow-hidden rounded-b-[16px] bg-[#151514]">
-        <section className="grid h-full min-h-0 gap-2 overflow-hidden lg:grid-cols-[minmax(0,1fr)_360px] xl:grid-cols-[minmax(0,1fr)_390px]">
-          <div className="flex min-h-0 flex-col overflow-hidden rounded-[22px] bg-[#e6f3c4] p-4">
+      <main className="min-h-0 flex-1 overflow-hidden bg-[#fbfcfb] p-3">
+        <section className="grid h-full min-h-0 gap-3 overflow-hidden lg:grid-cols-[minmax(0,1fr)_360px] xl:grid-cols-[minmax(0,1fr)_390px]">
+          <div className="flex min-h-0 flex-col overflow-hidden rounded-[18px] bg-white p-4 shadow-[0_20px_60px_rgba(31,41,35,0.06)]">
             <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
               <div className="min-w-0">
                 <p className="truncate text-xl font-black">
                   {penjualan?.nomorInvoice ?? (isLoading ? "Memuat transaksi" : "Transaksi")}
                 </p>
-                <p className="text-xs font-bold text-[#59633d]">
+                <p className="text-xs font-bold text-[#89918c]">
                   Detail barang, pembayaran, dan pelanggan dari Supabase.
                 </p>
               </div>
               <Link
                 href="/penjualan"
-                className="inline-flex h-10 items-center gap-2 rounded-full bg-white px-4 text-xs font-black text-[#171717] transition hover:bg-[#cbb8ff]"
+                className="inline-flex h-10 items-center gap-2 rounded-full border border-[#e1e6e3] bg-white px-4 text-xs font-black text-[#37413b] transition hover:border-[#9bcbbb] hover:bg-[#eef3f0] hover:text-[#1f6f5d]"
               >
                 <ArrowLeft className="h-4 w-4" strokeWidth={1.9} />
                 Kembali
@@ -91,19 +91,19 @@ export function KasirPenjualanDetailPage({ id }: { id: string }) {
                 ["Pelanggan", penjualan?.namaPelanggan ?? "-", ReceiptText],
                 ["Total", penjualan ? formatCurrency(penjualan.grandTotal) : "Rp0", Wallet]
               ].map(([label, value, Icon]) => (
-                <div key={String(label)} className="rounded-[16px] bg-white p-3">
+                <div key={String(label)} className="rounded-[12px] border border-[#e6eae7] bg-[#fdfefd] p-3">
                   <div className="flex items-center justify-between gap-3">
                     <p className="text-xs font-bold text-stone-400">{String(label)}</p>
                     <Icon className="h-4 w-4 text-[#0f766e]" strokeWidth={1.9} />
                   </div>
-                  <p className="mt-2 truncate text-sm font-black text-[#20201d]">{String(value)}</p>
+                  <p className="mt-2 truncate text-sm font-black text-[#2d3832]">{String(value)}</p>
                 </div>
               ))}
             </div>
 
-            <div className="min-h-0 flex-1 overflow-auto rounded-[18px] bg-white">
+            <div className="min-h-0 flex-1 overflow-auto rounded-[14px] border border-[#e6eae7] bg-white">
               <table className="min-w-[720px] w-full text-left text-sm">
-                <thead className="sticky top-0 z-10 bg-[#f7f5ef] text-xs font-black uppercase text-stone-500">
+                <thead className="sticky top-0 z-10 bg-[#f7faf8] text-xs font-black uppercase text-stone-500">
                   <tr>
                     <th className="px-5 py-4">Barang</th>
                     <th className="px-5 py-4">Qty</th>
@@ -122,10 +122,10 @@ export function KasirPenjualanDetailPage({ id }: { id: string }) {
                   ) : penjualan ? (
                     penjualan.details.map((detail) => (
                       <tr key={detail.id} className="border-t border-stone-100">
-                        <td className="px-5 py-4 font-black text-[#20201d]">{detail.namaBarang}</td>
+                        <td className="px-5 py-4 font-black text-[#2d3832]">{detail.namaBarang}</td>
                         <td className="px-5 py-4 font-bold text-stone-600">{detail.jumlah}</td>
                         <td className="px-5 py-4 font-bold text-stone-600">{unitLabel(detail.satuanNama)}</td>
-                        <td className="px-5 py-4 font-black text-[#20201d]">{formatCurrency(detail.hargaJual)}</td>
+                        <td className="px-5 py-4 font-black text-[#2d3832]">{formatCurrency(detail.hargaJual)}</td>
                         <td className="px-5 py-4 text-right font-black text-[#0f766e]">{formatCurrency(detail.subtotal)}</td>
                       </tr>
                     ))
@@ -141,13 +141,13 @@ export function KasirPenjualanDetailPage({ id }: { id: string }) {
             </div>
           </div>
 
-          <aside className="flex min-h-0 flex-col overflow-hidden rounded-[22px] bg-[#cbb8ff] p-4 text-[#171717]">
+          <aside className="flex min-h-0 flex-col overflow-hidden rounded-[18px] border border-[#dce8e2] bg-[#f5faf7] p-4 text-[#262b28] shadow-[0_20px_60px_rgba(31,41,35,0.06)]">
             <div className="mb-4 flex items-center justify-between gap-3">
               <div>
                 <p className="text-lg font-black">Ringkasan</p>
-                <p className="text-xs font-bold text-[#55458a]">Detail pembayaran</p>
+                <p className="text-xs font-bold text-[#89918c]">Detail pembayaran</p>
               </div>
-              <span className="grid h-10 w-10 place-items-center rounded-full bg-white/55">
+              <span className="grid h-10 w-10 place-items-center rounded-full bg-[#e8f5ef] text-[#267d6b]">
                 <ReceiptText className="h-5 w-5" strokeWidth={1.9} />
               </span>
             </div>
@@ -159,16 +159,16 @@ export function KasirPenjualanDetailPage({ id }: { id: string }) {
                   <InfoRow label="Waktu" value={formatDateTime(penjualan.tanggal)} />
                   <InfoRow label="Pembayaran" value={penjualan.metodePembayaran ?? "-"} />
                   <div className="flex items-center justify-between gap-4">
-                    <span className="text-xs font-bold text-[#55458a]">Status</span>
+                    <span className="text-xs font-bold text-[#55605a]">Status</span>
                     <Badge variant={statusVariant(penjualan.status)}>{statusLabel(penjualan.status)}</Badge>
                   </div>
                   <div className="flex items-center justify-between gap-4">
-                    <span className="text-xs font-bold text-[#55458a]">Status Bayar</span>
+                    <span className="text-xs font-bold text-[#55605a]">Status Bayar</span>
                     <Badge variant={statusVariant(penjualan.statusBayar)}>{statusLabel(penjualan.statusBayar)}</Badge>
                   </div>
                 </div>
 
-                <div className="mt-3 space-y-3 rounded-[16px] bg-white/50 p-4 text-sm font-bold text-[#55458a]">
+                <div className="mt-3 space-y-3 rounded-[12px] border border-[#dce8e2] bg-white p-4 text-sm font-bold text-[#55605a]">
                   <InfoRow label="Subtotal" value={formatCurrency(penjualan.subtotal)} />
                   <InfoRow label="Bayar" value={formatCurrency(penjualan.bayarTotal)} />
                   <InfoRow label="Kembalian" value={formatCurrency(penjualan.kembalian)} />
@@ -182,7 +182,7 @@ export function KasirPenjualanDetailPage({ id }: { id: string }) {
                 </div>
               </>
             ) : (
-              <div className="rounded-[16px] bg-white/55 p-5 text-sm font-bold text-[#55458a]">
+              <div className="rounded-[12px] border border-[#dce8e2] bg-white p-5 text-sm font-bold text-[#55605a]">
                 {isLoading ? "Memuat ringkasan..." : errorMessage || "Transaksi tidak ditemukan."}
               </div>
             )}

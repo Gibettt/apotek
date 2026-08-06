@@ -120,7 +120,7 @@ export function KasirPelangganPicker({
             <UserRound className="h-5 w-5" strokeWidth={1.9} />
           </span>
           <div>
-            <p className="text-sm font-black text-[#20201d]">Pelanggan</p>
+            <p className="text-sm font-black text-[#2d3832]">Pelanggan</p>
             <p className="mt-1 text-xs font-semibold text-stone-500">
               {selected ? selected.nama : typedName || "Umum"}
             </p>
@@ -168,7 +168,7 @@ export function KasirPelangganPicker({
             }}
             className={`flex h-10 items-center justify-between rounded-lg px-3 text-left text-sm font-bold transition ${
               !selected
-                ? "bg-[#20201d] text-white"
+                ? "bg-[#247967] text-white"
                 : "bg-[#f8f7f3] text-stone-600 hover:text-stone-950"
             }`}
           >
@@ -198,7 +198,7 @@ export function KasirPelangganPicker({
             <button
               type="button"
               onClick={useTypedName}
-              className="flex min-h-10 items-center justify-between gap-3 rounded-lg bg-white px-3 py-2 text-left text-xs font-black leading-5 text-[#20201d] transition hover:bg-[#f8f7f3]"
+              className="flex min-h-10 items-center justify-between gap-3 rounded-lg bg-white px-3 py-2 text-left text-xs font-black leading-5 text-[#2d3832] transition hover:bg-[#f8f7f3]"
             >
               <span className="min-w-0 truncate">
                 Pakai {exactMatch?.nama ?? typedName} untuk transaksi ini
@@ -236,7 +236,7 @@ export function KasirPelangganPicker({
                   }}
                   className={`flex h-10 items-center justify-between gap-3 rounded-lg px-3 text-left text-sm font-bold transition ${
                     item.id === pelangganId
-                      ? "bg-[#20201d] text-white"
+                      ? "bg-[#247967] text-white"
                       : "bg-[#f8f7f3] text-stone-600 hover:text-stone-950"
                   }`}
                 >

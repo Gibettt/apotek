@@ -25,14 +25,14 @@ export default function KasirPage() {
   return (
     <>
       <KasirPageShell active="kasir">
-          <div className="grid min-h-0 flex-1 gap-2 overflow-hidden rounded-b-[16px] bg-[#151514] lg:grid-cols-[minmax(0,1fr)_340px] xl:grid-cols-[minmax(0,1fr)_365px]">
-            <div className="flex min-h-0 flex-col overflow-hidden rounded-[22px] bg-[#e6f3c4] p-4">
+          <div className="grid min-h-0 flex-1 gap-3 overflow-hidden bg-[#fbfcfb] p-3 lg:grid-cols-[minmax(0,1fr)_340px] xl:grid-cols-[minmax(0,1fr)_365px]">
+            <div className="flex min-h-0 flex-col overflow-hidden rounded-[18px] bg-white p-4 shadow-[0_20px_60px_rgba(31,41,35,0.06)]">
               <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
                 <div className="flex items-center gap-2">
-                  <p className="text-sm font-black">Order Line</p>
-                  <span className="rounded-full bg-white px-3 py-1 text-xs font-black">{totalItems}</span>
+                  <p className="text-sm font-black text-[#2d3832]">Order Line</p>
+                  <span className="rounded-full bg-[#eef3f0] px-3 py-1 text-xs font-black text-[#1c6e5b]">{totalItems}</span>
                 </div>
-                <span className="rounded-full bg-white/70 px-3 py-1.5 text-xs font-black text-[#555f35]">
+                <span className="rounded-full bg-[#eef3f0] px-3 py-1.5 text-xs font-black text-[#1c6e5b]">
                   All Orders
                 </span>
               </div>
@@ -42,15 +42,15 @@ export default function KasirPage() {
                   ["Transaksi", "Baru", "Aktif"],
                   ["Pelanggan", String(pelangganTotal), "Terdaftar"],
                   ["Item", String(productTotal), "Barang tampil"],
-                  ["Total", String(subtotal()), "Belanja"]
+                  ["Total", formatCurrency(subtotal()), "Belanja"]
                 ].map(([title, value, status]) => (
-                  <div key={title} className="rounded-[16px] bg-white p-3 shadow-[0_12px_24px_rgba(48,57,30,0.08)]">
+                  <div key={title} className="rounded-[12px] border border-[#e6eae7] bg-[#fdfefd] p-3">
                     <div className="flex items-start justify-between gap-2">
-                      <p className="truncate text-sm font-black">{title}</p>
+                      <p className="truncate text-sm font-black text-[#2d3832]">{title}</p>
                       <span className="text-[10px] font-bold text-stone-400">#{String(title).slice(0, 3).toUpperCase()}</span>
                     </div>
                     <p className="mt-2 truncate text-xs font-bold text-stone-500">{value}</p>
-                    <span className="mt-3 inline-flex rounded-full bg-[#e6f3c4] px-2.5 py-1 text-[10px] font-black text-[#3b4c16]">
+                    <span className="mt-3 inline-flex rounded-full bg-[#e8f5ef] px-2.5 py-1 text-[10px] font-black text-[#27705f]">
                       {status}
                     </span>
                   </div>
@@ -59,8 +59,8 @@ export default function KasirPage() {
 
               <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
                 <div>
-                  <p className="text-lg font-black">Explore Obat</p>
-                  <p className="text-xs font-bold text-[#59633d]">Harga dan stok langsung dari Supabase.</p>
+                  <p className="text-lg font-black text-[#2d3832]">Explore Obat</p>
+                  <p className="text-xs font-bold text-[#89918c]">Harga dan stok langsung dari Supabase.</p>
                 </div>
               </div>
 
@@ -72,13 +72,13 @@ export default function KasirPage() {
               </div>
             </div>
 
-            <aside className="flex min-h-0 flex-col overflow-hidden rounded-[22px] bg-[#cbb8ff]">
+            <aside className="flex min-h-0 flex-col overflow-hidden rounded-[18px] border border-[#dce8e2] bg-[#f5faf7] shadow-[0_20px_60px_rgba(31,41,35,0.06)]">
               <div className="flex items-center justify-between px-4 py-3">
                 <div>
-                  <p className="text-lg font-black text-[#171717]">Order Details</p>
-                  <p className="text-xs font-bold text-[#55458a]">Kasir penjualan</p>
+                  <p className="text-lg font-black text-[#2d3832]">Order Details</p>
+                  <p className="text-xs font-bold text-[#89918c]">Kasir penjualan</p>
                 </div>
-                <span className="grid h-10 w-10 place-items-center rounded-full bg-white/55 text-[#171717]">
+                <span className="grid h-10 w-10 place-items-center rounded-full bg-[#e8f5ef] text-[#267d6b]">
                   <ShoppingBag className="h-5 w-5" strokeWidth={1.9} />
                 </span>
               </div>
@@ -93,7 +93,7 @@ export default function KasirPage() {
             </aside>
           </div>
 
-          <footer className="flex flex-wrap items-center justify-between gap-2 bg-[#151514] px-4 py-2 text-xs font-bold text-white/50 lg:hidden">
+          <footer className="flex flex-wrap items-center justify-between gap-2 border-t border-[#e7ebe8] bg-white px-4 py-2 text-xs font-bold text-[#858d87] lg:hidden">
             <span>{totalItems} item</span>
             <span>Data produk, stok, dan transaksi dari Supabase</span>
           </footer>

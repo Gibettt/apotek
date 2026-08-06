@@ -7,8 +7,6 @@ import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useAuthStore } from "@/store/authStore";
-import { useCartStore } from "@/store/cartStore";
-import { formatCurrency } from "@/utils/formatCurrency";
 
 type KasirSection = "kasir" | "riwayat" | "retur";
 
@@ -33,7 +31,6 @@ export function KasirPageShell({
   const router = useRouter();
   const user = useAuthStore((state) => state.user);
   const logout = useAuthStore((state) => state.logout);
-  const subtotal = useCartStore((state) => state.subtotal);
   const [clock, setClock] = useState("");
 
   useEffect(() => {
@@ -55,30 +52,30 @@ export function KasirPageShell({
   ] as const;
 
   return (
-    <section className="flex h-full min-h-0 bg-[#9fb66c] p-3 text-[#171717] lg:p-5">
-      <div className="flex min-h-0 w-full flex-col overflow-hidden rounded-[26px] border-[10px] border-[#151514] bg-[#151514] shadow-[0_30px_80px_rgba(13,18,12,0.28)]">
-        <header className="flex flex-wrap items-center gap-3 rounded-t-[16px] bg-[#151514] px-3 py-2 text-white">
+    <section className="flex h-full min-h-0 bg-[#eef3ef] p-0 text-[#262b28] lg:p-0">
+      <div className="flex min-h-0 w-full flex-col overflow-hidden bg-[#fbfcfb] lg:rounded-[14px] lg:border lg:border-[#dce3de] lg:shadow-[0_18px_48px_rgba(50,75,63,0.1)]">
+        <header className="flex flex-wrap items-center gap-3 border-b border-[#e7ebe8] bg-[rgba(251,252,251,0.94)] px-4 py-3 text-[#26312c] backdrop-blur">
           <div className="flex min-w-0 items-center gap-3">
-            <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-[#d5eb72]">
+            <span className="grid h-9 w-9 shrink-0 place-items-center rounded-[11px] bg-[#eaf5ef] shadow-[0_2px_7px_rgba(36,68,62,0.14)]">
               <Image src="/apotek-ananda-logo-plus.svg" alt="Apotek Ananda" width={32} height={32} />
             </span>
             <div className="min-w-0">
-              <p className="truncate text-sm font-black">Apotek Ananda</p>
-              <p className="truncate text-[11px] font-semibold text-white/55">
+              <p className="truncate text-sm font-black text-[#26312c]">Apotek Ananda</p>
+              <p className="truncate text-[11px] font-semibold text-[#858d87]">
                 {user?.name ?? "Kasir"} - Apotek Ananda
               </p>
             </div>
           </div>
 
-          <nav className="hidden items-center gap-1 rounded-full bg-white/8 p-1 text-xs font-bold text-white/60 md:flex">
+          <nav className="hidden items-center gap-1 rounded-full bg-[#f3f7f5] p-1 text-xs font-bold text-[#6b746e] md:flex">
             {navItems.map(({ key, href, label, icon: Icon }) => (
               <Link
                 key={key}
                 href={href}
                 className={`inline-flex h-8 items-center gap-2 rounded-full px-3 transition ${
                   active === key
-                    ? "bg-[#cdb7ff] px-4 text-[#171717]"
-                    : "hover:bg-white/10 hover:text-white"
+                    ? "bg-[#dcf1e7] px-4 text-[#1c6e5b]"
+                    : "hover:bg-[#eef3f0] hover:text-[#1f6f5d]"
                 }`}
               >
                 <Icon className="h-3.5 w-3.5" strokeWidth={1.9} />
@@ -88,23 +85,19 @@ export function KasirPageShell({
           </nav>
 
           <div className="ml-auto flex flex-wrap items-center justify-end gap-2">
-            <div className="hidden h-9 items-center gap-2 rounded-full bg-white/8 px-3 text-xs font-bold text-white/70 sm:flex">
+            <div className="hidden h-9 items-center gap-2 rounded-full border border-[#e1e6e3] bg-white px-3 text-xs font-bold text-[#68716b] sm:flex">
               <Search className="h-3.5 w-3.5" strokeWidth={1.9} />
               Produk Supabase
             </div>
-            <div className="hidden h-9 items-center gap-2 rounded-full bg-white/8 px-3 text-xs font-bold text-white/70 sm:flex">
-              <Clock className="h-3.5 w-3.5 text-[#d5eb72]" strokeWidth={1.9} />
+            <div className="hidden h-9 items-center gap-2 rounded-full border border-[#e1e6e3] bg-white px-3 text-xs font-bold text-[#68716b] sm:flex">
+              <Clock className="h-3.5 w-3.5 text-[#267d6b]" strokeWidth={1.9} />
               {clock}
-            </div>
-            <div className="h-9 rounded-full bg-[#d5eb72] px-3 py-1 text-right text-[#171717]">
-              <p className="text-[10px] font-bold text-black/50">Total order</p>
-              <p className="text-sm font-black leading-4">{formatCurrency(subtotal())}</p>
             </div>
             <button
               type="button"
               aria-label="Logout kasir"
               onClick={handleLogout}
-              className="grid h-9 w-9 place-items-center rounded-full bg-white/10 text-white transition hover:bg-red-500"
+              className="grid h-9 w-9 place-items-center rounded-full bg-[#eef3f0] text-[#68716b] transition hover:bg-red-50 hover:text-red-600"
             >
               <LogOut className="h-4 w-4" strokeWidth={1.9} />
             </button>

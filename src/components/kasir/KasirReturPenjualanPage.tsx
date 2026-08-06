@@ -185,19 +185,19 @@ export function KasirReturPenjualanPage() {
 
   return (
     <KasirPageShell active="retur">
-      <main className="min-h-0 flex-1 overflow-hidden rounded-b-[16px] bg-[#151514]">
+      <main className="min-h-0 flex-1 overflow-hidden bg-[#fbfcfb] p-3">
         <form
           onSubmit={handleSubmit}
-          className="grid h-full min-h-0 gap-2 overflow-hidden lg:grid-cols-[340px_minmax(0,1fr)] xl:grid-cols-[360px_minmax(0,1fr)]"
+          className="grid h-full min-h-0 gap-3 overflow-hidden lg:grid-cols-[340px_minmax(0,1fr)] xl:grid-cols-[360px_minmax(0,1fr)]"
         >
-          <aside className="flex min-h-0 flex-col overflow-hidden rounded-[22px] bg-[#cbb8ff] p-4">
+          <aside className="flex min-h-0 flex-col overflow-hidden rounded-[18px] border border-[#dce8e2] bg-[#f5faf7] p-4 shadow-[0_20px_60px_rgba(31,41,35,0.06)]">
             <div className="mb-4 flex items-center gap-3">
               <span className="grid h-11 w-11 place-items-center rounded-[12px] bg-white text-[#0f766e]">
                 <UserRound className="h-5 w-5" strokeWidth={1.9} />
               </span>
               <div className="min-w-0">
-                <p className="text-lg font-black">Pelanggan</p>
-                <p className="truncate text-xs font-bold text-[#55458a]">
+                <p className="text-lg font-black text-[#2d3832]">Pelanggan</p>
+                <p className="truncate text-xs font-bold text-[#89918c]">
                   {selectedPelanggan?.nama ?? "Cari nama pelanggan"}
                 </p>
               </div>
@@ -210,7 +210,7 @@ export function KasirReturPenjualanPage() {
                 disabled={isLoadingPelanggan}
                 onChange={(event) => setPelangganQuery(event.target.value)}
                 placeholder={isLoadingPelanggan ? "Memuat pelanggan..." : "Cari nama pelanggan"}
-                className="h-12 w-full rounded-[12px] border-0 bg-white pl-11 pr-4 text-sm font-bold outline-none placeholder:text-stone-400 focus:ring-4 focus:ring-white/45"
+                className="h-12 w-full rounded-[12px] border border-[#e1e6e3] bg-white pl-11 pr-4 text-sm font-bold text-[#37413b] outline-none placeholder:text-stone-400 focus:border-[#0f766e] focus:ring-4 focus:ring-[#0f766e]/10"
               />
             </label>
 
@@ -225,8 +225,8 @@ export function KasirReturPenjualanPage() {
                   }}
                   className={`flex h-11 w-full items-center justify-between gap-3 rounded-[10px] px-3 text-left text-sm font-black transition ${
                     selectedPelanggan?.id === item.id
-                      ? "bg-[#1f1f1c] text-white"
-                      : "bg-white text-stone-600 hover:text-stone-950"
+                      ? "bg-[#247967] text-white"
+                      : "bg-white text-stone-600 hover:bg-[#eef3f0] hover:text-stone-950"
                   }`}
                 >
                   <span className="min-w-0 truncate">{item.nama}</span>
@@ -236,17 +236,17 @@ export function KasirReturPenjualanPage() {
             </div>
           </aside>
 
-          <section className="flex min-h-0 flex-col overflow-hidden rounded-[22px] bg-[#e6f3c4] p-4">
+          <section className="flex min-h-0 flex-col overflow-hidden rounded-[18px] bg-white p-4 shadow-[0_20px_60px_rgba(31,41,35,0.06)]">
             <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
               <div>
-                <p className="text-xl font-black">Retur Penjualan</p>
-                <p className="text-xs font-bold text-[#59633d]">
+                <p className="text-xl font-black text-[#2d3832]">Retur Penjualan</p>
+                <p className="text-xs font-bold text-[#89918c]">
                   Pilih pelanggan, invoice, lalu masukkan qty barang retur.
                 </p>
               </div>
-              <div className="rounded-[16px] bg-[#151514] px-4 py-2 text-right">
-                <p className="text-[11px] font-bold text-white/50">Total Refund</p>
-                <p className="text-lg font-black text-[#d5eb72]">{formatCurrency(total)}</p>
+              <div className="rounded-[12px] bg-[#247967] px-4 py-2 text-right">
+                <p className="text-[11px] font-bold text-white/65">Total Refund</p>
+                <p className="text-lg font-black text-white">{formatCurrency(total)}</p>
               </div>
             </div>
 
@@ -283,8 +283,8 @@ export function KasirReturPenjualanPage() {
                     }}
                     className={`min-w-[220px] rounded-[14px] border p-3 text-left transition ${
                       selectedSaleId === sale.id
-                        ? "border-[#151514] bg-[#151514] text-white"
-                        : "border-white bg-white text-[#20201d] hover:border-[#cbb8ff]"
+                        ? "border-[#247967] bg-[#247967] text-white"
+                        : "border-[#e6eae7] bg-white text-[#2d3832] hover:border-[#9bcbbb]"
                     }`}
                   >
                     <p className="truncate text-sm font-black">{sale.nomorInvoice}</p>
@@ -300,9 +300,9 @@ export function KasirReturPenjualanPage() {
             </div>
 
             <div className="grid min-h-0 flex-1 gap-3 overflow-hidden xl:grid-cols-[minmax(0,1fr)_360px]">
-              <div className="min-h-0 overflow-auto rounded-[18px] bg-white">
+              <div className="min-h-0 overflow-auto rounded-[14px] border border-[#e6eae7] bg-white">
                 <table className="min-w-[760px] w-full text-left text-sm">
-                  <thead className="sticky top-0 z-10 bg-[#f7f5ef] text-xs font-black uppercase text-stone-500">
+                  <thead className="sticky top-0 z-10 bg-[#f7faf8] text-xs font-black uppercase text-stone-500">
                     <tr>
                       <th className="px-4 py-3">Barang</th>
                       <th className="px-4 py-3">Sisa</th>
@@ -315,13 +315,13 @@ export function KasirReturPenjualanPage() {
                       selectedSale.details.map((detail) => (
                         <tr key={detail.id} className="border-t border-stone-100">
                           <td className="px-4 py-3">
-                            <p className="font-black text-[#20201d]">{detail.namaBarang}</p>
+                            <p className="font-black text-[#2d3832]">{detail.namaBarang}</p>
                             <p className="text-xs font-bold text-stone-400">{unitLabel(detail.satuanNama)}</p>
                           </td>
                           <td className="px-4 py-3 font-bold text-stone-600">
                             {detail.sisaRetur} {unitLabel(detail.satuanNama)}
                           </td>
-                          <td className="px-4 py-3 font-black text-[#20201d]">{formatCurrency(detail.hargaJual)}</td>
+                          <td className="px-4 py-3 font-black text-[#2d3832]">{formatCurrency(detail.hargaJual)}</td>
                           <td className="px-4 py-3">
                             <input
                               aria-label={`Qty retur ${detail.namaBarang}`}
@@ -352,11 +352,11 @@ export function KasirReturPenjualanPage() {
                 </table>
               </div>
 
-              <aside className="flex min-h-0 flex-col overflow-hidden rounded-[18px] bg-[#cbb8ff] p-4">
+              <aside className="flex min-h-0 flex-col overflow-hidden rounded-[14px] border border-[#dce8e2] bg-[#f5faf7] p-4">
                 <div className="mb-3 flex items-center justify-between gap-3">
                   <div>
                     <p className="text-sm font-black">Laporan Retur</p>
-                    <p className="text-xs font-bold text-[#55458a]">{laporanRows.length} barang</p>
+                    <p className="text-xs font-bold text-[#89918c]">{laporanRows.length} barang</p>
                   </div>
                   <RotateCcw className="h-5 w-5" strokeWidth={1.9} />
                 </div>
@@ -377,7 +377,7 @@ export function KasirReturPenjualanPage() {
                       </div>
                     ))
                   ) : (
-                    <div className="rounded-[12px] border border-dashed border-white/60 p-6 text-center text-sm font-bold text-[#55458a]">
+                    <div className="rounded-[12px] border border-dashed border-[#d7dfda] bg-white/70 p-6 text-center text-sm font-bold text-[#55605a]">
                       Belum ada laporan retur.
                     </div>
                   )}
@@ -386,7 +386,7 @@ export function KasirReturPenjualanPage() {
                   type="submit"
                   isLoading={isSubmitting}
                   disabled={!selectedSale || !selectedItems.length}
-                  className="mt-4 h-12 rounded-full bg-[#151514] font-black hover:bg-[#2a2a26]"
+                  className="mt-4 h-12 rounded-full bg-[#247967] font-black hover:bg-[#1c6e5b]"
                 >
                   <Save className="h-4 w-4" />
                   Simpan Retur

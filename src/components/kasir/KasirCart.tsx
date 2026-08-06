@@ -27,7 +27,7 @@ export function KasirCart({
   const totalItems = items.reduce((sum, item) => sum + item.quantity, 0);
 
   return (
-    <div className="flex h-full min-h-0 flex-col text-[#171717]">
+    <div className="flex h-full min-h-0 flex-col text-[#262b28]">
       {onPelangganChange ? (
         <div className="px-4 pb-3">
           <KasirPelangganPicker
@@ -40,10 +40,10 @@ export function KasirCart({
         </div>
       ) : null}
 
-      <div className="mx-4 mb-3 flex items-center justify-between rounded-[14px] bg-white/50 px-3 py-2">
+      <div className="mx-4 mb-3 flex items-center justify-between rounded-[12px] border border-[#dce8e2] bg-white px-3 py-2">
         <div>
-          <p className="text-[11px] font-bold text-[#55458a]">Order aktif</p>
-          <p className="mt-1 text-lg font-black text-[#20201d]">
+          <p className="text-[11px] font-bold text-[#267d6b]">Order aktif</p>
+          <p className="mt-1 text-lg font-black text-[#2d3832]">
             {totalItems} item
           </p>
         </div>
@@ -58,7 +58,7 @@ export function KasirCart({
             Kosongkan
           </button>
         ) : (
-          <span className="grid h-9 w-9 place-items-center rounded-full bg-white text-[#55458a]">
+          <span className="grid h-9 w-9 place-items-center rounded-full bg-[#e8f5ef] text-[#267d6b]">
             <ReceiptText className="h-5 w-5" strokeWidth={1.9} />
           </span>
         )}
@@ -77,11 +77,11 @@ export function KasirCart({
               return (
                 <div
                   key={cartKey}
-                  className="rounded-[16px] bg-white p-3 shadow-[0_12px_24px_rgba(60,42,120,0.12)]"
+                  className="rounded-[12px] border border-[#e6eae7] bg-white p-3 shadow-[0_12px_28px_rgba(50,75,63,0.06)]"
                 >
                   <div className="flex min-w-0 items-start justify-between gap-3">
                     <div className="min-w-0">
-                      <p className="truncate text-sm font-black text-[#20201d]">
+                      <p className="truncate text-sm font-black text-[#2d3832]">
                         {item.nama}
                       </p>
                       <p className="mt-1 truncate text-xs font-semibold text-stone-500">
@@ -92,19 +92,19 @@ export function KasirCart({
                       type="button"
                       aria-label={`Hapus ${item.nama}`}
                       onClick={() => removeItem(cartKey)}
-                      className="grid h-7 w-7 shrink-0 place-items-center rounded-full bg-[#f1ebff] text-[#55458a] transition hover:bg-red-50 hover:text-red-600"
+                      className="grid h-7 w-7 shrink-0 place-items-center rounded-full bg-[#eef3f0] text-[#55605a] transition hover:bg-red-50 hover:text-red-600"
                     >
                       <Trash2 className="h-3.5 w-3.5" strokeWidth={1.9} />
                     </button>
                   </div>
 
                   <div className="mt-3 flex items-center justify-between gap-3">
-                    <div className="flex h-8 w-28 items-center overflow-hidden rounded-full bg-[#edf6d0]">
+                    <div className="flex h-8 w-28 items-center overflow-hidden rounded-full bg-[#eef3f0]">
                       <button
                         type="button"
                         aria-label={`Kurangi ${item.nama}`}
                         onClick={() => updateQuantity(cartKey, item.quantity - 1)}
-                        className="grid h-full w-8 place-items-center text-[#171717] transition hover:bg-white"
+                        className="grid h-full w-8 place-items-center text-[#37413b] transition hover:bg-white"
                       >
                         <Minus className="h-3.5 w-3.5" strokeWidth={2} />
                       </button>
@@ -117,13 +117,13 @@ export function KasirCart({
                         onChange={(event) =>
                           updateQuantity(cartKey, Number(event.target.value))
                         }
-                        className="h-full w-12 bg-white text-center text-xs font-black text-[#20201d] outline-none"
+                        className="h-full w-12 bg-white text-center text-xs font-black text-[#2d3832] outline-none"
                       />
                       <button
                         type="button"
                         aria-label={`Tambah qty ${item.nama}`}
                         onClick={() => updateQuantity(cartKey, item.quantity + 1)}
-                        className="grid h-full w-8 place-items-center text-[#171717] transition hover:bg-white"
+                        className="grid h-full w-8 place-items-center text-[#37413b] transition hover:bg-white"
                       >
                         <Plus className="h-3.5 w-3.5" strokeWidth={2} />
                       </button>
@@ -132,7 +132,7 @@ export function KasirCart({
                       <p className="truncate text-xs font-semibold text-stone-500">
                         {formatCurrency(item.hargaJual)}
                       </p>
-                      <p className="truncate text-base font-black text-[#20201d]">
+                      <p className="truncate text-base font-black text-[#2d3832]">
                         {formatCurrency(lineTotal)}
                       </p>
                     </div>
@@ -142,11 +142,11 @@ export function KasirCart({
             })}
           </div>
         ) : (
-          <div className="grid min-h-[260px] place-items-center rounded-[16px] border border-dashed border-white/70 bg-white/35 p-8 text-center">
-            <span className="grid h-12 w-12 place-items-center rounded-full bg-white text-[#55458a] shadow-sm">
+          <div className="grid min-h-[260px] place-items-center rounded-[12px] border border-dashed border-[#d7dfda] bg-white/70 p-8 text-center">
+            <span className="grid h-12 w-12 place-items-center rounded-full bg-white text-[#267d6b] shadow-sm">
               <UserRound className="h-5 w-5" strokeWidth={1.9} />
             </span>
-            <p className="text-sm font-black text-[#20201d]">
+            <p className="text-sm font-black text-[#2d3832]">
               Keranjang masih kosong.
             </p>
             <p className="mt-2 text-sm font-semibold leading-6 text-stone-500">
@@ -156,11 +156,11 @@ export function KasirCart({
         )}
       </div>
 
-      <div className="bg-[#cbb8ff] p-4">
-        <div className="space-y-2 rounded-[14px] bg-white/45 p-3 text-sm font-bold text-[#55458a]">
+      <div className="border-t border-[#dce8e2] bg-white p-4">
+        <div className="space-y-2 rounded-[12px] bg-[#f5faf7] p-3 text-sm font-bold text-[#55605a]">
           <div className="flex items-center justify-between gap-4">
             <span>Subtotal</span>
-            <span className="text-[#20201d]">{formatCurrency(total)}</span>
+            <span className="text-[#2d3832]">{formatCurrency(total)}</span>
           </div>
           <div className="flex items-center justify-between gap-4">
             <span>Diskon</span>
@@ -171,7 +171,7 @@ export function KasirCart({
             <span>{formatCurrency(0)}</span>
           </div>
         </div>
-        <div className="mt-3 rounded-[14px] bg-white px-4 py-3 text-[#171717]">
+        <div className="mt-3 rounded-[12px] border border-[#dce8e2] bg-white px-4 py-3 text-[#262b28]">
           <div className="flex items-center justify-between gap-4">
             <span className="text-sm font-black">Total Payment</span>
             <span className="text-2xl font-black tracking-normal">
@@ -180,7 +180,7 @@ export function KasirCart({
           </div>
           <Button
             type="button"
-            className="mt-3 h-11 w-full rounded-full bg-[#151514] text-sm font-black text-white hover:bg-black active:translate-y-px"
+            className="mt-3 h-11 w-full rounded-full bg-[#247967] text-sm font-black text-white hover:bg-[#1c6e5b] active:translate-y-px"
             disabled={!items.length}
             onClick={onPay}
           >
