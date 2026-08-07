@@ -52,9 +52,15 @@ export function KasirPageShell({
   ] as const;
 
   return (
+<<<<<<< HEAD
     <section className="flex h-full min-h-0 bg-[#eef3ef] p-0 text-[#262b28] lg:p-0">
       <div className="flex min-h-0 w-full flex-col overflow-hidden bg-[#fbfcfb] lg:rounded-[14px] lg:border lg:border-[#dce3de] lg:shadow-[0_18px_48px_rgba(50,75,63,0.1)]">
         <header className="flex flex-wrap items-center gap-3 border-b border-[#e7ebe8] bg-[rgba(251,252,251,0.94)] px-4 py-3 text-[#26312c] backdrop-blur">
+=======
+    <section className="flex h-full min-h-0 bg-[#151514] text-[#171717]">
+      <div className="flex min-h-0 w-full flex-col overflow-hidden bg-[#151514]">
+        <header className="flex flex-wrap items-center gap-3 bg-[#151514] px-3 py-2 text-white">
+>>>>>>> 82680e8 (perbaiki tampilan kasir nya)
           <div className="flex min-w-0 items-center gap-3">
             <span className="grid h-9 w-9 shrink-0 place-items-center rounded-[11px] bg-[#eaf5ef] shadow-[0_2px_7px_rgba(36,68,62,0.14)]">
               <Image src="/apotek-ananda-logo-plus.svg" alt="Apotek Ananda" width={32} height={32} />

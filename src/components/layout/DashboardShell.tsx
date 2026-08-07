@@ -32,8 +32,8 @@ export function DashboardShell({ children }: { children: ReactNode }) {
     }
 
     return (
-      <div className="kasir-app-shell h-[100dvh] bg-[#eef3ef] p-0 text-stone-950 lg:p-4">
-        <main className="h-[100dvh] overflow-hidden bg-[#fbfcfb] lg:h-[calc(100dvh-32px)] lg:rounded-[14px] lg:border lg:border-[#dce3de] lg:shadow-[0_18px_48px_rgba(50,75,63,0.1)]">
+      <div className="kasir-app-shell h-[100dvh] bg-[#151514] p-0 text-stone-950">
+        <main className="h-[100dvh] overflow-hidden bg-[#151514]">
           {children}
         </main>
       </div>
